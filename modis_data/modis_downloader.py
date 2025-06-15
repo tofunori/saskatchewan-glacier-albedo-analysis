@@ -284,15 +284,15 @@ def main():
     password = ""  # Add your password here or use .netrc
     
     # Option 1: Use glacier mask for precise spatial filtering
-    # glacier_mask_path = "saskatchewan_glacier_mask.geojson"  # Export from GEE
-    # downloader = SaskatchewanGlacierModisDownloader(username, password, glacier_mask_path)
+    glacier_mask_path = "mask/saskatchewan_glacier_shapefile.shp"  # Your glacier mask
+    downloader = SaskatchewanGlacierModisDownloader(username, password, glacier_mask_path)
     
     # Option 2: Use bounding box (default)
-    downloader = SaskatchewanGlacierModisDownloader(username, password)
+    # downloader = SaskatchewanGlacierModisDownloader(username, password)
     
-    # Download data for summer 2023 (adjust dates as needed)
-    start_date = "2023-06-01"
-    end_date = "2023-09-30"
+    # Download data for mid-August 2024 (small test window)
+    start_date = "2024-08-01"
+    end_date = "2024-08-15"
     
     # Download with limit for testing (remove limit for full download)
     results = downloader.download_glacier_data(
