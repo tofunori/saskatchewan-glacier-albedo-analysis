@@ -37,33 +37,40 @@ print('Date exacte de l\'image:', testImage.date().format('YYYY-MM-dd'));
 
 // 3. Fonction pour calculer le pourcentage de couverture de chaque pixel MODIS
 function calculatePixelCoverage(modisImage, glacierMask) {
-  // Obtenir la projection MODIS
-  var modisProjection = modisImage.projection();
+  // Méthode directe : utiliser une zone plus large pour capturer les pixels partiels
   
-  // Méthode alternative : découper le masque glacier selon la grille MODIS
-  // puis calculer la fraction de chaque pixel MODIS couverte par le glacier
+  // Créer une grille de pixels MODIS en reprojetant une image constante
+  var modisReference = ee.Image.pixelLonLat()
+    .reproject(modisImage.projection().atScale(500));
   
-  // D'abord, créer une image constante dans la projection MODIS
-  var modisGrid = ee.Image.constant(1).reproject({
-    crs: modisProjection,
-    scale: 500
+  // Pour chaque pixel MODIS, calculer quelle fraction est couverte par le glacier
+  // Utiliser une approche par convolution pour simuler l'intersection
+  var kernel = ee.Kernel.square({
+    radius: 250,  // 250m = demi-pixel MODIS
+    units: 'meters'
   });
   
-  // Reprojecter le masque glacier vers la résolution MODIS en calculant la moyenne
+  // Appliquer la convolution pour calculer la couverture moyenne dans chaque pixel MODIS
   var coverageFraction = glacierMask.float()
-    .reduceResolution({
-      reducer: ee.Reducer.mean(),
-      maxPixels: 65000
-    })
+    .convolve(kernel.normalize())
     .reproject({
-      crs: modisProjection,
+      crs: modisImage.projection(),
       scale: 500
     });
   
-  // S'assurer que les valeurs sont bien entre 0 et 1
-  coverageFraction = coverageFraction.clamp(0, 1);
+  // Alternative plus simple : moyenner directement à 500m avec un kernel approprié
+  var simpleCoverage = glacierMask.float()
+    .reduceNeighborhood({
+      reducer: ee.Reducer.mean(),
+      kernel: ee.Kernel.square(500, 'meters'),
+      skipMasked: false
+    })
+    .reproject({
+      crs: modisImage.projection(),
+      scale: 500
+    });
   
-  return coverageFraction.multiply(100); // Convertir en pourcentage
+  return simpleCoverage.multiply(100).clamp(0, 100); // Convertir en pourcentage
 }
 
 // Calculer la couverture
@@ -272,25 +279,48 @@ print('3. Utiliser ce masque pour toutes les analyses');
 // │ SECTION 9 : GRAPHIQUE DE DISTRIBUTION DES COUVERTURES                                 │
 // └────────────────────────────────────────────────────────────────────────────────────────┘
 
-// 13. Créer un histogramme de la distribution des pourcentages de couverture
-// Corriger le problème toFixed() en utilisant pixelCoverage masqué
-var maskedCoverage = pixelCoverage.updateMask(pixelCoverage.gt(0));
+// 13. Créer un histogramme avec des buckets fixes pour éviter l'erreur toFixed
+print('');
+print('HISTOGRAMME DES COUVERTURES :');
 
-var histogram = ui.Chart.image.histogram({
-  image: maskedCoverage,
-  region: glacier_geometry.buffer(1000),
-  scale: 500,
-  maxBuckets: 20,
-  maxPixels: 1e9,
-  minBucketWidth: 5  // Définir une largeur minimale pour éviter l'erreur toFixed
-}).setSeriesNames(['Pixels'])
-.setOptions({
-  title: 'Distribution des pourcentages de couverture des pixels MODIS',
-  hAxis: {title: 'Pourcentage de couverture (%)'},
-  vAxis: {title: 'Nombre de pixels'},
-  colors: ['blue']
+// Utiliser des buckets prédéfinis pour éviter l'erreur toFixed
+var buckets = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
+
+// Compter manuellement les pixels dans chaque bucket
+var bucketCounts = buckets.slice(0, -1).map(function(lower, i) {
+  var upper = buckets[i + 1];
+  var mask = pixelCoverage.gte(lower).and(pixelCoverage.lt(upper));
+  if (i === buckets.length - 2) { // Dernier bucket inclut 100%
+    mask = pixelCoverage.gte(lower).and(pixelCoverage.lte(upper));
+  }
+  
+  var count = mask.reduceRegion({
+    reducer: ee.Reducer.sum(),
+    geometry: glacier_geometry.buffer(1000),
+    scale: 500,
+    maxPixels: 1e9
+  });
+  
+  return ee.Feature(null, {
+    'range': lower + '-' + upper + '%',
+    'count': count.get('constant'),
+    'lower': lower
+  });
 });
 
-print(histogram);
+var bucketCollection = ee.FeatureCollection(bucketCounts);
+print('Distribution détaillée par tranches de 10%:', bucketCollection);
+
+// Créer un graphique simple
+var simpleChart = ui.Chart.feature.byFeature(bucketCollection, 'lower', 'count')
+  .setChartType('ColumnChart')
+  .setOptions({
+    title: 'Distribution des pourcentages de couverture',
+    hAxis: {title: 'Pourcentage de couverture (%)'},
+    vAxis: {title: 'Nombre de pixels'},
+    colors: ['blue']
+  });
+
+print(simpleChart);
 
 // FIN DU SCRIPT DE TEST
