@@ -178,8 +178,8 @@ def main():
     """Example usage"""
     # Update these with your NASA Earthdata credentials
     # Or set up .netrc file using: add_earthdata_netrc(username, password)
-    username = ""  # Update this
-    password = ""  # Update this
+    username = "tofunori"  # Your username
+    password = ""  # Add your password here or use .netrc
     
     downloader = SaskatchewanGlacierModisDownloader(username, password)
     
