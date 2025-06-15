@@ -40,10 +40,14 @@ def analyze_downloaded_files():
         
         # Try to get basic info about the file
         try:
-            with rasterio.open(f"HDF4_EOS:EOS_GRID:{file_path}:MOD_Grid_BRDF:Albedo_WSA_shortwave") as src:
+            # Use raw string path to avoid encoding issues
+            hdf_path = str(file_path).replace('\\', '/')
+            with rasterio.open(f"HDF4_EOS:EOS_GRID:{hdf_path}:MOD_Grid_BRDF:Albedo_WSA_shortwave") as src:
                 print(f"      Dimensions: {src.width} x {src.height}")
                 print(f"      Bounds: {src.bounds}")
                 print(f"      CRS: {src.crs}")
+        except UnicodeDecodeError as e:
+            print(f"      ⚠️  Encoding error (likely path issue): {e}")
         except Exception as e:
             print(f"      ⚠️  Could not read raster info: {e}")
     
@@ -60,7 +64,7 @@ def compare_glacier_mask_vs_granule_coverage():
         glacier_gdf = gpd.read_file(glacier_mask_path)
         
         print(f"✅ Loaded glacier mask:")
-        print(f"   Geometry type: {glacier_gdf.geometry.iloc[0].type}")
+        print(f"   Geometry type: {glacier_gdf.geometry.iloc[0].geom_type}")
         print(f"   Bounds: {glacier_gdf.bounds.iloc[0].to_dict()}")
         print(f"   Area: {glacier_gdf.geometry.iloc[0].area:.6f} degrees²")
         
