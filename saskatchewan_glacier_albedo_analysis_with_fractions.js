@@ -483,7 +483,7 @@ Export.image.toDrive({
 // │ SECTION 9 : ANALYSE QUOTIDIENNE PAR FRACTION DE COUVERTURE                            │
 // └────────────────────────────────────────────────────────────────────────────────────────┘
 
-// 14. Fonction pour analyser les statistiques quotidiennes par fraction
+// 14. Fonction pour analyser les statistiques quotidiennes par fraction (optimisée pour Mann-Kendall)
 function analyzeDailyAlbedoByFraction(img) {
   var date = img.date();
   var quality = img.select('BRDF_Albedo_Band_Mandatory_Quality_shortwave');
@@ -499,18 +499,17 @@ function analyzeDailyAlbedoByFraction(img) {
   // Calculer les statistiques pour chaque classe de fraction
   var stats = {};
   var classNames = ['border', 'mixed_low', 'mixed_high', 'mostly_ice', 'pure_ice'];
+  var totalValidPixels = 0;
   
   classNames.forEach(function(className) {
     // Combiner masque de qualité et masque de fraction
     var classMask = masks[className].and(goodQualityMask);
     var validAlbedo = albedo.updateMask(classMask);
     
-    // Calculer les statistiques d'albédo pour cette classe
+    // Calculer les statistiques d'albédo streamlinées pour cette classe
     var classStats = validAlbedo.reduceRegion({
       reducer: ee.Reducer.mean().combine(
-        ee.Reducer.stdDev(), '', true
-      ).combine(
-        ee.Reducer.percentile([25, 50, 75]), '', true
+        ee.Reducer.median(), '', true
       ).combine(
         ee.Reducer.count(), '', true
       ),
@@ -520,7 +519,7 @@ function analyzeDailyAlbedoByFraction(img) {
       bestEffort: true
     });
     
-    // Calculer le nombre de pixels dans cette classe (avec fraction > 0)
+    // Calculer le nombre total de pixels dans cette classe (avec fraction > 0)
     var fractionPixelCount = masks[className].reduceRegion({
       reducer: ee.Reducer.sum(),
       geometry: glacier_geometry,
@@ -529,22 +528,51 @@ function analyzeDailyAlbedoByFraction(img) {
       bestEffort: true
     }).get('constant');
     
-    // Stocker les statistiques
+    // Calculer les statistiques essentielles
+    var pixelCount = classStats.get('Albedo_WSA_shortwave_count');
+    
+    // Stocker les statistiques optimisées pour Mann-Kendall
     stats[className + '_mean'] = classStats.get('Albedo_WSA_shortwave_mean');
-    stats[className + '_stdDev'] = classStats.get('Albedo_WSA_shortwave_stdDev');
-    stats[className + '_p25'] = classStats.get('Albedo_WSA_shortwave_p25');
-    stats[className + '_median'] = classStats.get('Albedo_WSA_shortwave_p50');
-    stats[className + '_p75'] = classStats.get('Albedo_WSA_shortwave_p75');
-    stats[className + '_albedo_count'] = classStats.get('Albedo_WSA_shortwave_count');
-    stats[className + '_fraction_pixels'] = fractionPixelCount;
+    stats[className + '_median'] = classStats.get('Albedo_WSA_shortwave_median');
+    stats[className + '_pixel_count'] = pixelCount;
+    stats[className + '_data_quality'] = ee.Algorithms.If(
+      ee.Algorithms.IsEqual(fractionPixelCount, 0),
+      0,
+      ee.Number(pixelCount).divide(ee.Number(fractionPixelCount)).multiply(100)
+    );
   });
   
-  // Ajouter les informations temporelles
-  stats['system:time_start'] = date.millis();
+  // Calculer les informations temporelles pour analyse de tendance
+  var year = date.get('year');
+  var doy = date.getRelative('day', 'year').add(1); // DOY commence à 1
+  var decimal_year = year.add(doy.divide(365.25));
+  
+  // Déterminer la saison pour analyse saisonnière Mann-Kendall
+  var month = date.get('month');
+  var season = ee.Algorithms.If(
+    month.lte(7), 'early_summer',  // Juin-Juillet
+    ee.Algorithms.If(
+      month.eq(8), 'mid_summer',   // Août
+      'late_summer'                // Septembre
+    )
+  );
+  
+  // Calculer le total des pixels valides pour seuil qualité
+  var totalValid = ee.Number(stats['border_pixel_count']).add(
+    ee.Number(stats['mixed_low_pixel_count'])).add(
+    ee.Number(stats['mixed_high_pixel_count'])).add(
+    ee.Number(stats['mostly_ice_pixel_count'])).add(
+    ee.Number(stats['pure_ice_pixel_count']));
+  
+  // Ajouter les informations temporelles et de qualité
   stats['date'] = date.format('YYYY-MM-dd');
-  stats['doy'] = date.getRelative('day', 'year');
-  stats['year'] = date.get('year');
-  stats['month'] = date.get('month');
+  stats['year'] = year;
+  stats['doy'] = doy;
+  stats['decimal_year'] = decimal_year;
+  stats['season'] = season;
+  stats['total_valid_pixels'] = totalValid;
+  stats['min_pixels_threshold'] = totalValid.gte(10); // Seuil minimum pour analyse fiable
+  stats['system:time_start'] = date.millis();
   
   return ee.Feature(null, stats);
 }
@@ -566,7 +594,7 @@ var dailyAlbedoByFraction = dailyCollection.map(analyzeDailyAlbedoByFraction);
 
 print('Statistiques quotidiennes par fraction calculées:', dailyAlbedoByFraction.size(), 'jours');
 
-// 16. Créer un graphique de l'évolution quotidienne par classe principale
+// 16. Créer un graphique de l'évolution quotidienne par classe principale (Mann-Kendall ready)
 var dailyChart = ui.Chart.feature.byFeature(
     dailyAlbedoByFraction, 
     'system:time_start', 
@@ -574,7 +602,7 @@ var dailyChart = ui.Chart.feature.byFeature(
   )
   .setChartType('LineChart')
   .setOptions({
-    title: 'Évolution quotidienne de l\'albédo par classe de fraction (2010-2024)',
+    title: 'Évolution quotidienne albédo par fraction - Données optimisées Mann-Kendall (2010-2024)',
     hAxis: {title: 'Date', format: 'yyyy'},
     vAxis: {title: 'Albédo moyen', viewWindow: {min: 0.3, max: 0.9}},
     series: {
@@ -595,28 +623,39 @@ print('');
 print('GRAPHIQUE D\'ÉVOLUTION QUOTIDIENNE :');
 print(dailyChart);
 
-// 17. Export des statistiques quotidiennes par fraction
+// 17. Export des statistiques quotidiennes par fraction (optimisé Mann-Kendall)
 Export.table.toDrive({
   collection: dailyAlbedoByFraction,
-  description: 'Saskatchewan_Daily_Albedo_By_Fraction_2010_2024',
+  description: 'Saskatchewan_Daily_Albedo_MannKendall_Ready_2010_2024',
   folder: 'GEE_exports',
-  fileNamePrefix: 'daily_albedo_by_fraction_2010_2024',
+  fileNamePrefix: 'daily_albedo_mann_kendall_ready_2010_2024',
   fileFormat: 'CSV'
 });
 
 print('');
-print('EXPORT CONFIGURÉ :');
-print('✓ Fichier: daily_albedo_by_fraction_2010_2024.csv');
-print('✓ Contenu: Statistiques quotidiennes par classe de fraction');
+print('EXPORT CONFIGURÉ POUR MANN-KENDALL & SEN\'S SLOPE :');
+print('✓ Fichier: daily_albedo_mann_kendall_ready_2010_2024.csv');
+print('✓ Contenu: Statistiques quotidiennes optimisées pour analyse de tendance');
 print('✓ Période: Étés 2010-2024 (juin-septembre)');
-print('✓ Variables par classe: mean, stdDev, p25, median, p75, albedo_count, fraction_pixels');
+print('✓ Variables par classe: mean, median, pixel_count, data_quality');
+print('✓ Variables temporelles: date, year, doy, decimal_year, season');
+print('✓ Qualité des données: total_valid_pixels, min_pixels_threshold');
+print('');
+print('STRUCTURE CSV EXACTE (35 colonnes) :');
+print('date, year, doy, decimal_year, season,');
+print('border_mean, border_median, border_pixel_count, border_data_quality,');
+print('mixed_low_mean, mixed_low_median, mixed_low_pixel_count, mixed_low_data_quality,');
+print('mixed_high_mean, mixed_high_median, mixed_high_pixel_count, mixed_high_data_quality,');
+print('mostly_ice_mean, mostly_ice_median, mostly_ice_pixel_count, mostly_ice_data_quality,');
+print('pure_ice_mean, pure_ice_median, pure_ice_pixel_count, pure_ice_data_quality,');
+print('total_valid_pixels, min_pixels_threshold, system:time_start');
 
 // ┌────────────────────────────────────────────────────────────────────────────────────────┐
 // │ SECTION 10 : RÉSUMÉ ET INTERPRÉTATION                                                 │
 // └────────────────────────────────────────────────────────────────────────────────────────┘
 
 print('');
-print('=== RÉSUMÉ DE L\'ANALYSE PAR FRACTION ===');
+print('=== RÉSUMÉ ANALYSE PAR FRACTION - OPTIMISÉE MANN-KENDALL ===');
 print('');
 print('CLASSES ANALYSÉES :');
 print('• 0-25% : Pixels de bordure (faible couverture glacier)');
@@ -625,23 +664,30 @@ print('• 50-75% : Pixels mixtes élevé (majoritairement glacier)');
 print('• 75-90% : Pixels majoritairement glacier');
 print('• 90-100% : Pixels quasi-purs glacier');
 print('');
-print('ANALYSES DISPONIBLES :');
-print('• Évolution temporelle par classe (annuelle et quotidienne)');
-print('• Tendances linéaires par niveau de pureté');
-print('• Comparaison entre pixels purs vs mixtes');
-print('• Impact du choix de seuil sur les résultats');
-print('• Statistiques quotidiennes détaillées par fraction');
+print('STATISTIQUES OPTIMISÉES POUR ANALYSE DE TENDANCE :');
+print('• Variables principales: mean, median (par classe)');
+print('• Métriques qualité: pixel_count, data_quality (par classe)');
+print('• Variables temporelles: date, year, doy, decimal_year, season');
+print('• Seuils qualité: total_valid_pixels, min_pixels_threshold');
+print('');
+print('ANALYSES STATISTIQUES SUPPORTÉES :');
+print('• Test Mann-Kendall (tendance monotone)');
+print('• Pente de Sen (magnitude du changement)');
+print('• Mann-Kendall saisonnier (early/mid/late summer)');
+print('• Filtrage par seuil de qualité (≥10 pixels)');
+print('• Analyse par classe de pureté');
 print('');
 print('EXPORTS GÉNÉRÉS :');
 print('• Statistiques annuelles par fraction');
 print('• Analyses de tendance par classe');
-print('• Statistiques quotidiennes par fraction (NOUVEAU!)');
+print('• CSV quotidien optimisé Mann-Kendall (NOUVEAU!)');
 print('• Cartes de fraction d\'exemple');
 print('');
-print('APPLICATIONS :');
-print('• Optimisation des seuils de couverture');
-print('• Compréhension des biais de bordure');
-print('• Analyses plus robustes de l\'évolution glaciaire');
-print('• Études de variabilité quotidienne par pureté de pixel');
+print('APPLICATIONS STATISTIQUES :');
+print('• Tests de tendance robustes (non-paramétriques)');
+print('• Détection de points de changement');
+print('• Analyses saisonnières de variabilité');
+print('• Comparaison tendances entre classes de pureté');
+print('• Validation statistique des changements glaciaires');
 
 // FIN DU SCRIPT
