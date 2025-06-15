@@ -409,7 +409,7 @@ Export.image.toDrive({
   image: example_fraction,
   description: 'Saskatchewan_Fraction_Map_Example',
   folder: 'GEE_exports',
-  fileNamePrefix: 'fraction_map_' + example_year,
+  fileNamePrefix: 'fraction_map_2020',
   scale: 500,
   region: glacier_geometry,
   maxPixels: 1e9
