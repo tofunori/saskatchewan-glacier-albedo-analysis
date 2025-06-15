@@ -5,6 +5,8 @@ Focus only on the working product
 """
 
 import os
+import glob
+import subprocess
 from pathlib import Path
 from modis_tools.auth import ModisSession
 from modis_tools.resources import CollectionApi, GranuleApi
@@ -155,6 +157,171 @@ class MCD43A3Downloader:
                     print(f"❌ Retry also failed: {e2}")
             
             return []
+    
+    def check_gdal_availability(self):
+        """Check if GDAL command line tools are available"""
+        try:
+            result = subprocess.run(['gdalinfo', '--version'], 
+                                  capture_output=True, text=True, timeout=10)
+            if result.returncode == 0:
+                print(f"✅ GDAL available: {result.stdout.strip()}")
+                return True
+            else:
+                print("⚠️  GDAL command line tools not found")
+                return False
+        except:
+            print("⚠️  GDAL command line tools not found")
+            return False
+    
+    def list_hdf_subdatasets(self, hdf_file):
+        """List subdatasets in HDF file using gdalinfo"""
+        try:
+            result = subprocess.run(['gdalinfo', str(hdf_file)], 
+                                  capture_output=True, text=True, timeout=30)
+            
+            if result.returncode != 0:
+                return []
+            
+            # Parse subdatasets from gdalinfo output
+            subdatasets = []
+            lines = result.stdout.split('\n')
+            
+            for line in lines:
+                if 'SUBDATASET_' in line and '_NAME=' in line:
+                    if '=' in line:
+                        subdataset = line.split('=', 1)[1]
+                        subdatasets.append(subdataset)
+            
+            return subdatasets
+            
+        except Exception:
+            return []
+    
+    def clip_with_gdal_warp(self, input_dataset, output_file, glacier_geojson):
+        """Clip using gdal_warp command line tool"""
+        try:
+            cmd = [
+                'gdalwarp',
+                '-of', 'GTiff',
+                '-co', 'COMPRESS=LZW',
+                '-cutline', glacier_geojson,
+                '-crop_to_cutline',
+                '-dstnodata', '-9999',
+                input_dataset,
+                output_file
+            ]
+            
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+            
+            if result.returncode == 0 and os.path.exists(output_file):
+                size_mb = os.path.getsize(output_file) / (1024 * 1024)
+                print(f"      ✅ Clipped: {os.path.basename(output_file)} ({size_mb:.2f} MB)")
+                return True
+            else:
+                print(f"      ❌ Clipping failed")
+                return False
+                
+        except Exception as e:
+            print(f"      ❌ Error in clipping: {e}")
+            return False
+    
+    def auto_clip_downloaded_files(self):
+        """Automatically clip downloaded HDF files to glacier geometry"""
+        print(f"\n✂️  Auto-clipping downloaded files to glacier geometry...")
+        
+        # Check if we have the required tools and files
+        if not self.check_gdal_availability():
+            print("⚠️  GDAL tools not available - skipping auto-clipping")
+            print("   Install with: conda install -c conda-forge gdal")
+            return False
+        
+        # Find downloaded HDF files
+        hdf_files = list(self.output_dir.glob("*.hdf"))
+        
+        if not hdf_files:
+            print("❌ No HDF files found to clip")
+            return False
+        
+        # Check for glacier mask file
+        possible_masks = [
+            r"D:\Downloads\saskatchewan_glacier_mask.geojson",
+            "mask/saskatchewan_glacier_mask.geojson",
+            "saskatchewan_glacier_mask.geojson"
+        ]
+        
+        glacier_mask_path = None
+        for mask_path in possible_masks:
+            if os.path.exists(mask_path):
+                glacier_mask_path = mask_path
+                break
+        
+        if not glacier_mask_path:
+            print("⚠️  Glacier mask not found - skipping auto-clipping")
+            print(f"   Looked for: {possible_masks}")
+            return False
+        
+        print(f"✅ Using glacier mask: {glacier_mask_path}")
+        
+        # Create clipped output directory
+        clipped_dir = self.output_dir.parent / f"{self.output_dir.name}_clipped"
+        clipped_dir.mkdir(exist_ok=True)
+        
+        print(f"📁 Clipped files will be saved to: {clipped_dir}")
+        
+        success_count = 0
+        
+        for i, hdf_file in enumerate(hdf_files, 1):
+            filename = hdf_file.name
+            print(f"\n🔄 Clipping {i}/{len(hdf_files)}: {filename}")
+            
+            # Get subdatasets
+            subdatasets = self.list_hdf_subdatasets(hdf_file)
+            
+            if not subdatasets:
+                print("   ❌ No subdatasets found")
+                continue
+            
+            # Find albedo datasets
+            albedo_datasets = [s for s in subdatasets if 'Albedo' in s and ('shortwave' in s or 'WSA' in s)]
+            
+            if not albedo_datasets:
+                albedo_datasets = [s for s in subdatasets if 'Albedo' in s]
+            
+            if not albedo_datasets:
+                print("   ⚠️  No albedo datasets found")
+                continue
+            
+            print(f"   📊 Processing {len(albedo_datasets)} albedo dataset(s)")
+            
+            for j, dataset in enumerate(albedo_datasets):
+                dataset_name = dataset.split(':')[-1] if ':' in dataset else f"dataset_{j}"
+                print(f"   📈 Clipping: {dataset_name}")
+                
+                # Create output filename
+                base_name = filename.replace('.hdf', '')
+                output_filename = f"{base_name}_{dataset_name}_clipped.tif"
+                output_path = clipped_dir / output_filename
+                
+                # Clip using gdal_warp
+                if self.clip_with_gdal_warp(dataset, str(output_path), glacier_mask_path):
+                    success_count += 1
+        
+        print(f"\n🎉 Auto-clipping complete!")
+        print(f"   Successfully clipped: {success_count} datasets")
+        print(f"   Clipped files location: {clipped_dir}")
+        
+        # List clipped files
+        clipped_files = list(clipped_dir.glob("*.tif"))
+        if clipped_files:
+            print(f"\n📄 Clipped files ({len(clipped_files)}):")
+            total_size = 0
+            for clipped_file in clipped_files:
+                size_mb = clipped_file.stat().st_size / (1024 * 1024)
+                total_size += size_mb
+                print(f"   • {clipped_file.name} ({size_mb:.2f} MB)")
+            print(f"   Total size: {total_size:.1f} MB")
+        
+        return success_count > 0
 
 def main():
     """Simple test of MCD43A3 downloader"""
@@ -178,6 +345,18 @@ def main():
     if files:
         print(f"\n🎉 Success! Downloaded {len(files)} MCD43A3 files")
         print(f"📁 Check folder: {downloader.output_dir}")
+        
+        # Automatically clip the downloaded files
+        clipping_success = downloader.auto_clip_downloaded_files()
+        
+        if clipping_success:
+            print(f"\n✂️  Clipping completed successfully!")
+            print(f"📁 Clipped files available in: {downloader.output_dir.parent}/{downloader.output_dir.name}_clipped")
+            print(f"🎯 Your data is now precisely clipped to the glacier boundaries!")
+        else:
+            print(f"\n⚠️  Auto-clipping skipped")
+            print(f"💡 You can manually clip using: python alternative_gdal_clipper.py")
+            
     else:
         print(f"\n❌ No files downloaded")
         print("💡 Try running debug_granule_details.py for more info")
