@@ -659,10 +659,15 @@ class SaskatchewanAlbedoAnalyzer:
         ax2.tick_params(axis='x', rotation=45)
         
         plt.tight_layout()
-        plt.savefig(f'spatial_slope_analysis_{variable}.png', dpi=300, bbox_inches='tight')
+        
+        # Sauvegarder le graphique
+        output_filename = f'spatial_slope_analysis_{variable}.png'
+        plt.savefig(output_filename, dpi=300, bbox_inches='tight')
+        print(f"\n✅ GRAPHIQUE SPATIAL CRÉÉ: {output_filename}")
+        
+        # Afficher le graphique
         plt.show()
         
-        print(f"✓ Analyse spatiale sauvée: spatial_slope_analysis_{variable}.png")
         print("\n📋 Résumé spatial des pentes:")
         print(spatial_df[['fraction_label', 'sen_slope', 'sen_slope_per_decade', 'significance']].to_string(index=False))
         
@@ -681,9 +686,55 @@ class SaskatchewanAlbedoAnalyzer:
                 if summary_df is not None:
                     summary_df.to_excel(writer, sheet_name=f'Tendances_{variable}', index=False)
             
-            # Données brutes
+            # Résultats avancés si disponibles
+            if hasattr(self, 'monthly_results'):
+                # Convertir les résultats mensuels en DataFrame
+                monthly_data = []
+                for month, fractions in self.monthly_results.items():
+                    for fraction, results in fractions.items():
+                        monthly_data.append({
+                            'Mois': month,
+                            'Fraction': self.class_labels.get(fraction, fraction),
+                            'Tendance': results.get('trend', 'N/A'),
+                            'Pente Sen': results.get('sen_slope', 0),
+                            'IC Bas': results.get('sen_slope_ci_low', 0),
+                            'IC Haut': results.get('sen_slope_ci_high', 0),
+                            'p-value': results.get('p_value', 1),
+                            'N obs': results.get('n_obs', 0)
+                        })
+                if monthly_data:
+                    monthly_df = pd.DataFrame(monthly_data)
+                    monthly_df.to_excel(writer, sheet_name='Analyse_Mensuelle', index=False)
+            
+            # Résultats bootstrap si disponibles
+            if hasattr(self, 'bootstrap_results'):
+                bootstrap_data = []
+                for variable, results in self.bootstrap_results.items():
+                    for fraction, boot_results in results.items():
+                        bootstrap_data.append({
+                            'Variable': variable,
+                            'Fraction': self.class_labels.get(fraction, fraction),
+                            'Pente Originale': boot_results['original_slope'],
+                            'IC 2.5%': boot_results['ci_2.5'],
+                            'IC 97.5%': boot_results['ci_97.5'],
+                            'Écart-type Bootstrap': boot_results['bootstrap_std']
+                        })
+                if bootstrap_data:
+                    bootstrap_df = pd.DataFrame(bootstrap_data)
+                    bootstrap_df.to_excel(writer, sheet_name='Bootstrap_IC', index=False)
+            
+            # Données brutes (limitées pour éviter fichiers trop gros)
             if self.data is not None:
-                self.data.to_excel(writer, sheet_name='Données_brutes', index=False)
+                # Limiter aux colonnes essentielles
+                essential_cols = ['date', 'year', 'doy', 'decimal_year', 'season']
+                for fraction in self.fraction_classes:
+                    for var in ['mean', 'median']:
+                        col = f'{fraction}_{var}'
+                        if col in self.data.columns:
+                            essential_cols.append(col)
+                
+                data_subset = self.data[essential_cols].head(1000)  # Limiter à 1000 lignes
+                data_subset.to_excel(writer, sheet_name='Données_échantillon', index=False)
         
         print(f"✓ Résultats exportés: {output_path}")
 
@@ -738,9 +789,11 @@ def main():
         
         # 1. Analyse saisonnière détaillée
         monthly_results = analyzer.advanced_seasonal_analysis('mean')
+        analyzer.monthly_results = monthly_results  # Stocker pour l'export
         
         # 2. Contrôle d'autocorrélation
         modified_results = analyzer.modified_mann_kendall_analysis('mean')
+        analyzer.modified_results = modified_results  # Stocker pour l'export
         
         # 3. Intervalles de confiance bootstrap
         bootstrap_results = analyzer.bootstrap_confidence_intervals('mean', n_bootstrap=1000)
@@ -754,8 +807,12 @@ def main():
         
         print("\n" + "="*60)
         print("✅ ANALYSE TERMINÉE!")
-        print("📊 Graphiques créés: saskatchewan_albedo_trends_*.png")
-        print("📋 Résultats Excel: saskatchewan_albedo_trend_analysis.xlsx")
+        print("\n📊 FICHIERS GÉNÉRÉS:")
+        print("  📈 Graphiques de tendances: saskatchewan_albedo_trends_mean.png")
+        print("  📈 Graphiques de tendances: saskatchewan_albedo_trends_median.png")
+        print("  🗺️  Cartographie spatiale: spatial_slope_analysis_mean.png")
+        print("  📋 Résultats Excel standard: saskatchewan_albedo_trend_analysis.xlsx")
+        print("  📋 Résultats Excel avancés: saskatchewan_albedo_trend_analysis_advanced.xlsx")
         
     except Exception as e:
         print(f"❌ Erreur: {e}")
