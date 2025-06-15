@@ -63,12 +63,20 @@ class SaskatchewanGlacierModisDownloader:
             return
         
         if not SPATIAL_SUPPORT:
-            print("⚠️  Spatial libraries not available. Install with: pip install modis-tools[gdal]")
+            print("⚠️  Spatial libraries not available.")
+            print("   Install with: sudo apt install python3-geopandas python3-shapely python3-gdal")
+            print("   Or: python3 -m pip install --user geopandas shapely modis-tools")
             print("   Falling back to bounding box filtering")
             return
         
         try:
+            # Handle relative paths by making them absolute to the script directory
             mask_path = Path(self.glacier_mask_path)
+            if not mask_path.is_absolute():
+                script_dir = Path(__file__).parent
+                mask_path = script_dir / mask_path
+            
+            print(f"🔍 Looking for glacier mask at: {mask_path}")
             
             if not mask_path.exists():
                 print(f"❌ Glacier mask file not found: {mask_path}")
