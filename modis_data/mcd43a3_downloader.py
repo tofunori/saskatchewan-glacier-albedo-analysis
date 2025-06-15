@@ -29,8 +29,8 @@ class MCD43A3Downloader:
         # Saskatchewan Glacier bounding box
         self.saskatchewan_bbox = [-117.3, 52.1, -117.1, 52.3]
         
-        # Simple directory setup
-        self.output_dir = Path("MCD43A3_downloads")
+        # Use Windows Downloads directory
+        self.output_dir = Path("D:/Downloads/MCD43A3_downloads")
         self.output_dir.mkdir(exist_ok=True)
         
         # Load glacier mask if provided
