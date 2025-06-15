@@ -35,42 +35,42 @@ print('Date exacte de l\'image:', testImage.date().format('YYYY-MM-dd'));
 // │ SECTION 2 : CALCUL DE LA COUVERTURE DES PIXELS                                        │
 // └────────────────────────────────────────────────────────────────────────────────────────┘
 
-// 3. Fonction pour calculer le pourcentage de couverture de chaque pixel MODIS
+// 3. Fonction pour calculer la fraction exacte de chaque pixel MODIS dans le glacier
 function calculatePixelCoverage(modisImage, glacierMask) {
-  // Méthode directe : utiliser une zone plus large pour capturer les pixels partiels
+  // MÉTHODE PRÉCISE : Calculer la fraction exacte de surface couverte
   
-  // Créer une grille de pixels MODIS en reprojetant une image constante
-  var modisReference = ee.Image.pixelLonLat()
-    .reproject(modisImage.projection().atScale(500));
+  // Étape 1: Obtenir la projection et la grille MODIS
+  var modisProjection = modisImage.projection();
   
-  // Pour chaque pixel MODIS, calculer quelle fraction est couverte par le glacier
-  // Utiliser une approche par convolution pour simuler l'intersection
-  var kernel = ee.Kernel.square({
-    radius: 250,  // 250m = demi-pixel MODIS
-    units: 'meters'
-  });
+  // Étape 2: Suréchantillonner le masque glacier à une résolution plus fine (100m)
+  // pour avoir plus de précision dans le calcul de fraction
+  var fineResolution = 100; // 100m pour subdiviser les pixels 500m
   
-  // Appliquer la convolution pour calculer la couverture moyenne dans chaque pixel MODIS
-  var coverageFraction = glacierMask.float()
-    .convolve(kernel.normalize())
+  var glacierMaskFine = glacierMask
     .reproject({
-      crs: modisImage.projection(),
-      scale: 500
+      crs: modisProjection,
+      scale: fineResolution
     });
   
-  // Alternative plus simple : moyenner directement à 500m avec un kernel approprié
-  var simpleCoverage = glacierMask.float()
-    .reduceNeighborhood({
-      reducer: ee.Reducer.mean(),
-      kernel: ee.Kernel.square(500, 'meters'),
-      skipMasked: false
+  // Étape 3: Pour chaque pixel MODIS 500m, calculer combien de sous-pixels 100m
+  // sont couverts par le glacier (25 sous-pixels par pixel MODIS)
+  var pixelFraction = glacierMaskFine.float()
+    .reduceResolution({
+      reducer: ee.Reducer.mean(),  // Moyenne = fraction couverte
+      maxPixels: 65000
     })
     .reproject({
-      crs: modisImage.projection(),
-      scale: 500
+      crs: modisProjection,
+      scale: 500  // Revenir à la résolution MODIS
     });
   
-  return simpleCoverage.multiply(100).clamp(0, 100); // Convertir en pourcentage
+  // Étape 4: Convertir en pourcentage et s'assurer des valeurs valides
+  var coveragePercent = pixelFraction.multiply(100);
+  
+  // Arrondir à 1 décimale pour plus de lisibilité
+  coveragePercent = coveragePercent.multiply(10).round().divide(10);
+  
+  return coveragePercent.clamp(0, 100);
 }
 
 // Calculer la couverture
@@ -104,6 +104,32 @@ var counts = ee.Dictionary({
 });
 
 print('Distribution par tranches:', counts);
+
+// ┌────────────────────────────────────────────────────────────────────────────────────────┐
+// │ EXEMPLE DE PIXELS INDIVIDUELS                                                          │
+// └────────────────────────────────────────────────────────────────────────────────────────┘
+
+// Créer quelques points d'échantillonnage pour examiner des pixels individuels
+var samplePoints = ee.FeatureCollection([
+  ee.Feature(ee.Geometry.Point([-117.2, 52.15]), {name: 'Centre_glacier'}),
+  ee.Feature(ee.Geometry.Point([-117.22, 52.16]), {name: 'Bord_nord'}),
+  ee.Feature(ee.Geometry.Point([-117.18, 52.14]), {name: 'Bord_sud'}),
+  ee.Feature(ee.Geometry.Point([-117.24, 52.15]), {name: 'Bord_ouest'})
+]);
+
+// Échantillonner les valeurs de couverture à ces points
+var sampledCoverage = pixelCoverage.sampleRegions({
+  collection: samplePoints,
+  scale: 500,
+  projection: testImage.projection()
+});
+
+print('');
+print('EXEMPLES DE FRACTIONS DE PIXELS :');
+print('(Valeurs exactes pour quelques pixels)', sampledCoverage);
+
+// Ajouter les points d'échantillonnage sur la carte
+Map.addLayer(samplePoints, {color: 'white'}, '12. Points d\'échantillonnage');
 
 // ┌────────────────────────────────────────────────────────────────────────────────────────┐
 // │ SECTION 3 : CRÉER DES MASQUES POUR DIFFÉRENTS SEUILS                                  │
@@ -174,10 +200,33 @@ Map.addLayer(glacier_mask.selfMask(),
   {palette: ['lightblue'], opacity: 0.8}, 
   '0. Masque glacier 30m (référence)');
 
-// 7. Visualiser la carte de pourcentage de couverture
+// 7. Visualiser la carte de pourcentage de couverture avec palette détaillée
+var coveragePalette = [
+  '#d73027', // 0-10% Rouge foncé
+  '#f46d43', // 10-20% Rouge-orange
+  '#fdae61', // 20-30% Orange
+  '#fee08b', // 30-40% Jaune clair
+  '#e6f598', // 40-50% Vert très clair
+  '#abd9e9', // 50-60% Bleu clair
+  '#74add1', // 60-70% Bleu moyen
+  '#4575b4', // 70-80% Bleu foncé
+  '#313695', // 80-90% Bleu très foncé
+  '#000080'  // 90-100% Bleu marine
+];
+
 Map.addLayer(pixelCoverage.updateMask(pixelCoverage.gt(0)), 
-  {min: 0, max: 100, palette: ['red', 'orange', 'yellow', 'lightgreen', 'green', 'darkgreen']}, 
-  '1. Pourcentage de couverture par pixel MODIS');
+  {min: 0, max: 100, palette: coveragePalette}, 
+  '1. Fraction de couverture par pixel MODIS (%)');
+
+// Ajouter une légende textuelle
+print('');
+print('LÉGENDE DES COULEURS :');
+print('Rouge foncé: 0-10% dans le glacier');
+print('Orange: 20-40% dans le glacier');
+print('Vert clair: 40-50% dans le glacier');
+print('Bleu clair: 50-60% dans le glacier');
+print('Bleu foncé: 70-90% dans le glacier');
+print('Bleu marine: 90-100% dans le glacier');
 
 // 8. Paramètres de visualisation pour l'albédo
 var albedoVis = {
