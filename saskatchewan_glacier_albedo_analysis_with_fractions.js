@@ -279,8 +279,18 @@ var selectedDateLabel = ui.Label('Date sélectionnée: 2020-07-15');
 
 // Fonction pour mettre à jour la visualisation selon la date choisie
 var updateVisualization = function() {
-  var selected_date = dateSlider.getValue();
-  selectedDateLabel.setValue('Date sélectionnée: ' + selected_date.format('YYYY-MM-dd').getInfo());
+  // dateSlider.getValue() retourne un objet JavaScript Date
+  var js_date = dateSlider.getValue();
+  
+  // Convertir en ee.Date pour les opérations Earth Engine
+  var selected_date = ee.Date(js_date);
+  
+  // Formater la date pour l'affichage (utiliser les méthodes JavaScript)
+  var dateString = js_date.getFullYear() + '-' + 
+    String(js_date.getMonth() + 1).padStart(2, '0') + '-' + 
+    String(js_date.getDate()).padStart(2, '0');
+  
+  selectedDateLabel.setValue('Date sélectionnée: ' + dateString);
   
   // Charger l'image pour la date sélectionnée
   var example_image = ee.ImageCollection('MODIS/061/MCD43A3')
@@ -288,9 +298,6 @@ var updateVisualization = function() {
     .filterBounds(glacier_geometry)
     .select(['Albedo_WSA_shortwave', 'BRDF_Albedo_Band_Mandatory_Quality_shortwave'])
     .first();
-  
-  // Vérifier si une image existe pour cette date
-  var imageExists = ee.Algorithms.IsEqual(example_image, null);
   
   var example_fraction = calculatePixelFraction(example_image, glacier_mask);
   var example_masks = createFractionMasks(example_fraction, FRACTION_THRESHOLDS);
@@ -309,7 +316,7 @@ var updateVisualization = function() {
   // Ajouter les nouvelles couches
   Map.addLayer(example_fraction.updateMask(example_fraction.gt(0)), 
     {min: 0, max: 1, palette: ['red', 'orange', 'yellow', 'lightblue', 'blue']}, 
-    '1. Fraction de couverture - ' + selected_date.format('YYYY-MM-dd').getInfo());
+    '1. Fraction de couverture - ' + dateString);
   
   // Paramètres d'albédo
   var albedoVis = {min: 0.3, max: 0.9, palette: ['darkblue', 'blue', 'cyan', 'yellow', 'orange', 'red']};
