@@ -1,21 +1,10 @@
-// Export Saskatchewan Glacier mask from Google Earth Engine for use with modis-tools
+// Alternative export script if your asset is a FeatureCollection
 // Run this in Google Earth Engine Code Editor to export your glacier mask
 
-// Load your existing glacier mask (as Image)
-var glacier_image = ee.Image('projects/tofunori/assets/Saskatchewan_glacier_2024_updated');
+// Try loading as FeatureCollection first
+var glacier_mask = ee.FeatureCollection('projects/tofunori/assets/Saskatchewan_glacier_2024_updated');
 
-// Convert image to feature collection by vectorizing
-// Assuming your mask has values > 0 for glacier areas
-var glacier_mask = glacier_image.select(0).gt(0).selfMask()
-  .reduceToVectors({
-    geometry: glacier_image.geometry(),
-    scale: 30,
-    geometryType: 'polygon',
-    eightConnected: false,
-    maxPixels: 1e9
-  });
-
-// Get the geometry bounds for centering the map
+// Get the geometry bounds for centering the map (with error margin)
 var bounds = glacier_mask.geometry().bounds();
 var center = bounds.centroid(1); // Add error margin of 1 meter
 
