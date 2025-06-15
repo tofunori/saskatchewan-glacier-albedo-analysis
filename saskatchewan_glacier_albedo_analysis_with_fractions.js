@@ -289,10 +289,13 @@ var updateVisualization = function() {
   // Convertir en ee.Date pour les opérations Earth Engine
   var selected_date = ee.Date(js_date);
   
-  // Formater la date pour l'affichage (utiliser les méthodes JavaScript)
-  var dateString = js_date.getFullYear() + '-' + 
-    String(js_date.getMonth() + 1).padStart(2, '0') + '-' + 
-    String(js_date.getDate()).padStart(2, '0');
+  // Formater la date pour l'affichage (compatible avec GEE)
+  var year = js_date.getFullYear();
+  var month = js_date.getMonth() + 1;
+  var day = js_date.getDate();
+  var dateString = year + '-' + 
+    (month < 10 ? '0' + month : month) + '-' + 
+    (day < 10 ? '0' + day : day);
   
   selectedDateLabel.setValue('Date sélectionnée: ' + dateString);
   
