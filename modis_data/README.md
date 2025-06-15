@@ -2,8 +2,8 @@
 
 This folder contains Python scripts to download and process MODIS satellite data for Saskatchewan Glacier analysis, focusing on:
 
-- **MCD10A1**: Daily snow cover data (500m resolution)
-- **MCD43A3**: 8-day albedo data (500m resolution)
+- **MOD10A1**: Daily snow cover data (500m resolution) - Terra satellite
+- **MCD43A3**: 8-day albedo data (500m resolution) - Combined Terra+Aqua
 
 ## Setup
 
@@ -33,6 +33,19 @@ add_earthdata_netrc("your_username", "your_password")
 
 ### 1. Download MODIS Data
 
+**Option A: With Glacier Mask (Recommended)**
+```python
+from modis_downloader import SaskatchewanGlacierModisDownloader
+
+# Use precise glacier geometry for spatial filtering
+downloader = SaskatchewanGlacierModisDownloader(
+    username="your_username",
+    password="your_password", 
+    glacier_mask_path="saskatchewan_glacier_mask.geojson"
+)
+```
+
+**Option B: With Bounding Box**
 ```bash
 python modis_downloader.py
 ```
@@ -42,6 +55,7 @@ Or customize the download:
 ```python
 from modis_downloader import SaskatchewanGlacierModisDownloader
 
+# Use bounding box for spatial filtering (default)
 downloader = SaskatchewanGlacierModisDownloader()
 downloader.authenticate()
 
@@ -65,10 +79,11 @@ This will:
 
 ## Data Products
 
-### MCD10A1 - Snow Cover Daily Global 500m
+### MOD10A1 - Snow Cover Daily Global 500m (Terra)
 
 - **Purpose**: Daily snow cover extent and fractional snow cover
 - **Resolution**: 500m
+- **Satellite**: Terra
 - **Key Datasets**:
   - Snow Cover Daily Tile: Binary snow/no-snow
   - Snow Cover Fractional: Percentage snow cover
@@ -88,7 +103,7 @@ This will:
 
 ```
 modis_data/
-├── MCD10A1_snow_cover/     # Downloaded snow cover files
+├── MOD10A1_snow_cover/     # Downloaded snow cover files
 ├── MCD43A3_albedo/         # Downloaded albedo files
 ├── processed/              # Processed outputs
 │   ├── file_inventory.csv
@@ -97,9 +112,41 @@ modis_data/
 ├── data_processor.py       # Processing script
 ├── setup_credentials.py    # Credential setup
 ├── modis_analysis.ipynb    # Interactive Jupyter notebook
+├── export_glacier_mask.js  # GEE script to export glacier mask
+├── quick_setup.py          # Non-interactive credential setup
 ├── requirements.txt        # Dependencies
 └── README.md              # This file
 ```
+
+## Spatial Filtering Options
+
+### Option 1: Glacier Mask (Recommended)
+
+Export your glacier mask from Google Earth Engine:
+
+1. **Run the export script in GEE:**
+   ```javascript
+   // Copy contents of export_glacier_mask.js to GEE Code Editor
+   ```
+
+2. **Download the exported GeoJSON file** to your modis_data folder
+
+3. **Use with the downloader:**
+   ```python
+   downloader = SaskatchewanGlacierModisDownloader(
+       username="your_username",
+       password="your_password",
+       glacier_mask_path="saskatchewan_glacier_mask.geojson"
+   )
+   ```
+
+**Benefits:**
+- ✅ Precise spatial filtering using exact glacier boundaries
+- ✅ Fewer unnecessary downloads
+- ✅ Better data efficiency
+- ✅ Supports GeoJSON, Shapefile, and other formats
+
+### Option 2: Bounding Box (Default)
 
 ## Advanced Usage
 
