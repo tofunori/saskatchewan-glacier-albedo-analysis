@@ -35,42 +35,32 @@ print('Date exacte de l\'image:', testImage.date().format('YYYY-MM-dd'));
 // │ SECTION 2 : CALCUL DE LA COUVERTURE DES PIXELS                                        │
 // └────────────────────────────────────────────────────────────────────────────────────────┘
 
-// 3. Fonction pour calculer la fraction exacte de chaque pixel MODIS dans le glacier
+// 3. Fonction pour calculer la fraction exacte - INSPIRÉE DU SCRIPT PYTHON FONCTIONNEL
 function calculatePixelCoverage(modisImage, glacierMask) {
-  // MÉTHODE PRÉCISE : Calculer la fraction exacte de surface couverte
+  // MÉTHODE SIMPLE ET EFFICACE (basée sur le script Python qui fonctionne)
   
-  // Étape 1: Obtenir la projection et la grille MODIS
+  // 1. Raster 30m : 1 sur glace, 0 hors glace (exactement comme le Python)
+  var raster30 = ee.Image.constant(1)
+    .updateMask(glacierMask)    // 1 à l'intérieur du glacier
+    .unmask(0)                  // 0 ailleurs - CRUCIAL !
+    .reproject('EPSG:4326', null, 30);
+  
+  // 2. Projection MODIS (comme dans le script Python)
   var modisProjection = modisImage.projection();
   
-  // Étape 2: Suréchantillonner le masque glacier à une résolution plus fine (100m)
-  // pour avoir plus de précision dans le calcul de fraction
-  var fineResolution = 100; // 100m pour subdiviser les pixels 500m
-  
-  var glacierMaskFine = glacierMask
-    .reproject({
-      crs: modisProjection,
-      scale: fineResolution
-    });
-  
-  // Étape 3: Pour chaque pixel MODIS 500m, calculer combien de sous-pixels 100m
-  // sont couverts par le glacier (25 sous-pixels par pixel MODIS)
-  var pixelFraction = glacierMaskFine.float()
+  // 3. Calcul de la fraction (méthode exacte du Python)
+  var fraction = raster30
     .reduceResolution({
       reducer: ee.Reducer.mean(),  // Moyenne = fraction couverte
-      maxPixels: 65000
+      maxPixels: 1024              // Exactement comme le Python !
     })
-    .reproject({
-      crs: modisProjection,
-      scale: 500  // Revenir à la résolution MODIS
-    });
+    .reproject(modisProjection);
   
-  // Étape 4: Convertir en pourcentage et s'assurer des valeurs valides
-  var coveragePercent = pixelFraction.multiply(100);
-  
-  // Arrondir à 1 décimale pour plus de lisibilité
+  // 4. Convertir en pourcentage et arrondir à 1 décimale
+  var coveragePercent = fraction.multiply(100);
   coveragePercent = coveragePercent.multiply(10).round().divide(10);
   
-  return coveragePercent.clamp(0, 100);
+  return coveragePercent;
 }
 
 // Calculer la couverture
@@ -286,18 +276,20 @@ Map.addLayer(excluded_75.selfMask(),
 // 12. Fonction pour appliquer le seuil de couverture à une collection
 function applyPoverageThreshold(imageCollection, glacierMask, threshold) {
   return imageCollection.map(function(img) {
-    // Calculer la couverture pour cette image
-    var coverage = glacierMask
+    // Calculer la couverture avec la méthode simplifiée qui fonctionne
+    var raster30 = ee.Image.constant(1)
+      .updateMask(glacierMask)
+      .unmask(0)
+      .reproject('EPSG:4326', null, 30);
+    
+    var coverage = raster30
       .reduceResolution({
         reducer: ee.Reducer.mean(),
-        maxPixels: 65000  // Augmenter la limite pour accommoder le ratio 30m->500m
+        maxPixels: 1024  // Même valeur que le script Python fonctionnel
       })
-      .reproject({
-        crs: img.projection(),
-        scale: 500
-      });
+      .reproject(img.projection());
     
-    // Créer le masque basé sur le seuil
+    // Créer le masque basé sur le seuil (threshold en fraction 0-1)
     var coverageMask = coverage.gte(threshold);
     
     // Appliquer le masque
@@ -312,6 +304,11 @@ function applyPoverageThreshold(imageCollection, glacierMask, threshold) {
 print('');
 print('=== RÉSUMÉ DE L\'ANALYSE ===');
 print('');
+print('MÉTHODE UTILISÉE (inspirée du script Python fonctionnel) :');
+print('1. Créer raster 30m : constant(1).updateMask(glacier).unmask(0)');
+print('2. reduceResolution(mean(), maxPixels=1024)');
+print('3. reproject(projection_MODIS)');
+print('');
 print('RECOMMANDATION : Utiliser un seuil de 50% de couverture');
 print('Raisons :');
 print('- Élimine les pixels de bordure avec peu de glacier');
@@ -319,10 +316,9 @@ print('- Conserve suffisamment de pixels pour une analyse robuste');
 print('- Réduit le bruit causé par les terrains adjacents');
 print('- Standard dans la littérature scientifique');
 print('');
-print('Pour implémenter dans le code principal :');
-print('1. Calculer la fraction de couverture avec reduceResolution');
-print('2. Appliquer un masque basé sur le seuil (≥0.5)');
-print('3. Utiliser ce masque pour toutes les analyses');
+print('IMPLÉMENTATION DANS LE CODE PRINCIPAL :');
+print('- Utiliser applyPoverageThreshold(collection, glacier_mask, 0.5)');
+print('- La fonction utilise la méthode simplifiée qui fonctionne');
 
 // ┌────────────────────────────────────────────────────────────────────────────────────────┐
 // │ SECTION 9 : GRAPHIQUE DE DISTRIBUTION DES COUVERTURES                                 │
