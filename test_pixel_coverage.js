@@ -43,7 +43,7 @@ function calculatePixelCoverage(modisImage, glacierMask) {
   var coverageFraction = glacierMask
     .reduceResolution({
       reducer: ee.Reducer.mean(),
-      maxPixels: 1000
+      maxPixels: 65000  // Augmenter la limite pour accommoder le ratio 30m->500m
     })
     .reproject({
       crs: modisProjection,
@@ -172,7 +172,7 @@ function applyPoverageThreshold(imageCollection, glacierMask, threshold) {
     var coverage = glacierMask
       .reduceResolution({
         reducer: ee.Reducer.mean(),
-        maxPixels: 1000
+        maxPixels: 65000  // Augmenter la limite pour accommoder le ratio 30m->500m
       })
       .reproject({
         crs: img.projection(),
@@ -217,7 +217,7 @@ var histogram = ui.Chart.image.histogram({
   scale: 500,
   maxBuckets: 20,
   maxPixels: 1e9
-})
+}).setSeriesNames(['Pixels'])
 .setOptions({
   title: 'Distribution des pourcentages de couverture des pixels MODIS',
   hAxis: {title: 'Pourcentage de couverture (%)'},
