@@ -1,0 +1,21 @@
+# MODIS Tools and dependencies for Saskatchewan Glacier analysis
+modis-tools>=1.0.0
+numpy>=1.20.0
+pandas>=1.3.0
+geopandas>=0.10.0
+rasterio>=1.2.0
+matplotlib>=3.5.0
+seaborn>=0.11.0
+jupyter>=1.0.0
+netCDF4>=1.5.0
+xarray>=0.20.0
+h5py>=3.0.0
+
+# Optional: for advanced spatial operations
+gdal>=3.0.0
+shapely>=1.8.0
+pyproj>=3.2.0
+
+# Optional: for data visualization
+folium>=0.12.0
+plotly>=5.0.0
