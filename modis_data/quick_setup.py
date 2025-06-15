@@ -10,7 +10,7 @@ def setup_credentials():
     
     # TODO: Add your credentials here
     username = "tofunori"
-    password = "YOUR_PASSWORD_HERE"  # Replace with your actual password
+    password = "ASDqwe1234!"  # Replace with your actual password
     
     if password == "YOUR_PASSWORD_HERE":
         print("❌ Please edit this script and add your actual password")
