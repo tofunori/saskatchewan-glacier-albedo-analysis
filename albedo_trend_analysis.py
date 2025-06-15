@@ -673,6 +673,184 @@ class SaskatchewanAlbedoAnalyzer:
         
         return spatial_df
     
+    def export_text_report(self, output_path='saskatchewan_albedo_statistical_report.txt'):
+        """
+        Exporte un rapport texte complet de toutes les analyses statistiques
+        """
+        print(f"\n📝 Génération du rapport texte: {output_path}...")
+        
+        with open(output_path, 'w', encoding='utf-8') as f:
+            # En-tête
+            f.write("="*80 + "\n")
+            f.write("RAPPORT STATISTIQUE COMPLET - ANALYSE D'ALBÉDO GLACIER SASKATCHEWAN\n")
+            f.write("="*80 + "\n\n")
+            f.write(f"Date de génération: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+            f.write(f"Période analysée: {self.data['date'].min().strftime('%Y-%m-%d')} à {self.data['date'].max().strftime('%Y-%m-%d')}\n")
+            f.write(f"Nombre total d'observations: {len(self.data)}\n")
+            f.write("\n" + "-"*80 + "\n\n")
+            
+            # 1. RÉSUMÉ DES TENDANCES PRINCIPALES
+            f.write("1. RÉSUMÉ DES TENDANCES PRINCIPALES (TEST MANN-KENDALL)\n")
+            f.write("="*60 + "\n\n")
+            
+            for variable in self.results:
+                f.write(f"Variable analysée: {variable.upper()}\n")
+                f.write("-"*40 + "\n")
+                
+                # Tableau des résultats
+                f.write(f"{'Fraction':<25} {'Tendance':<12} {'p-value':<10} {'Tau':<8} {'Pente Sen (/an)':<15} {'Sign.':<5}\n")
+                f.write("-"*80 + "\n")
+                
+                for fraction in self.fraction_classes:
+                    if fraction in self.results[variable]:
+                        r = self.results[variable][fraction]
+                        sig = "***" if r['p_value'] < 0.001 else "**" if r['p_value'] < 0.01 else "*" if r['p_value'] < 0.05 else "ns"
+                        f.write(f"{self.class_labels[fraction]:<25} {r['trend']:<12} {r['p_value']:<10.4f} {r['tau']:<8.3f} {r['sen_slope']:<15.6f} {sig:<5}\n")
+                
+                f.write("\n")
+            
+            # 2. ANALYSE SAISONNIÈRE DÉTAILLÉE
+            if hasattr(self, 'monthly_results'):
+                f.write("\n" + "-"*80 + "\n")
+                f.write("2. ANALYSE SAISONNIÈRE DÉTAILLÉE (PAR MOIS)\n")
+                f.write("="*60 + "\n\n")
+                
+                for month, fractions in self.monthly_results.items():
+                    f.write(f"\n{month.upper()}\n")
+                    f.write("-"*30 + "\n")
+                    f.write(f"{'Fraction':<25} {'Pente Sen':<12} {'IC 95% Bas':<12} {'IC 95% Haut':<12} {'p-value':<10} {'Sign.':<5}\n")
+                    f.write("-"*80 + "\n")
+                    
+                    for fraction, results in fractions.items():
+                        sig = "***" if results['p_value'] < 0.001 else "**" if results['p_value'] < 0.01 else "*" if results['p_value'] < 0.05 else "ns"
+                        f.write(f"{self.class_labels[fraction]:<25} {results['sen_slope']:<12.6f} {results['sen_slope_ci_low']:<12.6f} {results['sen_slope_ci_high']:<12.6f} {results['p_value']:<10.4f} {sig:<5}\n")
+            
+            # 3. CONTRÔLE D'AUTOCORRÉLATION
+            if hasattr(self, 'modified_results'):
+                f.write("\n" + "-"*80 + "\n")
+                f.write("3. CONTRÔLE D'AUTOCORRÉLATION\n")
+                f.write("="*60 + "\n\n")
+                
+                f.write(f"{'Fraction':<25} {'Autocorr Lag-1':<15} {'Status':<15} {'MK Standard':<15} {'MK Modifié':<15} {'MK Pré-blanchi':<15}\n")
+                f.write("-"*100 + "\n")
+                
+                for fraction, results in self.modified_results.items():
+                    if fraction in self.class_labels:
+                        autocorr = results['autocorr_lag1']
+                        status = "Forte" if abs(autocorr) > 0.3 else "Modérée" if abs(autocorr) > 0.1 else "Faible"
+                        
+                        mk_std = f"{results['standard_trend']} (p={results['standard_p']:.3f})" if results['standard_trend'] else "N/A"
+                        mk_mod = f"{results['modified_trend']} (p={results['modified_p']:.3f})" if results['modified_trend'] else "N/A"
+                        mk_pw = f"{results['prewhitened_trend']} (p={results['prewhitened_p']:.3f})" if results['prewhitened_trend'] else "N/A"
+                        
+                        f.write(f"{self.class_labels[fraction]:<25} {autocorr:<15.3f} {status:<15} {mk_std:<15} {mk_mod:<15} {mk_pw:<15}\n")
+            
+            # 4. INTERVALLES DE CONFIANCE BOOTSTRAP
+            if hasattr(self, 'bootstrap_results'):
+                f.write("\n" + "-"*80 + "\n")
+                f.write("4. INTERVALLES DE CONFIANCE BOOTSTRAP (1000 itérations)\n")
+                f.write("="*60 + "\n\n")
+                
+                for variable, results in self.bootstrap_results.items():
+                    f.write(f"\nVariable: {variable.upper()}\n")
+                    f.write("-"*40 + "\n")
+                    f.write(f"{'Fraction':<25} {'Pente Originale':<15} {'IC 2.5%':<15} {'IC 97.5%':<15} {'Écart-type':<15}\n")
+                    f.write("-"*80 + "\n")
+                    
+                    for fraction, boot_results in results.items():
+                        if fraction in self.class_labels:
+                            f.write(f"{self.class_labels[fraction]:<25} {boot_results['original_slope']:<15.6f} {boot_results['ci_2.5']:<15.6f} {boot_results['ci_97.5']:<15.6f} {boot_results['bootstrap_std']:<15.6f}\n")
+            
+            # 5. STATISTIQUES DESCRIPTIVES
+            f.write("\n" + "-"*80 + "\n")
+            f.write("5. STATISTIQUES DESCRIPTIVES PAR FRACTION\n")
+            f.write("="*60 + "\n\n")
+            
+            for fraction in self.fraction_classes:
+                f.write(f"\n{self.class_labels[fraction].upper()}\n")
+                f.write("-"*30 + "\n")
+                
+                for var in ['mean', 'median']:
+                    col_name = f"{fraction}_{var}"
+                    if col_name in self.data.columns:
+                        data = self.data[col_name].dropna()
+                        if len(data) > 0:
+                            f.write(f"\nAlbédo {var}:\n")
+                            f.write(f"  Moyenne: {data.mean():.4f}\n")
+                            f.write(f"  Médiane: {data.median():.4f}\n")
+                            f.write(f"  Écart-type: {data.std():.4f}\n")
+                            f.write(f"  Min: {data.min():.4f}\n")
+                            f.write(f"  Max: {data.max():.4f}\n")
+                            f.write(f"  Q1: {data.quantile(0.25):.4f}\n")
+                            f.write(f"  Q3: {data.quantile(0.75):.4f}\n")
+                            f.write(f"  IQR: {data.quantile(0.75) - data.quantile(0.25):.4f}\n")
+            
+            # 6. RÉSUMÉ SPATIAL DES PENTES
+            f.write("\n" + "-"*80 + "\n")
+            f.write("6. RÉSUMÉ SPATIAL DES PENTES\n")
+            f.write("="*60 + "\n\n")
+            
+            f.write(f"{'Fraction':<25} {'Pente Sen (/an)':<20} {'Changement /décennie':<20} {'Significativité':<15}\n")
+            f.write("-"*80 + "\n")
+            
+            for fraction in self.fraction_classes:
+                if fraction in self.results.get('mean', {}):
+                    r = self.results['mean'][fraction]
+                    sig = "***" if r['p_value'] < 0.001 else "**" if r['p_value'] < 0.01 else "*" if r['p_value'] < 0.05 else "ns"
+                    f.write(f"{self.class_labels[fraction]:<25} {r['sen_slope']:<20.6f} {r['sen_slope_per_decade']:<20.5f} {sig:<15}\n")
+            
+            # 7. INTERPRÉTATION ET RECOMMANDATIONS
+            f.write("\n" + "-"*80 + "\n")
+            f.write("7. INTERPRÉTATION AUTOMATIQUE\n")
+            f.write("="*60 + "\n\n")
+            
+            # Compter les tendances significatives
+            sig_decreasing = 0
+            sig_increasing = 0
+            total_fractions = 0
+            
+            for variable in self.results:
+                for fraction, r in self.results[variable].items():
+                    if r['p_value'] < 0.05:
+                        if r['sen_slope'] < 0:
+                            sig_decreasing += 1
+                        else:
+                            sig_increasing += 1
+                    total_fractions += 1
+            
+            f.write(f"Nombre total de tests effectués: {total_fractions}\n")
+            f.write(f"Tendances décroissantes significatives: {sig_decreasing}\n")
+            f.write(f"Tendances croissantes significatives: {sig_increasing}\n")
+            f.write(f"Pas de tendance significative: {total_fractions - sig_decreasing - sig_increasing}\n\n")
+            
+            # Recommandations basées sur l'autocorrélation
+            if hasattr(self, 'modified_results'):
+                high_autocorr = sum(1 for r in self.modified_results.values() if abs(r['autocorr_lag1']) > 0.3)
+                if high_autocorr > 0:
+                    f.write(f"⚠️  ATTENTION: {high_autocorr} fraction(s) avec forte autocorrélation détectée.\n")
+                    f.write("   Recommandation: Utiliser les résultats Mann-Kendall modifiés ou pré-blanchis.\n\n")
+            
+            # Signal le plus fort
+            strongest_signal = None
+            max_slope = 0
+            for fraction, r in self.results.get('mean', {}).items():
+                if r['p_value'] < 0.05 and abs(r['sen_slope']) > abs(max_slope):
+                    max_slope = r['sen_slope']
+                    strongest_signal = fraction
+            
+            if strongest_signal:
+                f.write(f"📊 Signal le plus fort détecté: {self.class_labels[strongest_signal]}\n")
+                f.write(f"   Pente: {max_slope:.6f}/an ({max_slope*10:.5f}/décennie)\n")
+                f.write(f"   p-value: {self.results['mean'][strongest_signal]['p_value']:.4f}\n")
+            
+            # Pied de page
+            f.write("\n" + "="*80 + "\n")
+            f.write("FIN DU RAPPORT STATISTIQUE\n")
+            f.write("="*80 + "\n")
+        
+        print(f"✓ Rapport texte généré: {output_path}")
+        return output_path
+    
     def export_results(self, output_path='saskatchewan_trend_results.xlsx'):
         """
         Exporte les résultats vers un fichier Excel
@@ -802,8 +980,11 @@ def main():
         # 4. Analyse spatiale des pentes
         spatial_results = analyzer.create_spatial_slope_analysis('mean')
         
-        # Exporter les résultats
+        # Exporter les résultats Excel
         analyzer.export_results('saskatchewan_albedo_trend_analysis_advanced.xlsx')
+        
+        # Générer le rapport texte complet
+        analyzer.export_text_report('saskatchewan_albedo_statistical_report.txt')
         
         print("\n" + "="*60)
         print("✅ ANALYSE TERMINÉE!")
@@ -813,6 +994,7 @@ def main():
         print("  🗺️  Cartographie spatiale: spatial_slope_analysis_mean.png")
         print("  📋 Résultats Excel standard: saskatchewan_albedo_trend_analysis.xlsx")
         print("  📋 Résultats Excel avancés: saskatchewan_albedo_trend_analysis_advanced.xlsx")
+        print("  📝 Rapport statistique complet: saskatchewan_albedo_statistical_report.txt")
         
     except Exception as e:
         print(f"❌ Erreur: {e}")
