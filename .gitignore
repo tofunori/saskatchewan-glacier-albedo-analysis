@@ -1,0 +1,24 @@
+# Earth Engine exports
+exports/
+GEE_exports/
+*.tif
+*.tiff
+*.csv
+
+# Temporary files
+*.tmp
+*.temp
+.DS_Store
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Backup files
+*.bak
+*~
+
+# Log files
+*.log
