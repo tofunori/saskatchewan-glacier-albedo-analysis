@@ -40,23 +40,63 @@ function calculatePixelCoverage(modisImage, glacierMask) {
   // Obtenir la projection MODIS
   var modisProjection = modisImage.projection();
   
-  // Reprojecter le masque glacier à 30m vers la grille MODIS 500m
-  // en calculant la fraction moyenne (0-1) de couverture
-  var coverageFraction = glacierMask
+  // Méthode alternative : découper le masque glacier selon la grille MODIS
+  // puis calculer la fraction de chaque pixel MODIS couverte par le glacier
+  
+  // D'abord, créer une image constante dans la projection MODIS
+  var modisGrid = ee.Image.constant(1).reproject({
+    crs: modisProjection,
+    scale: 500
+  });
+  
+  // Reprojecter le masque glacier vers la résolution MODIS en calculant la moyenne
+  var coverageFraction = glacierMask.float()
     .reduceResolution({
       reducer: ee.Reducer.mean(),
-      maxPixels: 65000  // Augmenter la limite pour accommoder le ratio 30m->500m
+      maxPixels: 65000
     })
     .reproject({
       crs: modisProjection,
       scale: 500
     });
   
+  // S'assurer que les valeurs sont bien entre 0 et 1
+  coverageFraction = coverageFraction.clamp(0, 1);
+  
   return coverageFraction.multiply(100); // Convertir en pourcentage
 }
 
 // Calculer la couverture
 var pixelCoverage = calculatePixelCoverage(testImage, glacier_mask);
+
+// Debug : vérifier les statistiques de couverture
+var coverageStats = pixelCoverage.reduceRegion({
+  reducer: ee.Reducer.minMax().combine(ee.Reducer.mean(), '', true),
+  geometry: glacier_geometry.buffer(1000),
+  scale: 500,
+  maxPixels: 1e9
+});
+
+print('');
+print('STATISTIQUES DE COUVERTURE :');
+print('Min-Max couverture (%):', coverageStats);
+
+// Compter combien de pixels ont différents niveaux de couverture
+var counts = ee.Dictionary({
+  'pixels_0-25%': pixelCoverage.gte(0).and(pixelCoverage.lt(25)),
+  'pixels_25-50%': pixelCoverage.gte(25).and(pixelCoverage.lt(50)),
+  'pixels_50-75%': pixelCoverage.gte(50).and(pixelCoverage.lt(75)),
+  'pixels_75-100%': pixelCoverage.gte(75).and(pixelCoverage.lte(100))
+}).map(function(key, mask) {
+  return ee.Image(mask).reduceRegion({
+    reducer: ee.Reducer.sum(),
+    geometry: glacier_geometry.buffer(1000),
+    scale: 500,
+    maxPixels: 1e9
+  }).get(ee.Image(mask).bandNames().get(0));
+});
+
+print('Distribution par tranches:', counts);
 
 // ┌────────────────────────────────────────────────────────────────────────────────────────┐
 // │ SECTION 3 : CRÉER DES MASQUES POUR DIFFÉRENTS SEUILS                                  │
@@ -161,16 +201,27 @@ createContours(threshold_50, 'blue', '8. Contours - Seuil ≥50%');
 // │ SECTION 6 : COMPARAISON VISUELLE DES MÉTHODES                                         │
 // └────────────────────────────────────────────────────────────────────────────────────────┘
 
-// 11. Créer une visualisation côte-à-côte
-var comparison = ee.Image.cat([
-  threshold_0.multiply(1),
-  threshold_50.multiply(2),
-  threshold_75.multiply(3)
-]).reduce(ee.Reducer.max());
+// 11. Créer une visualisation côte-à-côte avec des couleurs distinctes
+var comparison = ee.Image(0)
+  .where(threshold_0.and(threshold_50.not()), 1)  // Pixels >0% mais <50%
+  .where(threshold_50.and(threshold_75.not()), 2) // Pixels ≥50% mais <75%
+  .where(threshold_75, 3);                        // Pixels ≥75%
 
-Map.addLayer(comparison.updateMask(comparison), 
+Map.addLayer(comparison.updateMask(comparison.gt(0)), 
   {min: 1, max: 3, palette: ['red', 'yellow', 'green']},
-  '9. Comparaison: Rouge=>0%, Jaune=≥50%, Vert=≥75%');
+  '9. Comparaison: Rouge=0-50%, Jaune=50-75%, Vert=≥75%');
+
+// Ajouter aussi les pixels exclus par chaque seuil
+var excluded_50 = threshold_0.and(threshold_50.not());
+var excluded_75 = threshold_50.and(threshold_75.not());
+
+Map.addLayer(excluded_50.selfMask(), 
+  {palette: ['orange'], opacity: 0.7},
+  '10. Pixels exclus par seuil 50%', false);
+
+Map.addLayer(excluded_75.selfMask(), 
+  {palette: ['purple'], opacity: 0.7},
+  '11. Pixels exclus par seuil 75%', false);
 
 // ┌────────────────────────────────────────────────────────────────────────────────────────┐
 // │ SECTION 7 : EXEMPLE D'IMPLÉMENTATION POUR LE CODE PRINCIPAL                            │
