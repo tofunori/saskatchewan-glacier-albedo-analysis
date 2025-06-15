@@ -28,6 +28,8 @@ var testImage = ee.ImageCollection('MODIS/061/MCD43A3')
   .first();
 
 print('Image de test:', testDate);
+print('Projection de l\'image MODIS:', testImage.projection());
+print('Date exacte de l\'image:', testImage.date().format('YYYY-MM-dd'));
 
 // ┌────────────────────────────────────────────────────────────────────────────────────────┐
 // │ SECTION 2 : CALCUL DE LA COUVERTURE DES PIXELS                                        │
@@ -106,6 +108,15 @@ var pixelStats = ee.FeatureCollection([
 
 print('Nombre de pixels MODIS par seuil de couverture:', pixelStats);
 
+// Debug: afficher les valeurs numériques
+print('');
+print('DÉTAIL DES STATISTIQUES :');
+pixelStats.evaluate(function(result) {
+  result.features.forEach(function(feature) {
+    print(feature.properties.threshold + ': ' + feature.properties.pixel_count + ' pixels');
+  });
+});
+
 // ┌────────────────────────────────────────────────────────────────────────────────────────┐
 // │ SECTION 5 : VISUALISATION                                                             │
 // └────────────────────────────────────────────────────────────────────────────────────────┘
@@ -113,8 +124,8 @@ print('Nombre de pixels MODIS par seuil de couverture:', pixelStats);
 // 6. Centrer la carte et ajouter le masque glacier de référence
 Map.centerObject(glacier_geometry, 12);
 Map.addLayer(glacier_mask.selfMask(), 
-  {palette: ['white'], opacity: 0.3}, 
-  '0. Masque glacier 30m (référence)', false);
+  {palette: ['lightblue'], opacity: 0.8}, 
+  '0. Masque glacier 30m (référence)');
 
 // 7. Visualiser la carte de pourcentage de couverture
 Map.addLayer(pixelCoverage.updateMask(pixelCoverage.gt(0)), 
@@ -211,12 +222,16 @@ print('3. Utiliser ce masque pour toutes les analyses');
 // └────────────────────────────────────────────────────────────────────────────────────────┘
 
 // 13. Créer un histogramme de la distribution des pourcentages de couverture
+// Corriger le problème toFixed() en utilisant pixelCoverage masqué
+var maskedCoverage = pixelCoverage.updateMask(pixelCoverage.gt(0));
+
 var histogram = ui.Chart.image.histogram({
-  image: pixelCoverage,
+  image: maskedCoverage,
   region: glacier_geometry.buffer(1000),
   scale: 500,
   maxBuckets: 20,
-  maxPixels: 1e9
+  maxPixels: 1e9,
+  minBucketWidth: 5  // Définir une largeur minimale pour éviter l'erreur toFixed
 }).setSeriesNames(['Pixels'])
 .setOptions({
   title: 'Distribution des pourcentages de couverture des pixels MODIS',
