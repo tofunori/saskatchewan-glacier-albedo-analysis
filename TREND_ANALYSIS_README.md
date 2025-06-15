@@ -27,11 +27,17 @@ pip install pandas numpy matplotlib seaborn scipy pymannkendall openpyxl
 
 ## 📈 Fonctionnalités
 
-### Tests Statistiques
+### Tests Statistiques Standards
 - **Test de Mann-Kendall**: Détection de tendances monotones (non-paramétrique)
 - **Pente de Sen**: Estimation robuste de la magnitude du changement
 - **Analyse saisonnière**: Tendances par période (début/mi/fin été)
 - **Filtrage qualité**: Utilise le seuil minimum de pixels
+
+### ⭐ Analyses Avancées (NOUVEAU!)
+- **Cartographie des pentes**: Visualisation spatiale des tendances par fraction
+- **Analyse mensuelle**: Mann-Kendall détaillé mois par mois (juin-septembre)
+- **Contrôle autocorrélation**: Modified Mann-Kendall et pré-blanchiment
+- **Intervalles de confiance**: Bootstrap pour quantifier l'incertitude des pentes
 
 ### Fractions Analysées
 - **0-25% (Bordure)**: Pixels de bordure
@@ -41,9 +47,11 @@ pip install pandas numpy matplotlib seaborn scipy pymannkendall openpyxl
 - **90-100% (Pur)**: Pixels quasi-purs glacier
 
 ### Outputs Générés
-- **Graphiques**: `saskatchewan_albedo_trends_*.png`
-- **Tableau Excel**: `saskatchewan_albedo_trend_analysis.xlsx`
-- **Résultats console**: Tendances avec significativité
+- **Graphiques standards**: `saskatchewan_albedo_trends_*.png`
+- **Cartographie spatiale**: `spatial_slope_analysis_*.png`
+- **Tableau Excel standard**: `saskatchewan_albedo_trend_analysis.xlsx`
+- **Tableau Excel avancé**: `saskatchewan_albedo_trend_analysis_advanced.xlsx`
+- **Résultats console**: Tendances avec significativité et analyses avancées
 
 ## 📋 Interprétation des Résultats
 
@@ -62,6 +70,28 @@ pip install pandas numpy matplotlib seaborn scipy pymannkendall openpyxl
 - **Unités**: Changement d'albédo par année
 - **Exemple**: -0.002/an = diminution de 0.002 unités d'albédo par an
 - **Décennie**: Changement sur 10 ans = pente × 10
+
+## 🔬 Analyses Avancées - Guide d'Interprétation
+
+### 1. Cartographie des Pentes
+- **Visualisation spatiale** des tendances par fraction de couverture
+- **Barres d'erreur bootstrap** pour quantifier l'incertitude
+- **Projection décennale** pour planification long-terme
+
+### 2. Analyse Mensuelle Détaillée  
+- **Détection saisonnière** des changements (juin → septembre)
+- **Intervalles de confiance** sur chaque pente mensuelle
+- **Identification** des mois critiques (ex: août = pic de fonte)
+
+### 3. Contrôle d'Autocorrélation
+- **🟢 Faible**: |r| < 0.1 → Résultats MK standard fiables
+- **🟡 Modérée**: 0.1 ≤ |r| < 0.3 → Utiliser MK modifié
+- **🔴 Forte**: |r| ≥ 0.3 → Pré-blanchiment obligatoire
+
+### 4. Intervalles de Confiance Bootstrap
+- **IC 95%**: Plage de valeurs probables pour la pente
+- **Écart-type**: Mesure de la précision de l'estimation
+- **Exemple**: Pente = -0.004 ± 0.001 → Changement robuste
 
 ## 🔧 Personnalisation
 
