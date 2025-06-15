@@ -33,7 +33,7 @@ class SaskatchewanGlacierModisDownloader:
         # Create data directories
         self.data_dir = Path("modis_data")
         self.snow_dir = self.data_dir / "MCD10A1_snow_cover"
-        self.albedo_dir = self.data_dir / "MOD43A3_albedo"
+        self.albedo_dir = self.data_dir / "MCD43A3_albedo"
         
         self._create_directories()
     
@@ -100,24 +100,24 @@ class SaskatchewanGlacierModisDownloader:
     
     def download_albedo_data(self, start_date, end_date, limit=None):
         """
-        Download MOD43A3 albedo data
+        Download MCD43A3 albedo data
         
         Args:
             start_date: Start date (YYYY-MM-DD or datetime)
             end_date: End date (YYYY-MM-DD or datetime)
             limit: Maximum number of granules to download
         """
-        print(f"🔍 Searching for MOD43A3 albedo data ({start_date} to {end_date})")
+        print(f"🔍 Searching for MCD43A3 albedo data ({start_date} to {end_date})")
         
         # Query collections
         collection_client = CollectionApi(session=self.session)
-        collections = collection_client.query(short_name="MOD43A3", version="061")
+        collections = collection_client.query(short_name="MCD43A3", version="061")
         
         if not collections:
-            print("❌ No MOD43A3 collections found")
+            print("❌ No MCD43A3 collections found")
             return []
         
-        print(f"✅ Found {len(collections)} MOD43A3 collection(s)")
+        print(f"✅ Found {len(collections)} MCD43A3 collection(s)")
         
         # Query granules
         granule_client = GranuleApi.from_collection(collections[0], session=self.session)
@@ -129,17 +129,17 @@ class SaskatchewanGlacierModisDownloader:
         )
         
         granules_list = list(granules)
-        print(f"✅ Found {len(granules_list)} MOD43A3 granules")
+        print(f"✅ Found {len(granules_list)} MCD43A3 granules")
         
         if granules_list:
-            print("📥 Downloading MOD43A3 albedo data...")
+            print("📥 Downloading MCD43A3 albedo data...")
             file_paths = GranuleHandler.download_from_granules(
                 granules_list, 
                 session=self.session, 
                 path=str(self.albedo_dir),
                 threads=-1  # Use all available cores
             )
-            print(f"✅ Downloaded {len(file_paths)} MOD43A3 files to {self.albedo_dir}")
+            print(f"✅ Downloaded {len(file_paths)} MCD43A3 files to {self.albedo_dir}")
             return file_paths
         
         return []
@@ -166,7 +166,7 @@ class SaskatchewanGlacierModisDownloader:
         
         print(f"\n📊 Download Summary:")
         print(f"   Snow cover files (MCD10A1): {len(snow_files)}")
-        print(f"   Albedo files (MOD43A3): {len(albedo_files)}")
+        print(f"   Albedo files (MCD43A3): {len(albedo_files)}")
         print(f"   Total files: {len(snow_files) + len(albedo_files)}")
         
         return {

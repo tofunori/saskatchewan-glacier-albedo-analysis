@@ -43,13 +43,13 @@ def debug_collections():
         except Exception as e:
             print(f"   ❌ Error: {e}")
     
-    print("\n2. Testing MOD43A3 queries...")
+    print("\n2. Testing MCD43A3 queries...")
     
     test_queries_43a3 = [
-        {"short_name": "MOD43A3", "version": "061"},
-        {"short_name": "MOD43A3", "version": "6"},
-        {"short_name": "MOD43A3"},
-        {"keyword": "MOD43A3"},
+        {"short_name": "MCD43A3", "version": "061"},
+        {"short_name": "MCD43A3", "version": "6"},
+        {"short_name": "MCD43A3"},
+        {"keyword": "MCD43A3"},
     ]
     
     for i, query in enumerate(test_queries_43a3, 1):

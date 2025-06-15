@@ -3,7 +3,7 @@
 This folder contains Python scripts to download and process MODIS satellite data for Saskatchewan Glacier analysis, focusing on:
 
 - **MCD10A1**: Daily snow cover data (500m resolution)
-- **MOD43A3**: 8-day albedo data (500m resolution)
+- **MCD43A3**: 8-day albedo data (500m resolution)
 
 ## Setup
 
@@ -74,7 +74,7 @@ This will:
   - Snow Cover Fractional: Percentage snow cover
   - Snow Cover Quality Assessment
 
-### MOD43A3 - BRDF/Albedo Daily L3 Global 500m
+### MCD43A3 - BRDF/Albedo Daily L3 Global 500m
 
 - **Purpose**: Surface albedo and BRDF parameters
 - **Resolution**: 500m
@@ -89,13 +89,14 @@ This will:
 ```
 modis_data/
 ├── MCD10A1_snow_cover/     # Downloaded snow cover files
-├── MOD43A3_albedo/         # Downloaded albedo files
+├── MCD43A3_albedo/         # Downloaded albedo files
 ├── processed/              # Processed outputs
 │   ├── file_inventory.csv
 │   └── data_availability.png
 ├── modis_downloader.py     # Download script
 ├── data_processor.py       # Processing script
 ├── setup_credentials.py    # Credential setup
+├── modis_analysis.ipynb    # Interactive Jupyter notebook
 ├── requirements.txt        # Dependencies
 └── README.md              # This file
 ```
