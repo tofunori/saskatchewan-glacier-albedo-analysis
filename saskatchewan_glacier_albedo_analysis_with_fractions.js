@@ -98,44 +98,47 @@ function calculateAnnualAlbedoByFraction(year) {
     // Créer les masques par classe de fraction
     var masks = createFractionMasks(fraction, FRACTION_THRESHOLDS);
     
-    // Appliquer chaque masque à l'albédo
-    var results = {};
-    Object.keys(masks).forEach(function(className) {
-      results[className] = albedo_scaled.updateMask(masks[className]);
-    });
+    // Appliquer chaque masque à l'albédo et créer une image multi-bandes
+    var masked_albedos = [
+      albedo_scaled.updateMask(masks.border).rename('border'),
+      albedo_scaled.updateMask(masks.mixed_low).rename('mixed_low'),
+      albedo_scaled.updateMask(masks.mixed_high).rename('mixed_high'),
+      albedo_scaled.updateMask(masks.mostly_ice).rename('mostly_ice'),
+      albedo_scaled.updateMask(masks.pure_ice).rename('pure_ice')
+    ];
     
-    return ee.Image(results);
+    return ee.Image.cat(masked_albedos);
   });
   
   // Calculer la moyenne annuelle pour chaque classe
   var annual_means = processed_collection.mean();
   
   // Calculer les statistiques pour chaque classe de fraction
-  var stats = {};
   var classNames = ['border', 'mixed_low', 'mixed_high', 'mostly_ice', 'pure_ice'];
   
-  classNames.forEach(function(className) {
-    var class_stats = annual_means.select(className).reduceRegion({
-      reducer: ee.Reducer.mean().combine(
-        ee.Reducer.stdDev(), '', true
-      ).combine(
-        ee.Reducer.count(), '', true
-      ),
-      geometry: glacier_geometry,
-      scale: 500,
-      maxPixels: 1e9,
-      bestEffort: true
-    });
-    
-    stats[className + '_mean'] = class_stats.get(className + '_mean');
-    stats[className + '_stdDev'] = class_stats.get(className + '_stdDev');
-    stats[className + '_count'] = class_stats.get(className + '_count');
+  // Calculer les statistiques pour toutes les bandes en une fois
+  var all_stats = annual_means.reduceRegion({
+    reducer: ee.Reducer.mean().combine(
+      ee.Reducer.stdDev(), '', true
+    ).combine(
+      ee.Reducer.count(), '', true
+    ),
+    geometry: glacier_geometry,
+    scale: 500,
+    maxPixels: 1e9,
+    bestEffort: true
   });
   
-  // Ajouter l'année aux statistiques
-  stats['year'] = year;
+  // Construire l'objet des propriétés
+  var properties = {'year': year};
   
-  return ee.Feature(null, stats);
+  classNames.forEach(function(className) {
+    properties[className + '_mean'] = all_stats.get(className + '_mean');
+    properties[className + '_stdDev'] = all_stats.get(className + '_stdDev');
+    properties[className + '_count'] = all_stats.get(className + '_count');
+  });
+  
+  return ee.Feature(null, properties);
 }
 
 // ┌────────────────────────────────────────────────────────────────────────────────────────┐
