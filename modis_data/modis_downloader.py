@@ -292,7 +292,7 @@ def main():
     password = "ASDqwe1234!"  # Add your password here or use .netrc
     
     # Option 1: Use glacier mask for precise spatial filtering
-    glacier_mask_path = "mask/saskatchewan_glacier_shapefile.shp"  # Your glacier mask
+    glacier_mask_path = "D:\Downloads\saskatchewan_glacier_mask.geojson"  # Your glacier mask
     downloader = SaskatchewanGlacierModisDownloader(username, password, glacier_mask_path)
     
     # Option 2: Use bounding box (default)
