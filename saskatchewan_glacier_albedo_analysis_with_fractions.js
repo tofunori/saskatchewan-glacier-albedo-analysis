@@ -703,18 +703,21 @@ var globalQualityDistribution = dailyCollection
 
 print('Distribution de qualité globale calculée pour:', globalQualityDistribution.size(), 'images');
 
-// Créer le graphique en barres empilées
+// Filtrer pour une année spécifique (exemple : 2020) pour le graphique détaillé
+var singleYearQuality = globalQualityDistribution.filter(ee.Filter.calendarRange(2020, 2020, 'year'));
+
+// Créer le graphique en barres empilées pour une saison de fonte
 var globalStackedChart = ui.Chart.feature.byFeature(
-    globalQualityDistribution, 
+    singleYearQuality, 
     'system:time_start', 
     ['quality_0_best', 'quality_1_good', 'quality_2_moderate', 'quality_3_poor']
   )
   .setChartType('ColumnChart')
   .setOptions({
-    title: 'Distribution quotidienne de la qualité des pixels MODIS - Glacier entier (2010-2024)',
+    title: 'Distribution quotidienne de la qualité des pixels MODIS - Saison de fonte 2020',
     hAxis: {
       title: 'Date',
-      format: 'yyyy'
+      format: 'MM/dd'
     },
     vAxis: {
       title: 'Nombre de pixels'
