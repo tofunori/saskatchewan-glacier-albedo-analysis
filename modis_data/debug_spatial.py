@@ -47,14 +47,43 @@ def test_file_paths():
     """Test if glacier mask files exist and are readable"""
     print("\n📁 Testing file paths...")
     
-    # Use absolute paths to the mask directory
-    project_dir = Path("/home/tofunori/saskatchewan-glacier-albedo-analysis/modis_data")
-    mask_dir = project_dir / "mask"
+    # Detect if running on Windows and accessing WSL
+    is_windows = os.name == 'nt'
     
+    if is_windows:
+        # Windows paths to WSL
+        wsl_paths = [
+            Path(r"\\wsl.localhost\Ubuntu\home\tofunori\saskatchewan-glacier-albedo-analysis\modis_data"),
+            Path(r"\\wsl$\Ubuntu\home\tofunori\saskatchewan-glacier-albedo-analysis\modis_data"),
+            Path(r"\\wsl.localhost\Ubuntu-20.04\home\tofunori\saskatchewan-glacier-albedo-analysis\modis_data"),
+            Path(r"\\wsl$\Ubuntu-20.04\home\tofunori\saskatchewan-glacier-albedo-analysis\modis_data")
+        ]
+        
+        project_dir = None
+        for wsl_path in wsl_paths:
+            print(f"🔍 Trying WSL path: {wsl_path}")
+            if wsl_path.exists():
+                project_dir = wsl_path
+                print(f"✅ Found WSL project directory: {project_dir}")
+                break
+        
+        if not project_dir:
+            print("❌ Could not find WSL project directory. Try:")
+            for path in wsl_paths:
+                print(f"   {path}")
+            return None
+    else:
+        # Linux/WSL paths
+        project_dir = Path("/home/tofunori/saskatchewan-glacier-albedo-analysis/modis_data")
+    
+    mask_dir = project_dir / "mask"
     print(f"🔍 Looking for mask directory at: {mask_dir}")
     
     if not mask_dir.exists():
         print(f"❌ Mask directory not found: {mask_dir}")
+        if is_windows:
+            print("💡 Make sure WSL is running and try accessing the path in File Explorer:")
+            print("   \\\\wsl.localhost\\Ubuntu\\home\\tofunori\\saskatchewan-glacier-albedo-analysis\\modis_data\\mask")
         return None
     
     print(f"✅ Mask directory exists: {mask_dir}")
@@ -62,8 +91,11 @@ def test_file_paths():
     # List all files in mask directory
     print("\n📋 Files in mask directory:")
     for file in mask_dir.iterdir():
-        size_mb = file.stat().st_size / (1024 * 1024)
-        print(f"   {file.name} ({size_mb:.2f} MB)")
+        try:
+            size_mb = file.stat().st_size / (1024 * 1024)
+            print(f"   {file.name} ({size_mb:.2f} MB)")
+        except Exception as e:
+            print(f"   {file.name} (error reading size: {e})")
     
     # Test different file formats using absolute paths
     test_files = [
