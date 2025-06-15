@@ -651,7 +651,106 @@ print('pure_ice_mean, pure_ice_median, pure_ice_pixel_count, pure_ice_data_quali
 print('total_valid_pixels, min_pixels_threshold, system:time_start');
 
 // ┌────────────────────────────────────────────────────────────────────────────────────────┐
-// │ SECTION 10 : RÉSUMÉ ET INTERPRÉTATION                                                 │
+// │ SECTION 10 : ANALYSE DE LA DISTRIBUTION QUOTIDIENNE DE QUALITÉ GLOBALE                │
+// └────────────────────────────────────────────────────────────────────────────────────────┘
+
+// 18. Graphique de distribution quotidienne de la qualité des pixels (saison de fonte)
+print('');
+print('=== ANALYSE DE LA QUALITÉ DES PIXELS PAR JOUR (SAISONS DE FONTE 2010-2024) ===');
+
+// Fonction pour analyser la distribution de qualité globale pour chaque image
+function analyzeQualityDistribution(img) {
+  var date = img.date();
+  var quality = img.select('BRDF_Albedo_Band_Mandatory_Quality_shortwave');
+  
+  // Créer des masques pour chaque niveau de qualité dans le glacier
+  var q0 = quality.eq(0).and(glacier_mask);  // Meilleure qualité
+  var q1 = quality.eq(1).and(glacier_mask);  // Bonne qualité
+  var q2 = quality.eq(2).and(glacier_mask);  // Qualité moyenne
+  var q3 = quality.eq(3).and(glacier_mask);  // Faible qualité
+  
+  // Compter les pixels pour chaque niveau de qualité de manière optimisée
+  var qualityStats = ee.Image.cat([q0, q1, q2, q3]).reduceRegion({
+    reducer: ee.Reducer.sum(),
+    geometry: glacier_geometry,
+    scale: 500,
+    maxPixels: 1e9,
+    bestEffort: true
+  });
+  
+  // Extraire les comptages
+  var count_q0 = qualityStats.get('BRDF_Albedo_Band_Mandatory_Quality_shortwave');
+  var count_q1 = qualityStats.get('BRDF_Albedo_Band_Mandatory_Quality_shortwave_1');
+  var count_q2 = qualityStats.get('BRDF_Albedo_Band_Mandatory_Quality_shortwave_2');
+  var count_q3 = qualityStats.get('BRDF_Albedo_Band_Mandatory_Quality_shortwave_3');
+  
+  return ee.Feature(null, {
+    'system:time_start': date.millis(),
+    'date': date.format('YYYY-MM-dd'),
+    'quality_0_best': count_q0,
+    'quality_1_good': count_q1,
+    'quality_2_moderate': count_q2,
+    'quality_3_poor': count_q3,
+    'total_pixels': ee.Number(count_q0).add(count_q1).add(count_q2).add(count_q3)
+  });
+}
+
+// Analyser toute la période 2010-2024 (été seulement pour optimiser)
+print('Calcul de la distribution de qualité globale...');
+var globalQualityDistribution = dailyCollection
+  .select('BRDF_Albedo_Band_Mandatory_Quality_shortwave')
+  .map(analyzeQualityDistribution);
+
+print('Distribution de qualité globale calculée pour:', globalQualityDistribution.size(), 'images');
+
+// Créer le graphique en barres empilées
+var globalStackedChart = ui.Chart.feature.byFeature(
+    globalQualityDistribution, 
+    'system:time_start', 
+    ['quality_0_best', 'quality_1_good', 'quality_2_moderate', 'quality_3_poor']
+  )
+  .setChartType('ColumnChart')
+  .setOptions({
+    title: 'Distribution quotidienne de la qualité des pixels MODIS - Glacier entier (2010-2024)',
+    hAxis: {
+      title: 'Date',
+      format: 'yyyy'
+    },
+    vAxis: {
+      title: 'Nombre de pixels'
+    },
+    colors: ['#2166ac', '#92c5de', '#fddbc7', '#d6604d'], // Bleu foncé à rouge
+    isStacked: true,
+    bar: {groupWidth: '90%'},
+    height: 500,
+    legend: {
+      position: 'top',
+      labels: ['Qualité 0 (Meilleure)', 'Qualité 1 (Bonne)', 'Qualité 2 (Moyenne)', 'Qualité 3 (Faible)']
+    }
+  });
+
+print('');
+print('GRAPHIQUE DE QUALITÉ GLOBALE :');
+print(globalStackedChart);
+
+// Export de l'analyse de qualité globale
+Export.table.toDrive({
+  collection: globalQualityDistribution,
+  description: 'Saskatchewan_Global_Quality_Distribution_2010_2024',
+  folder: 'GEE_exports',
+  fileNamePrefix: 'global_quality_distribution_daily_2010_2024',
+  fileFormat: 'CSV'
+});
+
+print('');
+print('EXPORT QUALITÉ GLOBALE CONFIGURÉ :');
+print('✓ Fichier: global_quality_distribution_daily_2010_2024.csv');
+print('✓ Variables: quality_0_best, quality_1_good, quality_2_moderate, quality_3_poor');
+print('✓ Métriques: total_pixels');
+print('✓ Utilité: Vue d\'ensemble de la qualité sur tout le glacier');
+
+// ┌────────────────────────────────────────────────────────────────────────────────────────┐
+// │ SECTION 11 : RÉSUMÉ ET INTERPRÉTATION                                                 │
 // └────────────────────────────────────────────────────────────────────────────────────────┘
 
 print('');
@@ -680,14 +779,17 @@ print('');
 print('EXPORTS GÉNÉRÉS :');
 print('• Statistiques annuelles par fraction');
 print('• Analyses de tendance par classe');
-print('• CSV quotidien optimisé Mann-Kendall (NOUVEAU!)');
+print('• CSV quotidien optimisé Mann-Kendall');
+print('• CSV qualité globale quotidienne (NOUVEAU!)');
 print('• Cartes de fraction d\'exemple');
 print('');
 print('APPLICATIONS STATISTIQUES :');
 print('• Tests de tendance robustes (non-paramétriques)');
+print('• Analyse de qualité des données temporelle');
 print('• Détection de points de changement');
 print('• Analyses saisonnières de variabilité');
 print('• Comparaison tendances entre classes de pureté');
 print('• Validation statistique des changements glaciaires');
+print('• Évaluation fiabilité des données MODIS');
 
 // FIN DU SCRIPT
