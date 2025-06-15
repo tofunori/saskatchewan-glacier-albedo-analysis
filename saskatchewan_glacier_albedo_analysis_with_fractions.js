@@ -282,8 +282,9 @@ var updateVisualization = function() {
   // dateSlider.getValue() retourne un array [startDate, endDate]
   var dateRange = dateSlider.getValue();
   
-  // Prendre la première date (startDate) du range
-  var js_date = dateRange[0];
+  // Prendre la première date (startDate) du range et s'assurer que c'est un Date object
+  var timestamp = dateRange[0];
+  var js_date = new Date(timestamp);
   
   // Convertir en ee.Date pour les opérations Earth Engine
   var selected_date = ee.Date(js_date);
