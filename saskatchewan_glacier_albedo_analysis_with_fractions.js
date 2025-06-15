@@ -261,10 +261,94 @@ print('(pente = changement d\'albédo par an, correlation = coefficient de corr�
 // │ SECTION 7 : VISUALISATION CARTOGRAPHIQUE                                              │
 // └────────────────────────────────────────────────────────────────────────────────────────┘
 
-// 10. Créer des cartes d'exemple pour une année (2020)
-var example_year = 2020;
-var example_date = ee.Date.fromYMD(example_year, 7, 15); // Mi-juillet
+// 10. Interface interactive pour choisir la date de visualisation
+print('');
+print('=== SÉLECTION DE DATE INTERACTIVE ===');
 
+// Créer un sélecteur de date
+var dateSlider = ui.DateSlider({
+  start: '2010-06-01',
+  end: '2024-09-30',
+  value: '2020-07-15',
+  period: 1,
+  style: {width: '300px'}
+});
+
+var dateLabel = ui.Label('Choisir une date pour la visualisation:');
+var selectedDateLabel = ui.Label('Date sélectionnée: 2020-07-15');
+
+// Fonction pour mettre à jour la visualisation selon la date choisie
+var updateVisualization = function() {
+  var selected_date = dateSlider.getValue();
+  selectedDateLabel.setValue('Date sélectionnée: ' + selected_date.format('YYYY-MM-dd').getInfo());
+  
+  // Charger l'image pour la date sélectionnée
+  var example_image = ee.ImageCollection('MODIS/061/MCD43A3')
+    .filterDate(selected_date, selected_date.advance(5, 'day'))
+    .filterBounds(glacier_geometry)
+    .select(['Albedo_WSA_shortwave', 'BRDF_Albedo_Band_Mandatory_Quality_shortwave'])
+    .first();
+  
+  // Vérifier si une image existe pour cette date
+  var imageExists = ee.Algorithms.IsEqual(example_image, null);
+  
+  var example_fraction = calculatePixelFraction(example_image, glacier_mask);
+  var example_masks = createFractionMasks(example_fraction, FRACTION_THRESHOLDS);
+  
+  // Préparer l'albédo pour visualisation
+  var example_albedo = example_image.select('Albedo_WSA_shortwave')
+    .multiply(0.001)
+    .updateMask(example_image.select('BRDF_Albedo_Band_Mandatory_Quality_shortwave').lte(1));
+  
+  // Effacer les couches précédentes (sauf la première)
+  var layers = Map.layers();
+  while (layers.length() > 1) {
+    Map.remove(layers.get(layers.length() - 1));
+  }
+  
+  // Ajouter les nouvelles couches
+  Map.addLayer(example_fraction.updateMask(example_fraction.gt(0)), 
+    {min: 0, max: 1, palette: ['red', 'orange', 'yellow', 'lightblue', 'blue']}, 
+    '1. Fraction de couverture - ' + selected_date.format('YYYY-MM-dd').getInfo());
+  
+  // Paramètres d'albédo
+  var albedoVis = {min: 0.3, max: 0.9, palette: ['darkblue', 'blue', 'cyan', 'yellow', 'orange', 'red']};
+  
+  // Ajouter l'albédo pour chaque classe
+  Map.addLayer(example_albedo.updateMask(example_masks.border), albedoVis, 
+    '2. Albédo 0-25% (bordure)', false);
+  Map.addLayer(example_albedo.updateMask(example_masks.mixed_low), albedoVis, 
+    '3. Albédo 25-50% (mixte bas)', false);
+  Map.addLayer(example_albedo.updateMask(example_masks.mixed_high), albedoVis, 
+    '4. Albédo 50-75% (mixte haut)');
+  Map.addLayer(example_albedo.updateMask(example_masks.mostly_ice), albedoVis, 
+    '5. Albédo 75-90% (majoritaire)');
+  Map.addLayer(example_albedo.updateMask(example_masks.pure_ice), albedoVis, 
+    '6. Albédo 90-100% (pur)');
+};
+
+// Bouton pour mettre à jour la visualisation
+var updateButton = ui.Button({
+  label: 'Mettre à jour la carte',
+  onClick: updateVisualization,
+  style: {width: '200px'}
+});
+
+// Ajouter les widgets au panneau
+var panel = ui.Panel([
+  dateLabel,
+  dateSlider,
+  selectedDateLabel,
+  updateButton
+], ui.Panel.Layout.flow('vertical'), {
+  width: '350px',
+  position: 'top-left'
+});
+
+Map.add(panel);
+
+// Initialisation avec la date par défaut
+var example_date = ee.Date('2020-07-15');
 var example_image = ee.ImageCollection('MODIS/061/MCD43A3')
   .filterDate(example_date, example_date.advance(5, 'day'))
   .filterBounds(glacier_geometry)
