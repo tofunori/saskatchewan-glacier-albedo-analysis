@@ -225,8 +225,15 @@ var calculateTrend = function(className) {
   });
   
   var trend_fc = ee.FeatureCollection(trend_data);
+  
+  // Calculer la régression linéaire et la corrélation séparément
   var linearFit = trend_fc.reduceColumns({
     reducer: ee.Reducer.linearFit(),
+    selectors: ['year', 'albedo']
+  });
+  
+  var correlation = trend_fc.reduceColumns({
+    reducer: ee.Reducer.pearsonsCorrelation(),
     selectors: ['year', 'albedo']
   });
   
@@ -234,7 +241,7 @@ var calculateTrend = function(className) {
     'class': className,
     'slope': linearFit.get('scale'),
     'offset': linearFit.get('offset'),
-    'r2': linearFit.get('pearsonCorrelation')
+    'correlation': correlation.get('correlation')
   });
 };
 
@@ -248,7 +255,7 @@ var trend_analyses = ee.FeatureCollection([
 
 print('');
 print('ANALYSES DE TENDANCE PAR CLASSE :');
-print('(pente = changement d\'albédo par an)', trend_analyses);
+print('(pente = changement d\'albédo par an, correlation = coefficient de corrélation)', trend_analyses);
 
 // ┌────────────────────────────────────────────────────────────────────────────────────────┐
 // │ SECTION 7 : VISUALISATION CARTOGRAPHIQUE                                              │
