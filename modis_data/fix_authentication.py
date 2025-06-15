@@ -14,7 +14,7 @@ def test_credentials():
     print("=" * 50)
     
     username = "tofunori"
-    password = "ASDqwe1234!"
+    password = "ASDqwe1234567890!"
     
     print(f"Username: {username}")
     print(f"Password: {'*' * len(password)}")

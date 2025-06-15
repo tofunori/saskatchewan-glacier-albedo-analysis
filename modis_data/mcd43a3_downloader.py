@@ -163,7 +163,7 @@ def main():
     
     # Your credentials
     username = "tofunori"
-    password = "ASDqwe1234!"
+    password = "ASDqwe1234567890!"
     glacier_mask_path = r"D:\Downloads\saskatchewan_glacier_mask.geojson"
     
     # Create downloader

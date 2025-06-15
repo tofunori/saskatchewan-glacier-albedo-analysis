@@ -13,7 +13,7 @@ def test_manual_download():
     
     # Authentication
     username = "tofunori"
-    password = "ASDqwe1234!"
+    password = "ASDqwe1234567890!"
     session = ModisSession(username=username, password=password)
     print("✅ Authenticated")
     
