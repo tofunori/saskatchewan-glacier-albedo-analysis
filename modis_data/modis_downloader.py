@@ -89,7 +89,7 @@ class SaskatchewanGlacierModisDownloader:
             print("📥 Downloading MCD10A1 snow cover data...")
             file_paths = GranuleHandler.download_from_granules(
                 granules_list, 
-                session=self.session, 
+                modis_session=self.session, 
                 path=str(self.snow_dir),
                 threads=-1  # Use all available cores
             )
@@ -135,7 +135,7 @@ class SaskatchewanGlacierModisDownloader:
             print("📥 Downloading MCD43A3 albedo data...")
             file_paths = GranuleHandler.download_from_granules(
                 granules_list, 
-                session=self.session, 
+                modis_session=self.session, 
                 path=str(self.albedo_dir),
                 threads=-1  # Use all available cores
             )
