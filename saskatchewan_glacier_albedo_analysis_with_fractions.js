@@ -279,8 +279,11 @@ var selectedDateLabel = ui.Label('Date sélectionnée: 2020-07-15');
 
 // Fonction pour mettre à jour la visualisation selon la date choisie
 var updateVisualization = function() {
-  // dateSlider.getValue() retourne un objet JavaScript Date
-  var js_date = dateSlider.getValue();
+  // dateSlider.getValue() retourne un array [startDate, endDate]
+  var dateRange = dateSlider.getValue();
+  
+  // Prendre la première date (startDate) du range
+  var js_date = dateRange[0];
   
   // Convertir en ee.Date pour les opérations Earth Engine
   var selected_date = ee.Date(js_date);
