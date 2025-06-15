@@ -314,31 +314,81 @@ var updateVisualization = function() {
     .multiply(0.001)
     .updateMask(example_image.select('BRDF_Albedo_Band_Mandatory_Quality_shortwave').lte(1));
   
-  // Effacer les couches précédentes (sauf la première)
+  // Sauvegarder l'état de visibilité des couches existantes
   var layers = Map.layers();
+  var layerStates = [];
+  
+  // Parcourir les couches existantes pour sauvegarder leur état de visibilité
+  for (var i = 1; i < layers.length(); i++) { // Commencer à 1 pour ignorer le masque glacier
+    var layer = layers.get(i);
+    layerStates.push({
+      name: layer.getName(),
+      visible: layer.getShown()
+    });
+  }
+  
+  // Effacer les couches précédentes (sauf la première - masque glacier)
   while (layers.length() > 1) {
     Map.remove(layers.get(layers.length() - 1));
   }
   
-  // Ajouter les nouvelles couches
-  Map.addLayer(example_fraction.updateMask(example_fraction.gt(0)), 
-    {min: 0, max: 1, palette: ['red', 'orange', 'yellow', 'lightblue', 'blue']}, 
-    '1. Fraction de couverture - ' + dateString);
+  // Définir toutes les nouvelles couches avec leurs données
+  var newLayers = [
+    {
+      name: '1. Fraction de couverture - ' + dateString,
+      image: example_fraction.updateMask(example_fraction.gt(0)),
+      vis: {min: 0, max: 1, palette: ['red', 'orange', 'yellow', 'lightblue', 'blue']},
+      defaultVisible: true
+    },
+    {
+      name: '2. Albédo 0-25% (bordure)',
+      image: example_albedo.updateMask(example_masks.border),
+      vis: {min: 0.3, max: 0.9, palette: ['darkblue', 'blue', 'cyan', 'yellow', 'orange', 'red']},
+      defaultVisible: false
+    },
+    {
+      name: '3. Albédo 25-50% (mixte bas)',
+      image: example_albedo.updateMask(example_masks.mixed_low),
+      vis: {min: 0.3, max: 0.9, palette: ['darkblue', 'blue', 'cyan', 'yellow', 'orange', 'red']},
+      defaultVisible: false
+    },
+    {
+      name: '4. Albédo 50-75% (mixte haut)',
+      image: example_albedo.updateMask(example_masks.mixed_high),
+      vis: {min: 0.3, max: 0.9, palette: ['darkblue', 'blue', 'cyan', 'yellow', 'orange', 'red']},
+      defaultVisible: true
+    },
+    {
+      name: '5. Albédo 75-90% (majoritaire)',
+      image: example_albedo.updateMask(example_masks.mostly_ice),
+      vis: {min: 0.3, max: 0.9, palette: ['darkblue', 'blue', 'cyan', 'yellow', 'orange', 'red']},
+      defaultVisible: true
+    },
+    {
+      name: '6. Albédo 90-100% (pur)',
+      image: example_albedo.updateMask(example_masks.pure_ice),
+      vis: {min: 0.3, max: 0.9, palette: ['darkblue', 'blue', 'cyan', 'yellow', 'orange', 'red']},
+      defaultVisible: true
+    }
+  ];
   
-  // Paramètres d'albédo
-  var albedoVis = {min: 0.3, max: 0.9, palette: ['darkblue', 'blue', 'cyan', 'yellow', 'orange', 'red']};
-  
-  // Ajouter l'albédo pour chaque classe
-  Map.addLayer(example_albedo.updateMask(example_masks.border), albedoVis, 
-    '2. Albédo 0-25% (bordure)', false);
-  Map.addLayer(example_albedo.updateMask(example_masks.mixed_low), albedoVis, 
-    '3. Albédo 25-50% (mixte bas)', false);
-  Map.addLayer(example_albedo.updateMask(example_masks.mixed_high), albedoVis, 
-    '4. Albédo 50-75% (mixte haut)');
-  Map.addLayer(example_albedo.updateMask(example_masks.mostly_ice), albedoVis, 
-    '5. Albédo 75-90% (majoritaire)');
-  Map.addLayer(example_albedo.updateMask(example_masks.pure_ice), albedoVis, 
-    '6. Albédo 90-100% (pur)');
+  // Ajouter chaque nouvelle couche en préservant l'état de visibilité
+  newLayers.forEach(function(layerDef) {
+    // Chercher si cette couche était visible dans l'état précédent
+    var wasVisible = layerDef.defaultVisible; // Valeur par défaut
+    
+    // Vérifier l'état précédent (en ignorant la date dans le nom)
+    layerStates.forEach(function(state) {
+      var baseName = layerDef.name.split(' - ')[0]; // Enlever la partie date
+      var stateBaseName = state.name.split(' - ')[0];
+      if (baseName === stateBaseName) {
+        wasVisible = state.visible;
+      }
+    });
+    
+    // Ajouter la couche avec l'état de visibilité préservé
+    Map.addLayer(layerDef.image, layerDef.vis, layerDef.name, wasVisible);
+  });
 };
 
 // Bouton pour mettre à jour la visualisation
