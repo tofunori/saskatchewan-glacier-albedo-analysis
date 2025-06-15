@@ -480,7 +480,139 @@ Export.image.toDrive({
 });
 
 // ┌────────────────────────────────────────────────────────────────────────────────────────┐
-// │ SECTION 9 : RÉSUMÉ ET INTERPRÉTATION                                                  │
+// │ SECTION 9 : ANALYSE QUOTIDIENNE PAR FRACTION DE COUVERTURE                            │
+// └────────────────────────────────────────────────────────────────────────────────────────┘
+
+// 14. Fonction pour analyser les statistiques quotidiennes par fraction
+function analyzeDailyAlbedoByFraction(img) {
+  var date = img.date();
+  var quality = img.select('BRDF_Albedo_Band_Mandatory_Quality_shortwave');
+  var albedo = img.select('Albedo_WSA_shortwave').multiply(0.001);
+  
+  // Calculer la fraction de couverture pour cette image
+  var fraction = calculatePixelFraction(img, glacier_mask);
+  var masks = createFractionMasks(fraction, FRACTION_THRESHOLDS);
+  
+  // Masque de qualité générale
+  var goodQualityMask = quality.lte(1);
+  
+  // Calculer les statistiques pour chaque classe de fraction
+  var stats = {};
+  var classNames = ['border', 'mixed_low', 'mixed_high', 'mostly_ice', 'pure_ice'];
+  
+  classNames.forEach(function(className) {
+    // Combiner masque de qualité et masque de fraction
+    var classMask = masks[className].and(goodQualityMask);
+    var validAlbedo = albedo.updateMask(classMask);
+    
+    // Calculer les statistiques d'albédo pour cette classe
+    var classStats = validAlbedo.reduceRegion({
+      reducer: ee.Reducer.mean().combine(
+        ee.Reducer.stdDev(), '', true
+      ).combine(
+        ee.Reducer.percentile([25, 50, 75]), '', true
+      ).combine(
+        ee.Reducer.count(), '', true
+      ),
+      geometry: glacier_geometry,
+      scale: 500,
+      maxPixels: 1e9,
+      bestEffort: true
+    });
+    
+    // Calculer le nombre de pixels dans cette classe (avec fraction > 0)
+    var fractionPixelCount = masks[className].reduceRegion({
+      reducer: ee.Reducer.sum(),
+      geometry: glacier_geometry,
+      scale: 500,
+      maxPixels: 1e9,
+      bestEffort: true
+    }).get('constant');
+    
+    // Stocker les statistiques
+    stats[className + '_mean'] = classStats.get('Albedo_WSA_shortwave_mean');
+    stats[className + '_stdDev'] = classStats.get('Albedo_WSA_shortwave_stdDev');
+    stats[className + '_p25'] = classStats.get('Albedo_WSA_shortwave_p25');
+    stats[className + '_median'] = classStats.get('Albedo_WSA_shortwave_p50');
+    stats[className + '_p75'] = classStats.get('Albedo_WSA_shortwave_p75');
+    stats[className + '_albedo_count'] = classStats.get('Albedo_WSA_shortwave_count');
+    stats[className + '_fraction_pixels'] = fractionPixelCount;
+  });
+  
+  // Ajouter les informations temporelles
+  stats['system:time_start'] = date.millis();
+  stats['date'] = date.format('YYYY-MM-dd');
+  stats['doy'] = date.getRelative('day', 'year');
+  stats['year'] = date.get('year');
+  stats['month'] = date.get('month');
+  
+  return ee.Feature(null, stats);
+}
+
+// 15. Calculer les statistiques quotidiennes pour toute la période d'étude
+print('');
+print('=== CALCUL DES STATISTIQUES QUOTIDIENNES PAR FRACTION ===');
+print('Traitement des données quotidiennes 2010-2024 (juin-septembre)...');
+
+// Charger la collection complète pour l'analyse quotidienne
+var dailyCollection = ee.ImageCollection('MODIS/061/MCD43A3')
+  .filterDate('2010-01-01', '2024-12-31')
+  .filterBounds(glacier_geometry)
+  .filter(ee.Filter.calendarRange(SUMMER_START_MONTH, SUMMER_END_MONTH, 'month'))
+  .select(['Albedo_WSA_shortwave', 'BRDF_Albedo_Band_Mandatory_Quality_shortwave']);
+
+// Appliquer l'analyse quotidienne
+var dailyAlbedoByFraction = dailyCollection.map(analyzeDailyAlbedoByFraction);
+
+print('Statistiques quotidiennes par fraction calculées:', dailyAlbedoByFraction.size(), 'jours');
+
+// 16. Créer un graphique de l'évolution quotidienne par classe principale
+var dailyChart = ui.Chart.feature.byFeature(
+    dailyAlbedoByFraction, 
+    'system:time_start', 
+    ['border_mean', 'mixed_high_mean', 'mostly_ice_mean', 'pure_ice_mean']
+  )
+  .setChartType('LineChart')
+  .setOptions({
+    title: 'Évolution quotidienne de l\'albédo par classe de fraction (2010-2024)',
+    hAxis: {title: 'Date', format: 'yyyy'},
+    vAxis: {title: 'Albédo moyen', viewWindow: {min: 0.3, max: 0.9}},
+    series: {
+      0: {color: 'red', lineWidth: 1, pointSize: 2},      // Border
+      1: {color: 'orange', lineWidth: 1, pointSize: 2},   // Mixed high
+      2: {color: 'lightblue', lineWidth: 2, pointSize: 2}, // Mostly ice
+      3: {color: 'blue', lineWidth: 2, pointSize: 3}      // Pure ice
+    },
+    legend: {
+      position: 'top',
+      labels: ['0-25% (bordure)', '50-75% (mixte haut)', '75-90% (majoritaire)', '90-100% (pur)']
+    },
+    height: 400,
+    interpolateNulls: false
+  });
+
+print('');
+print('GRAPHIQUE D\'ÉVOLUTION QUOTIDIENNE :');
+print(dailyChart);
+
+// 17. Export des statistiques quotidiennes par fraction
+Export.table.toDrive({
+  collection: dailyAlbedoByFraction,
+  description: 'Saskatchewan_Daily_Albedo_By_Fraction_2010_2024',
+  folder: 'GEE_exports',
+  fileNamePrefix: 'daily_albedo_by_fraction_2010_2024',
+  fileFormat: 'CSV'
+});
+
+print('');
+print('EXPORT CONFIGURÉ :');
+print('✓ Fichier: daily_albedo_by_fraction_2010_2024.csv');
+print('✓ Contenu: Statistiques quotidiennes par classe de fraction');
+print('✓ Période: Étés 2010-2024 (juin-septembre)');
+print('✓ Variables par classe: mean, stdDev, p25, median, p75, albedo_count, fraction_pixels');
+
+// ┌────────────────────────────────────────────────────────────────────────────────────────┐
+// │ SECTION 10 : RÉSUMÉ ET INTERPRÉTATION                                                 │
 // └────────────────────────────────────────────────────────────────────────────────────────┘
 
 print('');
@@ -494,14 +626,22 @@ print('• 75-90% : Pixels majoritairement glacier');
 print('• 90-100% : Pixels quasi-purs glacier');
 print('');
 print('ANALYSES DISPONIBLES :');
-print('• Évolution temporelle par classe');
+print('• Évolution temporelle par classe (annuelle et quotidienne)');
 print('• Tendances linéaires par niveau de pureté');
 print('• Comparaison entre pixels purs vs mixtes');
 print('• Impact du choix de seuil sur les résultats');
+print('• Statistiques quotidiennes détaillées par fraction');
+print('');
+print('EXPORTS GÉNÉRÉS :');
+print('• Statistiques annuelles par fraction');
+print('• Analyses de tendance par classe');
+print('• Statistiques quotidiennes par fraction (NOUVEAU!)');
+print('• Cartes de fraction d\'exemple');
 print('');
 print('APPLICATIONS :');
 print('• Optimisation des seuils de couverture');
 print('• Compréhension des biais de bordure');
 print('• Analyses plus robustes de l\'évolution glaciaire');
+print('• Études de variabilité quotidienne par pureté de pixel');
 
 // FIN DU SCRIPT
