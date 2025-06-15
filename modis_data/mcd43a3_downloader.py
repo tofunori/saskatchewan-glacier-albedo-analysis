@@ -337,8 +337,8 @@ def main():
     downloader = MCD43A3Downloader(username, password, glacier_mask_path)
     
     # Download for a small date range
-    start_date = "2024-08-01"
-    end_date = "2024-08-05"  # Just 4 days
+    start_date = "2024-09-15"
+    end_date = "2024-09-18"  # Just 4 days
     
     files = downloader.download_mcd43a3(start_date, end_date, max_files=3)
     
