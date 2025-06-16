@@ -7,12 +7,28 @@ pour l'étude des tendances d'albédo du glacier Saskatchewan.
 """
 
 import os
+import sys
 from datetime import datetime
-from .data_loader import SaskatchewanDataLoader
-from .basic_trends import BasicTrendAnalyzer
-from .seasonal_analysis import SeasonalAnalyzer
-from .visualizations import AlbedoVisualizer
-from .utils import print_section_header, ensure_directory_exists
+from pathlib import Path
+
+# Gérer les imports relatifs et absolus
+try:
+    # Import relatif (quand utilisé comme module)
+    from .data_loader import SaskatchewanDataLoader
+    from .basic_trends import BasicTrendAnalyzer
+    from .seasonal_analysis import SeasonalAnalyzer
+    from .visualizations import AlbedoVisualizer
+    from .utils import print_section_header, ensure_directory_exists
+except ImportError:
+    # Import absolu (quand exécuté directement)
+    current_dir = Path(__file__).parent
+    sys.path.insert(0, str(current_dir))
+    
+    from data_loader import SaskatchewanDataLoader
+    from basic_trends import BasicTrendAnalyzer
+    from seasonal_analysis import SeasonalAnalyzer
+    from visualizations import AlbedoVisualizer
+    from utils import print_section_header, ensure_directory_exists
 
 def run_complete_analysis(csv_path, output_dir='analysis_output', variable='mean'):
     """

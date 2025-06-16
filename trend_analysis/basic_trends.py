@@ -9,13 +9,18 @@ dans les données d'albédo du glacier Saskatchewan.
 import numpy as np
 import pandas as pd
 from scipy.stats import theilslopes
-from .config import FRACTION_CLASSES, CLASS_LABELS, TREND_SYMBOLS, get_significance_marker
-from .utils import (manual_mann_kendall, check_pymannkendall, validate_data, 
-                   print_section_header, format_pvalue, calculate_autocorrelation)
 
-# Import conditionnel de pymannkendall
-if check_pymannkendall():
-    import pymannkendall as mk
+# Gérer les imports relatifs et absolus
+try:
+    from .config import FRACTION_CLASSES, CLASS_LABELS, TREND_SYMBOLS, get_significance_marker
+    from .utils import (manual_mann_kendall, check_pymannkendall, validate_data, 
+                       print_section_header, format_pvalue, calculate_autocorrelation)
+except ImportError:
+    from config import FRACTION_CLASSES, CLASS_LABELS, TREND_SYMBOLS, get_significance_marker
+    from utils import (manual_mann_kendall, check_pymannkendall, validate_data, 
+                      print_section_header, format_pvalue, calculate_autocorrelation)
+
+# Import conditionnel de pymannkendall sera fait dans les fonctions
 
 class BasicTrendAnalyzer:
     """
@@ -134,6 +139,7 @@ class BasicTrendAnalyzer:
         """
         if check_pymannkendall():
             try:
+                import pymannkendall as mk
                 mk_result = mk.original_test(values)
                 return {
                     'trend': mk_result.trend,

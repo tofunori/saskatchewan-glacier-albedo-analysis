@@ -9,8 +9,14 @@ CSV exportées depuis Google Earth Engine.
 import pandas as pd
 import numpy as np
 import os
-from .config import FRACTION_CLASSES, CLASS_LABELS, ANALYSIS_CONFIG
-from .utils import print_section_header, validate_data
+
+# Gérer les imports relatifs et absolus
+try:
+    from .config import FRACTION_CLASSES, CLASS_LABELS, ANALYSIS_CONFIG
+    from .utils import print_section_header, validate_data
+except ImportError:
+    from config import FRACTION_CLASSES, CLASS_LABELS, ANALYSIS_CONFIG
+    from utils import print_section_header, validate_data
 
 class SaskatchewanDataLoader:
     """

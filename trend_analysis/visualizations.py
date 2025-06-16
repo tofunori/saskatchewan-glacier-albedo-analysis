@@ -11,9 +11,16 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from datetime import datetime
-from .config import (FRACTION_CLASSES, CLASS_LABELS, FRACTION_COLORS, PLOT_STYLES,
-                    TREND_SYMBOLS, get_significance_marker)
-from .utils import print_section_header, format_pvalue
+
+# Gérer les imports relatifs et absolus
+try:
+    from .config import (FRACTION_CLASSES, CLASS_LABELS, FRACTION_COLORS, PLOT_STYLES,
+                        TREND_SYMBOLS, get_significance_marker)
+    from .utils import print_section_header, format_pvalue
+except ImportError:
+    from config import (FRACTION_CLASSES, CLASS_LABELS, FRACTION_COLORS, PLOT_STYLES,
+                       TREND_SYMBOLS, get_significance_marker)
+    from utils import print_section_header, format_pvalue
 
 class AlbedoVisualizer:
     """

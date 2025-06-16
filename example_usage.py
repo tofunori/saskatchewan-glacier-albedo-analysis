@@ -12,7 +12,8 @@ import sys
 from pathlib import Path
 
 # Ajouter le répertoire du package au path
-sys.path.insert(0, str(Path(__file__).parent))
+project_dir = Path(__file__).parent
+sys.path.insert(0, str(project_dir))
 
 def example_complete_analysis():
     """

@@ -10,9 +10,16 @@ import os
 import pandas as pd
 import numpy as np
 from datetime import datetime
-from .config import (FRACTION_CLASSES, CLASS_LABELS, TREND_SYMBOLS,
-                    get_significance_marker, EXPORT_CONFIG)
-from .utils import print_section_header, format_pvalue, ensure_directory_exists, get_timestamp
+
+# Gérer les imports relatifs et absolus
+try:
+    from .config import (FRACTION_CLASSES, CLASS_LABELS, TREND_SYMBOLS,
+                        get_significance_marker, EXPORT_CONFIG)
+    from .utils import print_section_header, format_pvalue, ensure_directory_exists, get_timestamp
+except ImportError:
+    from config import (FRACTION_CLASSES, CLASS_LABELS, TREND_SYMBOLS,
+                       get_significance_marker, EXPORT_CONFIG)
+    from utils import print_section_header, format_pvalue, ensure_directory_exists, get_timestamp
 
 class ResultsExporter:
     """
