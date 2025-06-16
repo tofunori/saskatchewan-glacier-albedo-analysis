@@ -316,6 +316,211 @@ class PixelVisualizer:
         plt.show()
         return save_path
     
+    def create_daily_melt_season_plots(self, pixel_analyzer, save_dir=None):
+        """
+        Create daily QA and pixel count plots for each year's melt season
+        
+        Args:
+            pixel_analyzer: PixelCountAnalyzer instance with loaded data
+            save_dir (str, optional): Directory to save the plots
+            
+        Returns:
+            list: Paths to saved plots for each year
+        """
+        print_section_header("Création des graphiques quotidiens par saison de fonte", level=2)
+        
+        if save_dir is None:
+            ensure_directory_exists(OUTPUT_DIR)
+            save_dir = OUTPUT_DIR
+        
+        # Get available years from the data
+        years = sorted(self.data['year'].unique())
+        print(f"📅 Années disponibles: {years}")
+        
+        saved_plots = []
+        
+        for year in years:
+            print(f"\n🎯 Création des graphiques pour l'année {year}")
+            
+            # Filter data for this year's melt season (June-September)
+            year_data = self.data[
+                (self.data['year'] == year) & 
+                (self.data['month'].isin([6, 7, 8, 9]))
+            ].copy()
+            
+            if len(year_data) == 0:
+                print(f"⚠️ Pas de données pour {year}")
+                continue
+            
+            # Create plot for this year
+            plot_path = self._create_yearly_daily_plot(year, year_data, pixel_analyzer, save_dir)
+            if plot_path:
+                saved_plots.append(plot_path)
+        
+        print(f"\n✅ {len(saved_plots)} graphiques annuels créés")
+        return saved_plots
+    
+    def _create_yearly_daily_plot(self, year, year_data, pixel_analyzer, save_dir):
+        """
+        Create daily plot for a specific year's melt season
+        
+        Args:
+            year (int): Year to plot
+            year_data (pd.DataFrame): Data for this year
+            pixel_analyzer: PixelCountAnalyzer instance
+            save_dir (str): Directory to save the plot
+            
+        Returns:
+            str: Path to saved plot
+        """
+        # Create figure with 3 subplots: pixel counts, QA scores, and combined view
+        fig, axes = plt.subplots(3, 1, figsize=(16, 14))
+        fig.suptitle(f'Saison de Fonte {year} - Comptages de Pixels et Qualité QA Quotidiens', 
+                     fontsize=16, fontweight='bold')
+        
+        # Sort data by date
+        year_data = year_data.sort_values('date')
+        dates = year_data['date']
+        
+        # Plot 1: Daily pixel counts by fraction
+        ax1 = axes[0]
+        for fraction in self.fraction_classes:
+            pixel_col = f"{fraction}_pixel_count"
+            if pixel_col in year_data.columns:
+                pixel_data = year_data[pixel_col].dropna()
+                if len(pixel_data) > 0:
+                    ax1.plot(year_data['date'], year_data[pixel_col], 
+                            marker='o', markersize=3, linewidth=1, alpha=0.8,
+                            label=self.class_labels[fraction],
+                            color=FRACTION_COLORS.get(fraction, 'gray'))
+        
+        ax1.set_title(f'📊 Comptages Quotidiens de Pixels - {year}', fontweight='bold')
+        ax1.set_xlabel('Date')
+        ax1.set_ylabel('Nombre de Pixels')
+        ax1.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+        ax1.grid(True, alpha=0.3)
+        
+        # Plot 2: Daily QA scores (if available)
+        ax2 = axes[1]
+        qa_plotted = False
+        
+        # Try to plot QA data if available
+        if pixel_analyzer.qa_data is not None:
+            year_qa_data = pixel_analyzer.qa_data[
+                pixel_analyzer.qa_data['year'] == year
+            ].copy()
+            
+            if len(year_qa_data) > 0:
+                year_qa_data = year_qa_data.sort_values('date')
+                
+                # Plot QA scores 0-3
+                qa_colors = ['#2E8B57', '#4682B4', '#FF8C00', '#DC143C']
+                qa_labels = ['QA 0 (Meilleur)', 'QA 1 (Bon)', 'QA 2 (Modéré)', 'QA 3 (Mauvais)']
+                
+                for i, qa_col in enumerate(['quality_0_best', 'quality_1_good', 'quality_2_moderate', 'quality_3_poor']):
+                    if qa_col in year_qa_data.columns:
+                        ax2.plot(year_qa_data['date'], year_qa_data[qa_col], 
+                                marker='s', markersize=2, linewidth=1, alpha=0.7,
+                                label=qa_labels[i], color=qa_colors[i])
+                        qa_plotted = True
+        
+        # If no QA data, plot data quality from main dataset
+        if not qa_plotted:
+            for fraction in self.fraction_classes:
+                qa_col = f"{fraction}_data_quality"
+                if qa_col in year_data.columns:
+                    qa_data = year_data[qa_col].dropna()
+                    if len(qa_data) > 0:
+                        ax2.plot(year_data['date'], year_data[qa_col], 
+                                marker='s', markersize=3, linewidth=1, alpha=0.7,
+                                label=f"{self.class_labels[fraction]} QA",
+                                color=FRACTION_COLORS.get(fraction, 'gray'))
+                        qa_plotted = True
+        
+        if qa_plotted:
+            ax2.set_title(f'📈 Scores de Qualité Quotidiens - {year}', fontweight='bold')
+            ax2.set_xlabel('Date')
+            ax2.set_ylabel('Qualité (%)')
+            ax2.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+            ax2.grid(True, alpha=0.3)
+        else:
+            ax2.text(0.5, 0.5, 'Aucune donnée QA disponible pour cette année', 
+                    ha='center', va='center', transform=ax2.transAxes, fontsize=12)
+            ax2.set_title(f'📈 Scores de Qualité - {year} (Non disponible)', fontweight='bold')
+        
+        # Plot 3: Total valid pixels over time
+        ax3 = axes[2]
+        if 'total_valid_pixels' in year_data.columns:
+            ax3.plot(year_data['date'], year_data['total_valid_pixels'], 
+                    'b-', linewidth=2, alpha=0.8, label='Pixels Valides Totaux')
+            
+            # Add monthly averages
+            monthly_avg = year_data.groupby(year_data['date'].dt.month)['total_valid_pixels'].mean()
+            for month, avg_pixels in monthly_avg.items():
+                month_data = year_data[year_data['date'].dt.month == month]
+                if len(month_data) > 0:
+                    mid_date = month_data['date'].iloc[len(month_data)//2]
+                    ax3.axhline(y=avg_pixels, alpha=0.5, linestyle='--', 
+                              label=f'Moy. {MONTH_NAMES[month]}: {avg_pixels:.0f}')
+            
+            ax3.set_title(f'📊 Pixels Valides Totaux Quotidiens - {year}', fontweight='bold')
+            ax3.set_xlabel('Date')
+            ax3.set_ylabel('Nombre Total de Pixels')
+            ax3.legend()
+            ax3.grid(True, alpha=0.3)
+        else:
+            ax3.text(0.5, 0.5, 'Données de pixels totaux non disponibles', 
+                    ha='center', va='center', transform=ax3.transAxes, fontsize=12)
+            ax3.set_title(f'📊 Pixels Totaux - {year} (Non disponible)', fontweight='bold')
+        
+        # Add summary statistics text box
+        stats_text = self._generate_year_summary_stats(year, year_data, pixel_analyzer)
+        fig.text(0.02, 0.02, stats_text, fontsize=9, 
+                bbox=dict(boxstyle='round', facecolor='lightgray', alpha=0.8))
+        
+        plt.tight_layout()
+        
+        # Save the plot
+        save_path = os.path.join(save_dir, f'daily_melt_season_{year}.png')
+        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+        print(f"✅ Graphique {year} sauvegardé: {save_path}")
+        
+        plt.show()
+        return save_path
+    
+    def _generate_year_summary_stats(self, year, year_data, pixel_analyzer):
+        """
+        Generate summary statistics text for a year
+        
+        Args:
+            year (int): Year
+            year_data (pd.DataFrame): Data for this year
+            pixel_analyzer: PixelCountAnalyzer instance
+            
+        Returns:
+            str: Summary statistics text
+        """
+        stats_lines = [f"📊 RÉSUMÉ {year}:"]
+        
+        # Basic statistics
+        total_days = len(year_data)
+        date_range = f"{year_data['date'].min().strftime('%Y-%m-%d')} à {year_data['date'].max().strftime('%Y-%m-%d')}"
+        stats_lines.append(f"• {total_days} jours de données ({date_range})")
+        
+        # Pixel count statistics
+        if 'total_valid_pixels' in year_data.columns:
+            total_pixels = year_data['total_valid_pixels']
+            avg_pixels = total_pixels.mean()
+            stats_lines.append(f"• Moyenne pixels/jour: {avg_pixels:.0f}")
+            stats_lines.append(f"• Range pixels: {total_pixels.min():.0f} - {total_pixels.max():.0f}")
+        
+        # Monthly breakdown
+        monthly_counts = year_data['month'].value_counts().sort_index()
+        month_summary = ", ".join([f"{MONTH_NAMES[m]}({count}j)" for m, count in monthly_counts.items()])
+        stats_lines.append(f"• Répartition: {month_summary}")
+        
+        return "\n".join(stats_lines)
+    
     def _plot_qa_scores_distribution(self, ax, qa_stats):
         """Plot QA scores distribution by month"""
         qa_colors = ['#2E8B57', '#4682B4', '#FF8C00', '#DC143C']  # Colors for QA 0,1,2,3

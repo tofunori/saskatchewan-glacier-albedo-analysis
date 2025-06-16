@@ -233,8 +233,25 @@ def main():
         except Exception as e:
             print(f"⚠️  Erreur lors des visualisations de pixels: {e}")
         
-        # ÉTAPE 8: Exports des résultats
-        print_section_header("ÉTAPE 8: Export des résultats", level=1)
+        # ÉTAPE 8: Graphiques quotidiens par année de saison de fonte
+        print_section_header("ÉTAPE 8: Graphiques quotidiens par saison de fonte", level=1)
+        
+        try:
+            # Créer les graphiques quotidiens pour chaque année
+            if 'pixel_analyzer' in locals() and 'pixel_visualizer' in locals():
+                daily_plots = pixel_visualizer.create_daily_melt_season_plots(
+                    pixel_analyzer, 
+                    str(output_path)
+                )
+                print(f"✅ {len(daily_plots)} graphiques quotidiens annuels créés")
+            else:
+                print("⚠️  Analyseur de pixels non disponible pour les graphiques quotidiens")
+            
+        except Exception as e:
+            print(f"⚠️  Erreur lors des graphiques quotidiens: {e}")
+        
+        # ÉTAPE 9: Exports des résultats
+        print_section_header("ÉTAPE 9: Export des résultats", level=1)
         
         try:
             # Export du tableau de résumé
@@ -294,6 +311,11 @@ def main():
             ('Données nettoyées', f'cleaned_data_{ANALYSIS_VARIABLE}.csv')
         ]
         
+        # Add daily melt season plots (pattern: daily_melt_season_YYYY.png)
+        for year_file in output_path.glob('daily_melt_season_*.png'):
+            year = year_file.stem.split('_')[-1]  # Extract year from filename
+            output_files.append((f'Graphiques quotidiens {year}', year_file.name))
+        
         for description, filename in output_files:
             filepath = output_path / filename
             if filepath.exists():
@@ -306,6 +328,8 @@ def main():
         print(f"🎯 GRAPHIQUES PRINCIPAUX À CONSULTER :")
         print(f"   📊 monthly_statistics_{ANALYSIS_VARIABLE}.png - VOS GRAPHIQUES MENSUELS")
         print(f"   📈 trend_overview_{ANALYSIS_VARIABLE}.png - Vue d'ensemble des tendances")
+        print(f"   📅 daily_melt_season_YYYY.png - GRAPHIQUES QUOTIDIENS PAR ANNÉE")
+        print(f"   🔍 true_qa_scores_analysis.png - Analyse QA scores 0-3")
         print(f"   📄 summary_trends_{ANALYSIS_VARIABLE}.csv - Résumé des statistiques")
         
         return True
