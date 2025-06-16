@@ -537,7 +537,7 @@ class PixelVisualizer:
             str: Path to saved plot
         """
         # Create figure with 3 vertically stacked subplots for better readability
-        fig, axes = plt.subplots(3, 1, figsize=(16, 15))
+        fig, axes = plt.subplots(3, 1, figsize=(16, 18), gridspec_kw={'hspace': 0.4})
         
         # Enhanced title with dataset info
         dataset_name = "MOD10A1" if "mod10a1" in dataset_suffix else "MCD43A3"
@@ -710,13 +710,17 @@ class PixelVisualizer:
         # Adjust layout with proper spacing for vertical stack
         plt.tight_layout(rect=[0.0, 0.08, 1.0, 0.96])
         
-        # Apply consistent date formatting to all x-axes
+        # Apply consistent date formatting to all x-axes with more frequent dates
         import matplotlib.dates as mdates
         for ax in axes:
+            # Plus de dates sur l'axe X - tous les 15 jours
             ax.xaxis.set_major_formatter(mdates.DateFormatter('%m/%d'))
-            ax.xaxis.set_major_locator(mdates.MonthLocator())
-            ax.tick_params(axis='x', rotation=45, labelsize=12)
+            ax.xaxis.set_major_locator(mdates.DayLocator(interval=15))  # Tous les 15 jours
+            ax.xaxis.set_minor_locator(mdates.DayLocator(interval=7))   # Marques mineures tous les 7 jours
+            ax.tick_params(axis='x', rotation=45, labelsize=11)
             ax.tick_params(axis='y', labelsize=12)
+            # Améliorer l'espacement des étiquettes
+            plt.setp(ax.xaxis.get_majorticklabels(), ha='right')
         
         # Create directory if it doesn't exist
         os.makedirs(save_dir, exist_ok=True)
