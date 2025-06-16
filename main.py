@@ -30,11 +30,12 @@ warnings.filterwarnings('ignore')
 script_dir = Path(__file__).parent.absolute()
 sys.path.insert(0, str(script_dir))
 
-# Changer le répertoire de travail vers le répertoire du script
-os.chdir(script_dir)
-
-print(f"📂 Répertoire de travail: {Path.cwd()}")
+print(f"📂 Répertoire de travail actuel: {Path.cwd()}")
 print(f"📁 Répertoire du script: {script_dir}")
+print(f"🔍 Recherche des modules dans: {script_dir}")
+
+# Variable globale pour le répertoire du script
+SCRIPT_DIR = script_dir
 
 # Imports des modules locaux (tous dans le même dossier)
 try:
@@ -75,9 +76,10 @@ def main():
     
     print(f"✅ Fichier CSV trouvé : {CSV_PATH}")
     
-    # Créer le répertoire de sortie
-    ensure_directory_exists(OUTPUT_DIR)
-    print(f"📁 Répertoire de sortie : {OUTPUT_DIR}/")
+    # Créer le répertoire de sortie (chemin absolu)
+    output_path = SCRIPT_DIR / OUTPUT_DIR
+    ensure_directory_exists(str(output_path))
+    print(f"📁 Répertoire de sortie : {output_path}/")
     print()
     
     try:
@@ -108,7 +110,7 @@ def main():
         # Créer les 4 graphiques mensuels que vous avez demandés
         monthly_graph_path = monthly_visualizer.create_monthly_statistics_graphs(
             ANALYSIS_VARIABLE, 
-            os.path.join(OUTPUT_DIR, f'monthly_statistics_{ANALYSIS_VARIABLE}.png')
+            str(output_path / f'monthly_statistics_{ANALYSIS_VARIABLE}.png')
         )
         
         if monthly_graph_path:
@@ -118,7 +120,7 @@ def main():
         if monthly_results:
             comparison_path = monthly_visualizer.create_seasonal_trends_comparison(
                 monthly_results, ANALYSIS_VARIABLE,
-                os.path.join(OUTPUT_DIR, f'monthly_comparison_{ANALYSIS_VARIABLE}.png')
+                str(output_path / f'monthly_comparison_{ANALYSIS_VARIABLE}.png')
             )
             
             # Résumé mensuel
@@ -136,13 +138,13 @@ def main():
             # Graphique d'aperçu des tendances
             overview_path = chart_generator.create_trend_overview_graph(
                 basic_results, ANALYSIS_VARIABLE,
-                os.path.join(OUTPUT_DIR, f'trend_overview_{ANALYSIS_VARIABLE}.png')
+                str(output_path / f'trend_overview_{ANALYSIS_VARIABLE}.png')
             )
             
             # Patterns saisonniers
             patterns_path = chart_generator.create_seasonal_patterns_graph(
                 ANALYSIS_VARIABLE,
-                os.path.join(OUTPUT_DIR, f'seasonal_patterns_{ANALYSIS_VARIABLE}.png')
+                str(output_path / f'seasonal_patterns_{ANALYSIS_VARIABLE}.png')
             )
             
             print("✅ Visualisations additionnelles créées")
@@ -156,20 +158,20 @@ def main():
         try:
             # Export du tableau de résumé
             summary_table = trend_calculator.get_summary_table(ANALYSIS_VARIABLE)
-            summary_csv_path = os.path.join(OUTPUT_DIR, f'summary_trends_{ANALYSIS_VARIABLE}.csv')
+            summary_csv_path = str(output_path / f'summary_trends_{ANALYSIS_VARIABLE}.csv')
             summary_table.to_csv(summary_csv_path, index=False)
             print(f"📊 Tableau de résumé exporté : {summary_csv_path}")
             
             # Export du tableau mensuel
             monthly_table = monthly_visualizer.create_monthly_summary_table(ANALYSIS_VARIABLE)
             if not monthly_table.empty:
-                monthly_csv_path = os.path.join(OUTPUT_DIR, f'monthly_stats_{ANALYSIS_VARIABLE}.csv')
+                monthly_csv_path = str(output_path / f'monthly_stats_{ANALYSIS_VARIABLE}.csv')
                 monthly_table.to_csv(monthly_csv_path, index=False)
                 print(f"📅 Statistiques mensuelles exportées : {monthly_csv_path}")
             
             # Export des données nettoyées
             cleaned_data_path = data_handler.export_cleaned_data(
-                os.path.join(OUTPUT_DIR, f'cleaned_data_{ANALYSIS_VARIABLE}.csv')
+                str(output_path / f'cleaned_data_{ANALYSIS_VARIABLE}.csv')
             )
             
         except Exception as e:
@@ -201,14 +203,14 @@ def main():
         ]
         
         for description, filename in output_files:
-            filepath = os.path.join(OUTPUT_DIR, filename)
-            if os.path.exists(filepath):
-                size_kb = os.path.getsize(filepath) / 1024
-                generated_files.append((description, filepath, size_kb))
+            filepath = output_path / filename
+            if filepath.exists():
+                size_kb = filepath.stat().st_size / 1024
+                generated_files.append((description, str(filepath), size_kb))
                 print(f"  ✅ {description}: {filepath} ({size_kb:.1f} KB)")
         
         print(f"\n🎉 ANALYSE TERMINÉE AVEC SUCCÈS !")
-        print(f"📁 {len(generated_files)} fichiers générés dans: {OUTPUT_DIR}/")
+        print(f"📁 {len(generated_files)} fichiers générés dans: {output_path}/")
         print(f"🎯 GRAPHIQUES PRINCIPAUX À CONSULTER :")
         print(f"   📊 monthly_statistics_{ANALYSIS_VARIABLE}.png - VOS GRAPHIQUES MENSUELS")
         print(f"   📈 trend_overview_{ANALYSIS_VARIABLE}.png - Vue d'ensemble des tendances")
