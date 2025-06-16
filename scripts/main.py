@@ -31,6 +31,9 @@ project_dir = script_dir.parent
 src_dir = project_dir / 'src'
 sys.path.insert(0, str(src_dir))
 
+# Changer vers le répertoire du projet pour que les chemins relatifs fonctionnent
+os.chdir(project_dir)
+
 print(f"📂 Répertoire de travail actuel: {Path.cwd()}")
 print(f"📁 Répertoire du projet: {project_dir}")
 
