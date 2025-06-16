@@ -43,7 +43,7 @@ PROJECT_DIR = project_dir
 
 # Imports des modules du package saskatchewan_albedo
 try:
-    from saskatchewan_albedo.config import CSV_PATH, OUTPUT_DIR, ANALYSIS_VARIABLE, print_config_summary
+    from saskatchewan_albedo.config import CSV_PATH, QA_CSV_PATH, OUTPUT_DIR, ANALYSIS_VARIABLE, print_config_summary
     from saskatchewan_albedo.data.handler import AlbedoDataHandler
     from saskatchewan_albedo.analysis.trends import TrendCalculator
     from saskatchewan_albedo.analysis.pixel_analysis import PixelCountAnalyzer
@@ -162,13 +162,16 @@ def main():
         print_section_header("ÉTAPE 6: Analyse des comptages de pixels", level=1)
         
         try:
-            # Créer l'analyseur de pixels
-            pixel_analyzer = PixelCountAnalyzer(data_handler)
+            # Créer l'analyseur de pixels avec les données QA
+            pixel_analyzer = PixelCountAnalyzer(data_handler, qa_csv_path=QA_CSV_PATH)
             
             # Analyser les comptages mensuels de pixels
             monthly_pixel_results = pixel_analyzer.analyze_monthly_pixel_counts()
             
-            # Analyser les statistiques QA par saison
+            # Analyser les vraies statistiques QA (0-3)
+            true_qa_results = pixel_analyzer.analyze_true_qa_statistics()
+            
+            # Analyser les statistiques QA par saison (ancienne méthode)
             qa_results = pixel_analyzer.analyze_seasonal_qa_statistics()
             
             # Analyser les tendances des pixels totaux
@@ -179,6 +182,7 @@ def main():
         except Exception as e:
             print(f"⚠️  Erreur lors de l'analyse des pixels: {e}")
             monthly_pixel_results = {}
+            true_qa_results = {}
             qa_results = {}
             total_pixel_results = {}
         
@@ -196,7 +200,14 @@ def main():
                     str(output_path / 'pixel_counts_by_month_fraction.png')
                 )
             
-            # Graphiques de statistiques QA
+            # Graphiques des vrais scores QA (0-3)
+            if true_qa_results:
+                true_qa_plot_path = pixel_visualizer.create_true_qa_plots(
+                    true_qa_results,
+                    str(output_path / 'true_qa_scores_analysis.png')
+                )
+            
+            # Graphiques de statistiques QA (ancienne méthode)
             if qa_results:
                 qa_plot_path = pixel_visualizer.create_qa_statistics_plots(
                     qa_results,
@@ -272,6 +283,7 @@ def main():
             ('Aperçu des tendances', f'trend_overview_{ANALYSIS_VARIABLE}.png'),
             ('Patterns saisonniers', f'seasonal_patterns_{ANALYSIS_VARIABLE}.png'),
             ('Comptages de pixels par mois/fraction', 'pixel_counts_by_month_fraction.png'),
+            ('Vrais scores QA (0-3) analyse', 'true_qa_scores_analysis.png'),
             ('Statistiques QA par saison', 'qa_statistics_by_season.png'),
             ('Heatmap de disponibilité pixels', 'pixel_availability_heatmap.png'),
             ('Série temporelle pixels totaux', 'total_pixels_timeseries.png'),

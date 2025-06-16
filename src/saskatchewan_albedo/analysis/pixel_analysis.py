@@ -20,17 +20,20 @@ class PixelCountAnalyzer:
     Analyzer for pixel count statistics and data quality assessment
     """
     
-    def __init__(self, data_handler):
+    def __init__(self, data_handler, qa_csv_path=None):
         """
         Initialize the pixel count analyzer
         
         Args:
             data_handler: AlbedoDataHandler instance with loaded data
+            qa_csv_path (str, optional): Path to quality distribution CSV file
         """
         self.data_handler = data_handler
         self.data = data_handler.data
         self.fraction_classes = FRACTION_CLASSES
         self.class_labels = CLASS_LABELS
+        self.qa_csv_path = qa_csv_path
+        self.qa_data = None
         
     def analyze_monthly_pixel_counts(self):
         """
@@ -99,6 +102,187 @@ class PixelCountAnalyzer:
         results['summary_dataframe'] = self.monthly_pixel_stats
         
         return results
+    
+    def load_qa_data(self):
+        """
+        Load and prepare QA distribution data (0-3 scores)
+        
+        Returns:
+            pd.DataFrame: Loaded QA data
+        """
+        if self.qa_csv_path is None:
+            print("❌ Aucun chemin de fichier QA fourni")
+            return None
+        
+        try:
+            print_section_header("Chargement des données QA (0-3)", level=2)
+            
+            # Load QA data
+            qa_data = pd.read_csv(self.qa_csv_path)
+            
+            # Convert date
+            qa_data['date'] = pd.to_datetime(qa_data['date'])
+            qa_data['year'] = qa_data['date'].dt.year
+            qa_data['month'] = qa_data['date'].dt.month
+            qa_data['doy'] = qa_data['date'].dt.dayofyear
+            
+            # Filter for melt season only
+            qa_data = qa_data[qa_data['month'].isin([6, 7, 8, 9])]
+            
+            self.qa_data = qa_data
+            
+            print(f"✅ Données QA chargées: {len(qa_data)} observations")
+            print(f"📅 Période QA: {qa_data['date'].min()} à {qa_data['date'].max()}")
+            
+            return qa_data
+            
+        except Exception as e:
+            print(f"❌ Erreur lors du chargement des données QA: {e}")
+            return None
+    
+    def analyze_true_qa_statistics(self):
+        """
+        Analyze true QA statistics (0-3 scores) by melt season
+        
+        Returns:
+            dict: True QA statistics analysis
+        """
+        print_section_header("Analyse des vraies statistiques QA (0-3)", level=2)
+        
+        if self.qa_data is None:
+            if self.qa_csv_path:
+                self.load_qa_data()
+            else:
+                print("❌ Pas de données QA disponibles")
+                return {}
+        
+        if self.qa_data is None or self.qa_data.empty:
+            print("❌ Pas de données QA valides")
+            return {}
+        
+        results = {
+            'by_month': {},
+            'seasonal_summary': {},
+            'qa_trends': {},
+            'quality_distribution': {}
+        }
+        
+        qa_monthly_stats = []
+        
+        # Define QA quality columns
+        qa_columns = {
+            'quality_0_best': 'QA 0 (Meilleur)',
+            'quality_1_good': 'QA 1 (Bon)', 
+            'quality_2_moderate': 'QA 2 (Modéré)',
+            'quality_3_poor': 'QA 3 (Mauvais)'
+        }
+        
+        for month in [6, 7, 8, 9]:
+            month_name = MONTH_NAMES[month]
+            month_data = self.qa_data[self.qa_data['month'] == month].copy()
+            
+            print(f"\n📅 Analyse QA pour {month_name} (mois {month})")
+            
+            month_qa = {
+                'month': month,
+                'month_name': month_name,
+                'total_observations': len(month_data),
+                'qa_distribution': {}
+            }
+            
+            if len(month_data) > 0:
+                for qa_col, qa_label in qa_columns.items():
+                    if qa_col in month_data.columns:
+                        qa_values = month_data[qa_col].dropna()
+                        
+                        if len(qa_values) > 0:
+                            qa_stats = {
+                                'mean_percentage': qa_values.mean(),
+                                'median_percentage': qa_values.median(),
+                                'std_percentage': qa_values.std(),
+                                'min_percentage': qa_values.min(),
+                                'max_percentage': qa_values.max(),
+                                'total_pixels': qa_values.sum(),
+                                'observations': len(qa_values)
+                            }
+                            
+                            month_qa['qa_distribution'][qa_col] = qa_stats
+                            
+                            # Add to monthly stats
+                            qa_monthly_stats.append({
+                                'month': month,
+                                'month_name': month_name,
+                                'qa_score': qa_col.split('_')[1],  # Extract score number
+                                'qa_label': qa_label,
+                                **qa_stats
+                            })
+                            
+                            print(f"  • {qa_label}: "
+                                  f"Moyenne={qa_stats['mean_percentage']:.1f}%, "
+                                  f"Total={qa_stats['total_pixels']:.0f} pixels, "
+                                  f"Obs={qa_stats['observations']}")
+                
+                # Calculate quality ratios for this month
+                total_pixels_month = month_data['total_pixels'].mean() if 'total_pixels' in month_data.columns else 0
+                
+                if total_pixels_month > 0:
+                    month_qa['quality_ratios'] = {
+                        'best_ratio': month_data['quality_0_best'].mean() / total_pixels_month * 100 if 'quality_0_best' in month_data.columns else 0,
+                        'good_ratio': month_data['quality_1_good'].mean() / total_pixels_month * 100 if 'quality_1_good' in month_data.columns else 0,
+                        'moderate_ratio': month_data['quality_2_moderate'].mean() / total_pixels_month * 100 if 'quality_2_moderate' in month_data.columns else 0,
+                        'poor_ratio': month_data['quality_3_poor'].mean() / total_pixels_month * 100 if 'quality_3_poor' in month_data.columns else 0
+                    }
+                    
+                    print(f"  📊 Ratios de qualité: "
+                          f"Meilleur={month_qa['quality_ratios']['best_ratio']:.1f}%, "
+                          f"Bon={month_qa['quality_ratios']['good_ratio']:.1f}%, "
+                          f"Modéré={month_qa['quality_ratios']['moderate_ratio']:.1f}%, "
+                          f"Mauvais={month_qa['quality_ratios']['poor_ratio']:.1f}%")
+            
+            results['by_month'][month] = month_qa
+        
+        # Create QA DataFrame
+        self.true_qa_stats_df = pd.DataFrame(qa_monthly_stats)
+        results['qa_dataframe'] = self.true_qa_stats_df
+        
+        # Calculate seasonal summaries
+        self._calculate_true_qa_seasonal_summaries(results)
+        
+        return results
+    
+    def _calculate_true_qa_seasonal_summaries(self, results):
+        """
+        Calculate seasonal summaries for true QA data
+        """
+        qa_df = results['qa_dataframe']
+        
+        if qa_df.empty:
+            return
+        
+        # Seasonal summary by QA score
+        seasonal_summary = {}
+        for qa_score in ['0', '1', '2', '3']:
+            score_data = qa_df[qa_df['qa_score'] == qa_score]
+            if not score_data.empty:
+                seasonal_summary[f'qa_{qa_score}'] = {
+                    'seasonal_mean_percentage': score_data['mean_percentage'].mean(),
+                    'seasonal_total_pixels': score_data['total_pixels'].sum(),
+                    'seasonal_variability': score_data['mean_percentage'].std(),
+                    'best_month': score_data.loc[score_data['mean_percentage'].idxmax(), 'month_name'] if len(score_data) > 0 else 'N/A',
+                    'worst_month': score_data.loc[score_data['mean_percentage'].idxmin(), 'month_name'] if len(score_data) > 0 else 'N/A'
+                }
+        
+        results['seasonal_summary'] = seasonal_summary
+        
+        # Overall quality trends
+        results['quality_overview'] = {
+            'total_observations': len(self.qa_data),
+            'date_range': {
+                'start': self.qa_data['date'].min(),
+                'end': self.qa_data['date'].max()
+            },
+            'average_total_pixels': self.qa_data['total_pixels'].mean() if 'total_pixels' in self.qa_data.columns else 0
+        }
     
     def analyze_seasonal_qa_statistics(self):
         """

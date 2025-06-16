@@ -267,6 +267,178 @@ class PixelVisualizer:
         plt.show()
         return save_path
     
+    def create_true_qa_plots(self, true_qa_results, save_path=None):
+        """
+        Create visualizations for true QA scores (0-3) by melt season
+        
+        Args:
+            true_qa_results (dict): Results from analyze_true_qa_statistics()
+            save_path (str, optional): Path to save the plot
+            
+        Returns:
+            str: Path to saved plot
+        """
+        print_section_header("Création des graphiques des vrais scores QA (0-3)", level=2)
+        
+        if 'qa_dataframe' not in true_qa_results or true_qa_results['qa_dataframe'].empty:
+            print("❌ Pas de données QA vraies pour créer les graphiques")
+            return None
+        
+        qa_stats = true_qa_results['qa_dataframe']
+        
+        # Create figure with 4 subplots
+        fig, axes = plt.subplots(2, 2, figsize=(16, 12))
+        fig.suptitle('Analyse des Scores de Qualité QA (0-3) par Saison de Fonte', 
+                     fontsize=16, fontweight='bold', y=0.98)
+        
+        # Plot 1: QA scores distribution by month
+        self._plot_qa_scores_distribution(axes[0, 0], qa_stats)
+        
+        # Plot 2: QA scores as stacked bars
+        self._plot_qa_stacked_bars(axes[0, 1], qa_stats)
+        
+        # Plot 3: QA trends over months
+        self._plot_qa_trends_by_month(axes[1, 0], qa_stats)
+        
+        # Plot 4: QA quality ratios heatmap
+        self._plot_qa_quality_heatmap(axes[1, 1], true_qa_results)
+        
+        plt.tight_layout()
+        
+        # Save the plot
+        if save_path is None:
+            ensure_directory_exists(OUTPUT_DIR)
+            save_path = os.path.join(OUTPUT_DIR, 'true_qa_scores_analysis.png')
+        
+        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+        print(f"✅ Graphiques QA vrais sauvegardés: {save_path}")
+        
+        plt.show()
+        return save_path
+    
+    def _plot_qa_scores_distribution(self, ax, qa_stats):
+        """Plot QA scores distribution by month"""
+        qa_colors = ['#2E8B57', '#4682B4', '#FF8C00', '#DC143C']  # Colors for QA 0,1,2,3
+        qa_labels = ['QA 0 (Meilleur)', 'QA 1 (Bon)', 'QA 2 (Modéré)', 'QA 3 (Mauvais)']
+        
+        for i, qa_score in enumerate(['0', '1', '2', '3']):
+            score_data = qa_stats[qa_stats['qa_score'] == qa_score]
+            if not score_data.empty:
+                ax.plot(score_data['month'], score_data['mean_percentage'], 
+                       marker='o', linewidth=2, markersize=6,
+                       label=qa_labels[i], color=qa_colors[i])
+        
+        ax.set_title('📊 Distribution des Scores QA par Mois', fontweight='bold')
+        ax.set_xlabel('Mois')
+        ax.set_ylabel('Pourcentage Moyen (%)')
+        ax.set_xticks([6, 7, 8, 9])
+        ax.set_xticklabels(['Juin', 'Juillet', 'Août', 'Sept'])
+        ax.legend()
+        ax.grid(True, alpha=0.3)
+    
+    def _plot_qa_stacked_bars(self, ax, qa_stats):
+        """Plot QA scores as stacked bars by month"""
+        months = [6, 7, 8, 9]
+        month_names = ['Juin', 'Juillet', 'Août', 'Sept']
+        qa_colors = ['#2E8B57', '#4682B4', '#FF8C00', '#DC143C']
+        qa_labels = ['QA 0 (Meilleur)', 'QA 1 (Bon)', 'QA 2 (Modéré)', 'QA 3 (Mauvais)']
+        
+        # Prepare data for stacking
+        qa_data_by_month = {}
+        for month in months:
+            month_data = qa_stats[qa_stats['month'] == month]
+            qa_data_by_month[month] = {}
+            for qa_score in ['0', '1', '2', '3']:
+                score_data = month_data[month_data['qa_score'] == qa_score]
+                if not score_data.empty:
+                    qa_data_by_month[month][qa_score] = score_data['mean_percentage'].iloc[0]
+                else:
+                    qa_data_by_month[month][qa_score] = 0
+        
+        # Create stacked bar chart
+        bottom = np.zeros(len(months))
+        for i, qa_score in enumerate(['0', '1', '2', '3']):
+            values = [qa_data_by_month[month][qa_score] for month in months]
+            ax.bar(month_names, values, bottom=bottom, 
+                  label=qa_labels[i], color=qa_colors[i])
+            bottom += values
+        
+        ax.set_title('📊 Répartition des Scores QA (Empilés)', fontweight='bold')
+        ax.set_xlabel('Mois')
+        ax.set_ylabel('Pourcentage (%)')
+        ax.legend()
+    
+    def _plot_qa_trends_by_month(self, ax, qa_stats):
+        """Plot QA trends by month with focus on best vs poor quality"""
+        best_data = qa_stats[qa_stats['qa_score'] == '0']
+        poor_data = qa_stats[qa_stats['qa_score'] == '3']
+        
+        if not best_data.empty:
+            ax.plot(best_data['month'], best_data['mean_percentage'], 
+                   marker='o', linewidth=3, markersize=8,
+                   label='QA 0 (Meilleur)', color='#2E8B57')
+        
+        if not poor_data.empty:
+            ax.plot(poor_data['month'], poor_data['mean_percentage'], 
+                   marker='s', linewidth=3, markersize=8,
+                   label='QA 3 (Mauvais)', color='#DC143C')
+        
+        ax.set_title('📈 Tendances QA: Meilleur vs Mauvais', fontweight='bold')
+        ax.set_xlabel('Mois')
+        ax.set_ylabel('Pourcentage (%)')
+        ax.set_xticks([6, 7, 8, 9])
+        ax.set_xticklabels(['Juin', 'Juillet', 'Août', 'Sept'])
+        ax.legend()
+        ax.grid(True, alpha=0.3)
+    
+    def _plot_qa_quality_heatmap(self, ax, true_qa_results):
+        """Plot QA quality ratios as heatmap"""
+        if 'by_month' not in true_qa_results:
+            ax.text(0.5, 0.5, 'Pas de données QA\ndisponibles', 
+                   ha='center', va='center', transform=ax.transAxes)
+            return
+        
+        # Prepare heatmap data
+        heatmap_data = []
+        months = []
+        
+        for month, month_data in true_qa_results['by_month'].items():
+            if 'quality_ratios' in month_data:
+                ratios = month_data['quality_ratios']
+                months.append(MONTH_NAMES[month])
+                heatmap_data.append([
+                    ratios['best_ratio'],
+                    ratios['good_ratio'], 
+                    ratios['moderate_ratio'],
+                    ratios['poor_ratio']
+                ])
+        
+        if heatmap_data:
+            heatmap_array = np.array(heatmap_data)
+            
+            im = ax.imshow(heatmap_array.T, cmap='RdYlGn_r', aspect='auto')
+            
+            # Set labels
+            ax.set_xticks(range(len(months)))
+            ax.set_xticklabels(months)
+            ax.set_yticks(range(4))
+            ax.set_yticklabels(['QA 0\n(Meilleur)', 'QA 1\n(Bon)', 'QA 2\n(Modéré)', 'QA 3\n(Mauvais)'])
+            
+            # Add text annotations
+            for i in range(len(months)):
+                for j in range(4):
+                    text = ax.text(i, j, f'{heatmap_array[i, j]:.1f}%',
+                                 ha="center", va="center", color="black", fontweight='bold')
+            
+            # Add colorbar
+            cbar = plt.colorbar(im, ax=ax, shrink=0.8)
+            cbar.set_label('Pourcentage (%)')
+            
+            ax.set_title('🌡️ Heatmap des Ratios QA', fontweight='bold')
+        else:
+            ax.text(0.5, 0.5, 'Pas de données\nde ratios QA', 
+                   ha='center', va='center', transform=ax.transAxes)
+    
     def _plot_average_pixel_counts(self, ax, monthly_stats):
         """Plot average pixel counts by month and fraction"""
         for fraction in self.fraction_classes:

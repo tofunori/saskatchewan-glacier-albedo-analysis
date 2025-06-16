@@ -20,6 +20,9 @@ sns.set_palette("husl")
 # Chemin vers votre fichier CSV (MODIFIEZ ICI)
 CSV_PATH = r"D:\Downloads\daily_albedo_mann_kendall_ready_2010_2024.csv"
 
+# Chemin vers le fichier de distribution QA (0-3)
+QA_CSV_PATH = r"D:\Downloads\global_quality_distribution_daily_2010_2024.csv"
+
 # Répertoire de sortie pour les résultats
 OUTPUT_DIR = "results"
 
