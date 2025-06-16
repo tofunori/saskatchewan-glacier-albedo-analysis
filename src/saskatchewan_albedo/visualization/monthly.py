@@ -83,6 +83,10 @@ class MonthlyVisualizer:
             ensure_directory_exists(OUTPUT_DIR)
             save_path = os.path.join(OUTPUT_DIR, f'monthly_statistics_{variable}_graphs.png')
         
+        # S'assurer que le répertoire parent existe
+        parent_dir = os.path.dirname(save_path)
+        ensure_directory_exists(parent_dir)
+        
         plt.savefig(save_path, dpi=300, bbox_inches='tight')
         print(f"✅ Graphiques mensuels sauvegardés: {save_path}")
         
