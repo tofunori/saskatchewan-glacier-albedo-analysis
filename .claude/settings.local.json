@@ -17,7 +17,9 @@
       "Bash(awk:*)",
       "Bash(wc:*)",
       "Bash(tail:*)",
-      "Bash(sed:*)"
+      "Bash(sed:*)",
+      "WebFetch(domain:developers.google.com)",
+      "WebFetch(domain:nsidc.org)"
     ],
     "deny": []
   }
