@@ -84,7 +84,7 @@ class PixelVisualizer:
     
     def _create_hybrid_albedo_analysis(self, ax, year, year_data, modern_colors):
         """
-        Crée une analyse hybride avec box plots mensuels et barres empilées de fractions
+        Crée des box plots quotidiens pour chaque fraction avec statistiques détaillées
         
         Args:
             ax: Matplotlib axes object
@@ -92,198 +92,107 @@ class PixelVisualizer:
             year_data: Données pour cette année
             modern_colors: Palette de couleurs
         """
-        print(f"🎨 Création de l'analyse hybride albédo pour {year}...")
+        print(f"🎨 Création des box plots quotidiens par fraction pour {year}...")
         
-        # Préparer les données mensuelles
-        monthly_data = {}
-        monthly_fractions = {}
+        # Collecter les données quotidiennes par fraction
+        fraction_data = {}
         
-        # Ajouter la colonne de mois si elle n'existe pas
-        if 'month' not in year_data.columns:
-            year_data = year_data.copy()
-            year_data['month'] = pd.to_datetime(year_data['date']).dt.month
+        for fraction in self.fraction_classes:
+            albedo_col = f"{fraction}_mean"
+            
+            if albedo_col in year_data.columns:
+                # Extraire toutes les valeurs quotidiennes valides pour cette fraction
+                valid_values = year_data[albedo_col].dropna()
+                if len(valid_values) > 0:
+                    fraction_data[fraction] = valid_values.values
         
-        # Collecter les données par mois
-        for month in [6, 7, 8, 9]:  # Juin à Septembre
-            month_data = year_data[year_data['month'] == month].copy()
-            
-            if len(month_data) == 0:
-                continue
-            
-            # Calcul de l'albédo global quotidien pour les box plots
-            daily_albedos = []
-            monthly_fraction_contributions = {fraction: [] for fraction in self.fraction_classes}
-            
-            for _, row in month_data.iterrows():
-                total_weighted_albedo = 0
-                total_pixels = 0
-                
-                # Calculer l'albédo pondéré total et les contributions par fraction
-                for fraction in self.fraction_classes:
-                    albedo_col = f"{fraction}_mean"
-                    pixel_col = f"{fraction}_pixel_count"
-                    
-                    if (albedo_col in row.index and pixel_col in row.index and 
-                        pd.notna(row[albedo_col]) and pd.notna(row[pixel_col]) and row[pixel_col] > 0):
-                        
-                        weighted_albedo = row[albedo_col] * row[pixel_col]
-                        monthly_fraction_contributions[fraction].append(weighted_albedo)
-                        total_weighted_albedo += weighted_albedo
-                        total_pixels += row[pixel_col]
-                
-                # Ajouter l'albédo global si on a des données
-                if total_pixels > 0:
-                    daily_albedos.append(total_weighted_albedo / total_pixels)
-            
-            if daily_albedos:
-                monthly_data[month] = daily_albedos
-                
-                # Calculer les contributions moyennes des fractions pour ce mois
-                month_fraction_means = {}
-                total_month_weighted = sum([sum(monthly_fraction_contributions[f]) for f in self.fraction_classes])
-                
-                if total_month_weighted > 0:
-                    for fraction in self.fraction_classes:
-                        contribution = sum(monthly_fraction_contributions[fraction])
-                        month_fraction_means[fraction] = contribution / len(month_data) if contribution > 0 else 0
-                
-                monthly_fractions[month] = month_fraction_means
-        
-        if not monthly_data:
+        if not fraction_data:
             ax.text(0.5, 0.5, 'No albedo data available for this year', 
                    ha='center', va='center', transform=ax.transAxes, fontsize=14)
-            ax.set_title('A) Monthly Albedo Analysis (No Data)', 
+            ax.set_title('A) Daily Albedo Distribution by Fraction (No Data)', 
                         fontsize=16, fontweight='bold', pad=15)
             return
         
-        # Créer deux sous-axes dans l'axe principal en utilisant subplot division
-        import matplotlib.pyplot as plt
-        from matplotlib.gridspec import GridSpec
-        
-        # Diviser l'axe en deux sections verticales
-        ax.set_position([ax.get_position().x0, ax.get_position().y0, 
-                        ax.get_position().width, ax.get_position().height])
-        
-        # Calculer les positions pour les deux sous-graphiques
-        fig = ax.figure
-        pos = ax.get_position()
-        
-        # Section supérieure (60% de l'espace)
-        box_height = pos.height * 0.6
-        box_bottom = pos.y0 + pos.height * 0.4 + 0.02  # Petit espace entre les graphiques
-        ax_box = fig.add_axes([pos.x0, box_bottom, pos.width, box_height])
-        ax_box.set_facecolor('#fafafa')
-        
-        # Section inférieure (35% de l'espace)
-        bar_height = pos.height * 0.35
-        bar_bottom = pos.y0
-        ax_bar = fig.add_axes([pos.x0, bar_bottom, pos.width, bar_height])
-        ax_bar.set_facecolor('#fafafa')
-        
-        # PARTIE 1: BOX PLOTS AVEC STATISTIQUES
-        month_colors = {6: '#e67e22', 7: '#27ae60', 8: '#e74c3c', 9: '#8e44ad'}
-        month_names = {6: 'Jun', 7: 'Jul', 8: 'Aug', 9: 'Sep'}
-        month_positions = {6: 1, 7: 2, 8: 3, 9: 4}
-        
+        # Préparer les données pour les box plots
         box_data = []
-        box_positions = []
+        box_labels = []
         box_colors = []
+        fraction_stats = {}
         
-        for month in sorted(monthly_data.keys()):
-            box_data.append(monthly_data[month])
-            box_positions.append(month_positions[month])
-            box_colors.append(month_colors[month])
+        for fraction in self.fraction_classes:
+            if fraction in fraction_data:
+                data = fraction_data[fraction]
+                box_data.append(data)
+                box_labels.append(self.class_labels[fraction])
+                box_colors.append(modern_colors.get(fraction, '#7f8c8d'))
+                
+                # Calculer les statistiques détaillées
+                fraction_stats[fraction] = {
+                    'mean': np.mean(data),
+                    'median': np.median(data),
+                    'std': np.std(data),
+                    'min': np.min(data),
+                    'max': np.max(data),
+                    'p5': np.percentile(data, 5),
+                    'p95': np.percentile(data, 95),
+                    'n': len(data)
+                }
         
+        # Créer les box plots horizontaux
         if box_data:
-            # Créer les box plots
-            bp = ax_box.boxplot(box_data, positions=box_positions, widths=0.6, 
-                               patch_artist=True, showmeans=True, meanline=False,
-                               meanprops={'marker': 'D', 'markerfacecolor': 'white', 'markeredgecolor': 'black', 'markersize': 6})
+            # Box plots horizontaux pour un meilleur affichage des étiquettes
+            bp = ax.boxplot(box_data, vert=False, patch_artist=True, 
+                           showmeans=True, meanline=False,
+                           meanprops={'marker': 'D', 'markerfacecolor': 'white', 
+                                     'markeredgecolor': 'black', 'markersize': 6})
             
             # Colorer les boîtes
             for patch, color in zip(bp['boxes'], box_colors):
                 patch.set_facecolor(color)
                 patch.set_alpha(0.7)
+                patch.set_edgecolor('white')
+                patch.set_linewidth(1.5)
             
-            # Ajouter les annotations statistiques
-            for i, (month, data) in enumerate(sorted(monthly_data.items())):
-                if len(data) > 0:
-                    stats = {
-                        'mean': np.mean(data),
-                        'median': np.median(data),
-                        'std': np.std(data),
-                        'min': np.min(data),
-                        'max': np.max(data),
-                        'p5': np.percentile(data, 5),
-                        'p95': np.percentile(data, 95),
-                        'n': len(data)
-                    }
-                    
-                    pos = month_positions[month]
-                    y_max = max(data)
-                    
-                    # Texte des statistiques
-                    stats_text = f"Mean: {stats['mean']:.3f}\\n"
-                    stats_text += f"Median: {stats['median']:.3f}\\n" 
-                    stats_text += f"Std: {stats['std']:.3f}\\n"
-                    stats_text += f"Min/Max: {stats['min']:.3f}/{stats['max']:.3f}\\n"
-                    stats_text += f"5th/95th: {stats['p5']:.3f}/{stats['p95']:.3f}\\n"
-                    stats_text += f"N: {stats['n']}"
-                    
-                    # Positionner l'annotation à droite du box plot
-                    ax_box.text(pos + 0.4, y_max, stats_text, fontsize=8, 
-                               verticalalignment='top', horizontalalignment='left',
-                               bbox=dict(boxstyle='round,pad=0.3', facecolor='white', 
-                                        edgecolor=month_colors[month], alpha=0.9))
-        
-        ax_box.set_title('A) Monthly Albedo Distribution with Statistics', 
-                        fontsize=14, fontweight='bold', pad=15)
-        ax_box.set_ylabel('Albedo', fontsize=12, fontweight='bold')
-        ax_box.set_xticks(list(month_positions.values()))
-        ax_box.set_xticklabels([month_names[m] for m in sorted(monthly_data.keys())])
-        ax_box.grid(True, alpha=0.3, linestyle=':', linewidth=0.8)
-        
-        # PARTIE 2: BARRES EMPILÉES DES FRACTIONS
-        if monthly_fractions:
-            months_sorted = sorted(monthly_fractions.keys())
-            bar_positions = [month_positions[m] for m in months_sorted]
+            # Définir les étiquettes Y
+            ax.set_yticklabels(box_labels)
+            ax.set_yticks(range(1, len(box_labels) + 1))
             
-            # Préparer les données empilées
-            bottom_values = np.zeros(len(months_sorted))
+            # Ajouter les annotations statistiques à droite de chaque box plot
+            y_positions = range(1, len(box_data) + 1)
+            x_max = max([np.max(data) for data in box_data])
             
-            for fraction in self.fraction_classes:
-                values = []
-                for month in months_sorted:
-                    if month in monthly_fractions and fraction in monthly_fractions[month]:
-                        values.append(monthly_fractions[month][fraction])
-                    else:
-                        values.append(0)
+            for i, (fraction, stats) in enumerate(fraction_stats.items()):
+                y_pos = y_positions[i]
                 
-                if any(v > 0 for v in values):
-                    ax_bar.bar(bar_positions, values, width=0.6, bottom=bottom_values,
-                              label=f'{self.class_labels[fraction]}',
-                              color=modern_colors.get(fraction, '#7f8c8d'),
-                              alpha=0.8, edgecolor='white', linewidth=0.8)
-                    bottom_values += np.array(values)
+                # Texte des statistiques bien formaté
+                stats_text = f"Mean: {stats['mean']:.3f}  |  "
+                stats_text += f"Median: {stats['median']:.3f}  |  "
+                stats_text += f"Std: {stats['std']:.3f}\\n"
+                stats_text += f"Min: {stats['min']:.3f}  |  "
+                stats_text += f"Max: {stats['max']:.3f}  |  "
+                stats_text += f"N: {stats['n']}\\n"
+                stats_text += f"5th: {stats['p5']:.3f}  |  "
+                stats_text += f"95th: {stats['p95']:.3f}"
+                
+                # Positionner l'annotation à droite du box plot
+                ax.text(x_max * 1.05, y_pos, stats_text, fontsize=9, 
+                       verticalalignment='center', horizontalalignment='left',
+                       bbox=dict(boxstyle='round,pad=0.4', facecolor='white', 
+                                edgecolor=modern_colors.get(fraction, '#7f8c8d'), 
+                                alpha=0.9, linewidth=1.5))
         
-        ax_bar.set_title('Monthly Fraction Contributions (Stacked)', 
-                        fontsize=12, fontweight='bold', pad=10)
-        ax_bar.set_ylabel('Weighted Albedo', fontsize=10, fontweight='bold')
-        ax_bar.set_xlabel('Month', fontsize=10, fontweight='bold')
-        ax_bar.set_xticks(list(month_positions.values()))
-        ax_bar.set_xticklabels([month_names[m] for m in sorted(monthly_fractions.keys())])
-        ax_bar.legend(loc='upper right', frameon=True, fancybox=True, shadow=True, 
-                     fontsize=9, ncol=3)
-        ax_bar.grid(True, alpha=0.3, linestyle=':', linewidth=0.8, axis='y')
+        # Configuration du graphique
+        ax.set_title(f'A) Daily Albedo Distribution by Ice Coverage Fraction ({year})', 
+                    fontsize=16, fontweight='bold', pad=15)
+        ax.set_xlabel('Albedo', fontsize=14, fontweight='bold')
+        ax.set_ylabel('Ice Coverage Fractions', fontsize=14, fontweight='bold')
+        ax.grid(True, alpha=0.3, linestyle=':', linewidth=0.8, axis='x')
+        ax.set_facecolor('#fafafa')
         
-        # Masquer l'axe principal pour éviter les conflits
-        ax.set_xticks([])
-        ax.set_yticks([])
-        for spine in ax.spines.values():
-            spine.set_visible(False)
-        ax.set_facecolor('none')
+        # Ajuster les marges pour les annotations
+        ax.margins(x=0.3)  # Plus d'espace à droite pour les annotations
         
-        print(f"✅ Panel A: Analyse hybride avec {len(monthly_data)} mois de données")
+        print(f"✅ Panel A: Box plots quotidiens pour {len(fraction_data)} fractions")
         
     def create_monthly_pixel_count_plots(self, pixel_results, save_path=None):
         """
