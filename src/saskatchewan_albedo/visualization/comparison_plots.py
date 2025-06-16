@@ -219,8 +219,8 @@ class ComparisonVisualizer:
         
         print(f"✅ Affichage de {len(plot_data)} points de données pour {fraction}")
         
-        # Créer le graphique avec style moderne - 3 panneaux
-        fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(16, 16), sharex=True)
+        # Créer le graphique avec style moderne - 2 panneaux
+        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(16, 12), sharex=True)
         
         # GRAPHIQUE 1: SÉRIES TEMPORELLES - POINTS SEULEMENT
         # MCD43A3 - Points bleus
@@ -268,70 +268,14 @@ class ComparisonVisualizer:
         ax2.legend(loc='upper left', frameon=True, fancybox=True, shadow=True, fontsize=12)
         ax2.set_facecolor('#fafafa')
         
-        # GRAPHIQUE 3: COMPARAISON QUOTIDIENNE DES VALEURS D'ALBÉDO
-        print("✅ Génération du panneau de comparaison quotidienne des albédos...")
-        
-        # Obtenir toutes les données originales (pas seulement les merged)
-        mcd_data = self.comparison_data['mcd43a3']
-        mod_data = self.comparison_data['mod10a1']
-        
-        # Filtrer pour la fraction spécifique
-        mcd_fraction_col = f"{fraction}_mean"
-        mod_fraction_col = f"{fraction}_mean"
-        
-        # Points MCD43A3 - TOUS les points disponibles
-        if mcd_fraction_col in mcd_data.columns:
-            mcd_available = mcd_data[mcd_data[mcd_fraction_col].notna()]
-            if len(mcd_available) > 0:
-                ax3.scatter(mcd_available['date'], mcd_available[mcd_fraction_col], 
-                           c='#3498db', s=25, alpha=0.7, 
-                           label=f'MCD43A3 Daily Values ({len(mcd_available)} points)', zorder=5)
-        
-        # Points MOD10A1 - TOUS les points disponibles
-        if mod_fraction_col in mod_data.columns:
-            mod_available = mod_data[mod_data[mod_fraction_col].notna()]
-            if len(mod_available) > 0:
-                ax3.scatter(mod_available['date'], mod_available[mod_fraction_col], 
-                           c='#e74c3c', s=25, alpha=0.7,
-                           label=f'MOD10A1 Daily Values ({len(mod_available)} points)', zorder=5)
-        
-        # Points superposés (même date, même valeur) en vert pour bien les identifier
-        if len(plot_data) > 0:
-            ax3.scatter(plot_data['date'], plot_data[mcd_col], 
-                       c='#27ae60', s=15, alpha=0.9, marker='x',
-                       label=f'Overlapping Dates ({len(plot_data)} points)', zorder=10)
-        
-        ax3.set_ylabel('Albedo Values', fontsize=14, fontweight='bold')
-        ax3.set_xlabel('Date', fontsize=14, fontweight='bold')
-        ax3.set_title('C) Daily Albedo Values Comparison (All Available Data)', fontsize=16, fontweight='bold', pad=15)
-        ax3.legend(loc='upper left', frameon=True, fancybox=True, shadow=True, fontsize=12)
-        ax3.grid(True, alpha=0.4, linestyle=':', linewidth=0.8)
-        ax3.set_facecolor('#fafafa')
-        
-        # Calculer et afficher les statistiques des valeurs
-        mcd_stats = mcd_data[mcd_fraction_col].describe() if mcd_fraction_col in mcd_data.columns else None
-        mod_stats = mod_data[mod_fraction_col].describe() if mod_fraction_col in mod_data.columns else None
-        
-        stats_text_lines = ['Daily Albedo Stats:']
-        if mcd_stats is not None:
-            stats_text_lines.append(f'MCD43A3: {mcd_stats["mean"]:.3f}±{mcd_stats["std"]:.3f}')
-        if mod_stats is not None:
-            stats_text_lines.append(f'MOD10A1: {mod_stats["mean"]:.3f}±{mod_stats["std"]:.3f}')
-        if len(plot_data) > 0:
-            correlation = plot_data[mcd_col].corr(plot_data[mod_col])
-            stats_text_lines.append(f'Correlation (overlap): r={correlation:.3f}')
-        
-        stats_text = '\n'.join(stats_text_lines)
-        
-        ax3.text(0.02, 0.98, stats_text, 
-                transform=ax3.transAxes, fontsize=11, verticalalignment='top', horizontalalignment='left',
-                bbox=dict(boxstyle='round,pad=0.5', facecolor='white', edgecolor='lightgray', alpha=0.95))
+        # Ajouter l'étiquette X au panneau du bas
+        ax2.set_xlabel('Date', fontsize=14, fontweight='bold')
         
         # Formater l'axe des dates de façon moderne
-        ax3.xaxis.set_major_formatter(mdates.DateFormatter('%Y'))
-        ax3.xaxis.set_major_locator(mdates.YearLocator(2))  # Tous les 2 ans
-        ax3.xaxis.set_minor_locator(mdates.YearLocator())   # Marques mineures chaque année
-        plt.setp(ax3.xaxis.get_majorticklabels(), rotation=45, fontsize=12)
+        ax2.xaxis.set_major_formatter(mdates.DateFormatter('%Y'))
+        ax2.xaxis.set_major_locator(mdates.YearLocator(2))  # Tous les 2 ans
+        ax2.xaxis.set_minor_locator(mdates.YearLocator())   # Marques mineures chaque année
+        plt.setp(ax2.xaxis.get_majorticklabels(), rotation=45, fontsize=12)
         
         # Statistiques des différences améliorées
         diff_mean = differences.mean()
@@ -348,9 +292,153 @@ class ComparisonVisualizer:
         if save:
             filepath = f"{self.output_dir}/timeseries_comparison_{fraction}.png"
             plt.savefig(filepath, dpi=300, bbox_inches='tight', facecolor='white', edgecolor='none')
-            print(f"✓ Enhanced timeseries with ALL POINTS saved: {filepath}")
+            print(f"✓ Simplified timeseries comparison (2 panels) saved: {filepath}")
         
         return fig
+    
+    def plot_daily_melt_season_comparison(self, fraction='pure_ice', save=True):
+        """
+        Crée des graphiques de comparaison quotidienne par année de saison de fonte
+        
+        Args:
+            fraction (str): Fraction à analyser
+            save (bool): Sauvegarder les graphiques
+            
+        Returns:
+            list: Liste des chemins des graphiques sauvegardés
+        """
+        print_section_header(f"Graphiques quotidiens par saison de fonte - {CLASS_LABELS[fraction]}", level=3)
+        
+        mcd_col = f'mcd43a3_{fraction}_mean'
+        mod_col = f'mod10a1_{fraction}_mean'
+        
+        if mcd_col not in self.merged_data.columns or mod_col not in self.merged_data.columns:
+            print(f"❌ Données non disponibles pour {fraction}")
+            return []
+        
+        # Obtenir les données complètes (pas seulement merged)
+        mcd_data = self.comparison_data['mcd43a3'].copy()
+        mod_data = self.comparison_data['mod10a1'].copy()
+        
+        # Ajouter colonnes d'année et mois si nécessaires
+        mcd_data['year'] = pd.to_datetime(mcd_data['date']).dt.year
+        mcd_data['month'] = pd.to_datetime(mcd_data['date']).dt.month
+        mod_data['year'] = pd.to_datetime(mod_data['date']).dt.year  
+        mod_data['month'] = pd.to_datetime(mod_data['date']).dt.month
+        
+        # Filtrer pour la saison de fonte (juin-septembre)
+        mcd_melt = mcd_data[mcd_data['month'].isin([6, 7, 8, 9])].copy()
+        mod_melt = mod_data[mod_data['month'].isin([6, 7, 8, 9])].copy()
+        
+        # Obtenir les années disponibles
+        years = sorted(set(mcd_melt['year'].unique()) | set(mod_melt['year'].unique()))
+        years = [y for y in years if y >= 2010 and y <= 2024]  # Limiter à la période d'étude
+        
+        saved_plots = []
+        
+        for year in years:
+            print(f"🎯 Création du graphique de comparaison pour la saison de fonte {year}")
+            
+            # Données pour cette année
+            mcd_year = mcd_melt[mcd_melt['year'] == year].copy()
+            mod_year = mod_melt[mod_melt['year'] == year].copy()
+            
+            # Vérifier qu'on a des données pour au moins un des produits
+            mcd_fraction_col = f"{fraction}_mean"
+            mod_fraction_col = f"{fraction}_mean"
+            
+            mcd_valid = mcd_year[mcd_year[mcd_fraction_col].notna()] if mcd_fraction_col in mcd_year.columns else pd.DataFrame()
+            mod_valid = mod_year[mod_year[mod_fraction_col].notna()] if mod_fraction_col in mod_year.columns else pd.DataFrame()
+            
+            if len(mcd_valid) == 0 and len(mod_valid) == 0:
+                print(f"⚠️ Pas de données pour {year}")
+                continue
+            
+            # Créer le graphique pour cette année
+            fig, ax = plt.subplots(figsize=(14, 8))
+            
+            # Couleurs par mois de la saison de fonte
+            month_colors = {6: '#e67e22', 7: '#27ae60', 8: '#e74c3c', 9: '#8e44ad'}  # Orange, Vert, Rouge, Violet
+            month_names = {6: 'June', 7: 'July', 8: 'August', 9: 'September'}
+            
+            # Plotting MCD43A3 data
+            for month in [6, 7, 8, 9]:
+                mcd_month = mcd_valid[mcd_valid['month'] == month]
+                if len(mcd_month) > 0:
+                    ax.scatter(mcd_month['date'], mcd_month[mcd_fraction_col], 
+                             c=month_colors[month], s=35, alpha=0.8, marker='o',
+                             label=f'MCD43A3 {month_names[month]} ({len(mcd_month)} pts)',
+                             edgecolors='white', linewidth=1)
+            
+            # Plotting MOD10A1 data  
+            for month in [6, 7, 8, 9]:
+                mod_month = mod_valid[mod_valid['month'] == month]
+                if len(mod_month) > 0:
+                    ax.scatter(mod_month['date'], mod_month[mod_fraction_col], 
+                             c=month_colors[month], s=35, alpha=0.8, marker='^',
+                             label=f'MOD10A1 {month_names[month]} ({len(mod_month)} pts)',
+                             edgecolors='black', linewidth=1)
+            
+            # Configuration du graphique
+            ax.set_title(f'Daily Melt Season Comparison {year} - {CLASS_LABELS[fraction]}\\n'
+                        f'MCD43A3 (circles) vs MOD10A1 (triangles)', 
+                        fontsize=16, fontweight='bold', pad=20)
+            ax.set_xlabel('Date', fontsize=14, fontweight='bold')
+            ax.set_ylabel('Albedo', fontsize=14, fontweight='bold')
+            
+            # Calculer les statistiques pour cette année
+            year_merged = self.merged_data[
+                (pd.to_datetime(self.merged_data['date']).dt.year == year) &
+                (pd.to_datetime(self.merged_data['date']).dt.month.isin([6, 7, 8, 9]))
+            ]
+            
+            if len(year_merged) > 5:
+                correlation = year_merged[mcd_col].corr(year_merged[mod_col])
+                rmse = np.sqrt(((year_merged[mod_col] - year_merged[mcd_col]) ** 2).mean())
+                bias = (year_merged[mod_col] - year_merged[mcd_col]).mean()
+                
+                stats_text = f'{year} Melt Season Stats:\\n'
+                stats_text += f'Correlation: r = {correlation:.3f}\\n'
+                stats_text += f'RMSE: {rmse:.4f}\\n'
+                stats_text += f'Bias (MOD-MCD): {bias:+.4f}\\n'
+                stats_text += f'Overlap points: {len(year_merged)}'
+            else:
+                stats_text = f'{year} Melt Season Stats:\\n'
+                stats_text += f'MCD43A3 points: {len(mcd_valid)}\\n'
+                stats_text += f'MOD10A1 points: {len(mod_valid)}\\n'
+                stats_text += f'Limited overlap data'
+            
+            # Ajouter les statistiques
+            ax.text(0.02, 0.98, stats_text, 
+                   transform=ax.transAxes, fontsize=11, verticalalignment='top',
+                   bbox=dict(boxstyle='round,pad=0.5', facecolor='white', 
+                            edgecolor='lightgray', alpha=0.95))
+            
+            # Légende et formatage
+            ax.legend(loc='upper right', frameon=True, fancybox=True, shadow=True, 
+                     fontsize=10, ncol=2)
+            ax.grid(True, alpha=0.4, linestyle=':', linewidth=0.8)
+            ax.set_facecolor('#fafafa')
+            
+            # Formatage des dates
+            ax.xaxis.set_major_formatter(mdates.DateFormatter('%m/%d'))
+            ax.xaxis.set_major_locator(mdates.MonthLocator())
+            plt.setp(ax.xaxis.get_majorticklabels(), rotation=45, fontsize=11)
+            
+            plt.tight_layout()
+            
+            # Sauvegarder
+            if save:
+                filepath = f"{self.output_dir}/daily_melt_season_comparison_{year}_{fraction}.png"
+                ensure_directory_exists(filepath)
+                plt.savefig(filepath, dpi=300, bbox_inches='tight', facecolor='white', edgecolor='none')
+                print(f"✓ Graphique saison de fonte {year} sauvegardé: {filepath}")
+                saved_plots.append(filepath)
+            
+            plt.close()
+        
+        print(f"\\n✅ {len(saved_plots)} graphiques de saisons de fonte créés")
+        return saved_plots
     
     def plot_difference_heatmap(self, save=True):
         """
@@ -559,6 +647,11 @@ class ComparisonVisualizer:
                 if fig5:
                     plots_generated.append(f"Séries temporelles {fraction}")
                     plt.close(fig5)
+                
+                # Graphiques quotidiens par saison de fonte
+                daily_plots = self.plot_daily_melt_season_comparison(fraction)
+                if daily_plots:
+                    plots_generated.append(f"Saisons de fonte quotidiennes {fraction} ({len(daily_plots)} graphiques)")
             except Exception as e:
                 print(f"❌ Erreur graphiques {fraction}: {e}")
         

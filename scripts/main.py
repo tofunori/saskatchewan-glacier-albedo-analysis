@@ -162,8 +162,9 @@ def show_comparison_menu():
     print("1️⃣  Comparaison complète (corrélations + différences + tendances)")
     print("2️⃣  Corrélations seulement")
     print("3️⃣  Visualisations comparatives seulement")
+    print("4️⃣  Graphiques quotidiens par saison de fonte")
     print()
-    print("4️⃣  Retour au menu principal")
+    print("5️⃣  Retour au menu principal")
     print()
     print("-" * 60)
 
@@ -176,16 +177,48 @@ def get_comparison_analysis_choice():
     
     while True:
         try:
-            choice = input("➤ Votre choix (1-4): ").strip()
-            if choice in ['1', '2', '3', '4']:
+            choice = input("➤ Votre choix (1-5): ").strip()
+            if choice in ['1', '2', '3', '4', '5']:
                 return int(choice)
             else:
-                print(f"❌ '{choice}' n'est pas valide. Tapez un chiffre de 1 à 4.")
+                print(f"❌ '{choice}' n'est pas valide. Tapez un chiffre de 1 à 5.")
         except KeyboardInterrupt:
             print("\n\n👋 Interruption.")
-            return 4
+            return 5
         except:
-            print("❌ Erreur de saisie. Tapez un chiffre de 1 à 4.")
+            print("❌ Erreur de saisie. Tapez un chiffre de 1 à 5.")
+
+def _get_fraction_choice():
+    """Permet à l'utilisateur de choisir la fraction à analyser"""
+    from saskatchewan_albedo.config import FRACTION_CLASSES, CLASS_LABELS
+    
+    print("\n" + "="*50)
+    print("🔍 CHOIX DE LA FRACTION À ANALYSER")
+    print("="*50)
+    print()
+    
+    for i, fraction in enumerate(FRACTION_CLASSES, 1):
+        print(f"{i}️⃣  {CLASS_LABELS[fraction]}")
+    print()
+    print("-" * 50)
+    
+    while True:
+        try:
+            choice = input(f"➤ Votre choix (1-{len(FRACTION_CLASSES)}): ").strip()
+            choice_num = int(choice)
+            if 1 <= choice_num <= len(FRACTION_CLASSES):
+                selected_fraction = FRACTION_CLASSES[choice_num - 1]
+                print(f"✅ Fraction sélectionnée: {CLASS_LABELS[selected_fraction]}")
+                return selected_fraction
+            else:
+                print(f"❌ '{choice}' n'est pas valide. Tapez un chiffre de 1 à {len(FRACTION_CLASSES)}.")
+        except KeyboardInterrupt:
+            print("\n\n👋 Interruption.")
+            return 'pure_ice'  # Valeur par défaut
+        except ValueError:
+            print(f"❌ Erreur de saisie. Tapez un chiffre de 1 à {len(FRACTION_CLASSES)}.")
+        except:
+            print(f"❌ Erreur de saisie. Tapez un chiffre de 1 à {len(FRACTION_CLASSES)}.")
 
 def main():
     """Fonction principale avec support multi-datasets"""
@@ -307,7 +340,7 @@ def _handle_comparison_menu():
         show_comparison_menu()
         choice = get_comparison_analysis_choice()
         
-        if choice == 4:  # Retour au menu principal
+        if choice == 5:  # Retour au menu principal
             break
             
         try:
@@ -325,6 +358,14 @@ def _handle_comparison_menu():
                 # Visualisations comparatives
                 print("\n📈 Génération des visualisations comparatives...")
                 run_comparative_visualizations()
+                
+            elif choice == 4:
+                # Graphiques quotidiens par saison de fonte
+                print("\n📅 Graphiques quotidiens par saison de fonte...")
+                # Demander la fraction à analyser
+                fraction_choice = _get_fraction_choice()
+                from saskatchewan_albedo.scripts.analysis_functions import run_daily_melt_season_comparison
+                run_daily_melt_season_comparison(fraction_choice)
                 
         except Exception as e:
             print(f"\n❌ Erreur lors de la comparaison: {e}")

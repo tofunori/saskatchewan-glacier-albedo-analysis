@@ -597,6 +597,42 @@ def run_correlation_analysis():
         traceback.print_exc()
         return False
 
+def run_daily_melt_season_comparison(fraction='pure_ice'):
+    """Exécute la génération de graphiques quotidiens de saison de fonte pour comparaison"""
+    comparison_output_path = PROJECT_DIR / OUTPUT_DIR / "comparison"
+    ensure_directory_exists(str(comparison_output_path))
+    
+    try:
+        from saskatchewan_albedo.data.dataset_manager import DatasetManager
+        from saskatchewan_albedo.visualization.comparison_plots import ComparisonVisualizer
+        
+        print_section_header(f"GRAPHIQUES QUOTIDIENS SAISON DE FONTE - {fraction.upper()}", level=1)
+        print(f"📁 Dossier de sortie: {comparison_output_path}")
+        
+        # Préparer les données de comparaison
+        manager = DatasetManager()
+        comparison_data = manager.prepare_comparison_data(sync_dates=False)  # Pas de sync pour avoir toutes les données
+        
+        # Créer les visualisations
+        visualizer = ComparisonVisualizer(comparison_data, str(comparison_output_path))
+        daily_plots = visualizer.plot_daily_melt_season_comparison(fraction, save=True)
+        
+        print(f"\n✅ GRAPHIQUES QUOTIDIENS SAISON DE FONTE TERMINÉS !")
+        print(f"   📊 {len(daily_plots)} graphiques générés pour {fraction}")
+        print(f"📁 Graphiques sauvegardés dans: {comparison_output_path}")
+        
+        # Lister les fichiers créés
+        for plot_path in daily_plots:
+            print(f"  ✓ {plot_path}")
+        
+        return True
+        
+    except Exception as e:
+        print(f"\n❌ ERREUR GRAPHIQUES QUOTIDIENS: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
 def run_custom_analysis(dataset_name, analysis_type):
     """Exécute une analyse personnalisée"""
     try:
