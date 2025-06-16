@@ -1,123 +1,45 @@
 #!/usr/bin/env python3
 """
-SCRIPT PRINCIPAL INTERACTIF - Pour VS Code Interactive Window
-============================================================
+FONCTIONS D'ANALYSE - Modules séparés pour main.py
+=================================================
 
-Ce script fonctionne exactement comme l'ancien main_backup.py mais avec
-des options de menu simples pour VS Code.
-
-POUR UTILISER DANS VS CODE:
-1. Ouvrez ce fichier dans VS Code
-2. Exécutez le script avec Ctrl+F5 ou clic droit "Run Python File in Terminal"
-3. Choisissez une option dans le menu qui apparaît
-4. Consultez les résultats dans le dossier results/
-
-MENU:
-1 = Analyse complète (tout)
-2 = Tendances seulement  
-3 = Visualisations seulement
-4 = Pixels/QA seulement
-5 = Graphiques quotidiens seulement
-6 = Quitter
+Ce module contient toutes les fonctions d'analyse pour alléger main.py
 """
 
 import os
 import sys
-from datetime import datetime
 from pathlib import Path
 import warnings
 warnings.filterwarnings('ignore')
 
-# Set matplotlib to non-interactive backend to prevent blocking
+# Set matplotlib to non-interactive backend
 import matplotlib
 matplotlib.use('Agg')
 
-# Ajouter le répertoire du projet au path pour trouver les modules
+# Ajouter le répertoire src au path
 script_dir = Path(__file__).parent.absolute()
-project_dir = script_dir.parent  # Remonte d'un niveau depuis scripts/
-
-# Ajouter le répertoire src au path pour les imports
+project_dir = script_dir.parent
 src_dir = project_dir / 'src'
 sys.path.insert(0, str(src_dir))
 
-print(f"📂 Répertoire de travail actuel: {Path.cwd()}")
-print(f"📁 Répertoire du projet: {project_dir}")
-print(f"📁 Répertoire src: {src_dir}")
-
-# Variable globale pour le répertoire du projet
 PROJECT_DIR = project_dir
 
-# Imports des modules du package saskatchewan_albedo
-try:
-    from saskatchewan_albedo.config import CSV_PATH, QA_CSV_PATH, OUTPUT_DIR, ANALYSIS_VARIABLE, print_config_summary
-    from saskatchewan_albedo.data.handler import AlbedoDataHandler
-    from saskatchewan_albedo.analysis.trends import TrendCalculator
-    from saskatchewan_albedo.analysis.pixel_analysis import PixelCountAnalyzer
-    from saskatchewan_albedo.visualization.monthly import MonthlyVisualizer
-    from saskatchewan_albedo.visualization.pixel_plots import PixelVisualizer
-    from saskatchewan_albedo.visualization.charts import ChartGenerator
-    from saskatchewan_albedo.utils.helpers import print_section_header, ensure_directory_exists, print_analysis_summary
-    print("✅ Tous les modules importés avec succès")
-except ImportError as e:
-    print(f"❌ Erreur d'import des modules: {e}")
-    print(f"📁 Vérifiez que tous les fichiers sont présents dans: {src_dir}")
-    sys.exit(1)
-
-def show_menu():
-    """Affiche le menu d'options"""
-    print("\n" + "="*60)
-    print("🚀 MENU D'ANALYSE - CHOISISSEZ UNE OPTION")
-    print("="*60)
-    print()
-    print("1️⃣  Analyse complète (toutes les étapes)")
-    print("2️⃣  Analyses de tendances et statistiques")
-    print("3️⃣  Visualisations standards") 
-    print("4️⃣  Analyse des pixels et QA")
-    print("5️⃣  Graphiques de séries temporelles quotidiennes")
-    print("6️⃣  Quitter")
-    print()
-    print("-" * 60)
-
-def get_choice():
-    """Obtient le choix de l'utilisateur de manière simple"""
-    print("\n" + "="*60)
-    print("SÉLECTION DE L'ANALYSE")
-    print("="*60)
-    print()
-    print("Tapez le numéro de votre choix puis appuyez sur Entrée:")
-    print("1 = Analyse complète")
-    print("2 = Tendances")
-    print("3 = Visualisations")
-    print("4 = Pixels/QA")
-    print("5 = Graphiques quotidiens")
-    print("6 = Quitter")
-    print()
-    
-    while True:
-        try:
-            choice = input("➤ Votre choix (1-6): ").strip()
-            if choice in ['1', '2', '3', '4', '5', '6']:
-                return int(choice)
-            else:
-                print(f"❌ '{choice}' n'est pas valide. Tapez un chiffre de 1 à 6.")
-        except KeyboardInterrupt:
-            print("\n\n👋 Interruption. Au revoir!")
-            return 6
-        except:
-            print("❌ Erreur de saisie. Tapez un chiffre de 1 à 6.")
+# Imports
+from saskatchewan_albedo.config import (CSV_PATH, QA_CSV_PATH, OUTPUT_DIR, ANALYSIS_VARIABLE, 
+                                       FRACTION_CLASSES, CLASS_LABELS, FRACTION_COLORS)
+from saskatchewan_albedo.data.handler import AlbedoDataHandler
+from saskatchewan_albedo.analysis.trends import TrendCalculator
+from saskatchewan_albedo.analysis.pixel_analysis import PixelCountAnalyzer
+from saskatchewan_albedo.visualization.monthly import MonthlyVisualizer
+from saskatchewan_albedo.visualization.pixel_plots import PixelVisualizer
+from saskatchewan_albedo.visualization.charts import ChartGenerator
+from saskatchewan_albedo.utils.helpers import print_section_header, ensure_directory_exists, print_analysis_summary
 
 def check_config():
     """Vérifie la configuration"""
-    print("\n⚙️  VÉRIFICATION DE LA CONFIGURATION")
-    print("="*50)
-    
     if not os.path.exists(CSV_PATH):
-        print(f"❌ ERREUR : Fichier CSV non trouvé !")
-        print(f"   Chemin configuré : {CSV_PATH}")
-        print(f"\n💡 SOLUTION :")
-        print(f"   Modifiez la variable CSV_PATH dans config.py")
+        print(f"❌ Fichier CSV non trouvé: {CSV_PATH}")
         return False
-    
     print(f"✅ Fichier CSV principal trouvé : {CSV_PATH}")
     
     if QA_CSV_PATH and os.path.exists(QA_CSV_PATH):
@@ -130,6 +52,87 @@ def check_config():
     print(f"📁 Répertoire de sortie : {output_path}/")
     
     return True
+
+def create_daily_albedo_plots(data_handler, output_dir):
+    """
+    Crée des graphiques d'albédo quotidiens pour chaque année
+    """
+    import matplotlib.pyplot as plt
+    import pandas as pd
+    
+    print_section_header("Création des graphiques d'albédo quotidiens", level=2)
+    
+    saved_plots = []
+    data = data_handler.data
+    years = sorted(data['year'].unique())
+    
+    print(f"📅 Années disponibles: {years}")
+    
+    for year in years:
+        print(f"\n🎯 Création du graphique d'albédo pour {year}")
+        
+        # Filtrer les données pour cette année (saison de fonte)
+        year_data = data[
+            (data['year'] == year) & 
+            (data['month'].isin([6, 7, 8, 9]))
+        ].copy()
+        
+        if len(year_data) == 0:
+            print(f"⚠️ Pas de données pour {year}")
+            continue
+        
+        # Trier par date
+        year_data = year_data.sort_values('date')
+        
+        # Créer le graphique
+        fig, ax = plt.subplots(figsize=(14, 8))
+        fig.suptitle(f'Albédo Quotidien - Saison de Fonte {year}', 
+                     fontsize=16, fontweight='bold')
+        
+        # Tracer l'albédo pour chaque fraction
+        for fraction in FRACTION_CLASSES:
+            col_mean = f"{fraction}_{ANALYSIS_VARIABLE}"
+            if col_mean in year_data.columns:
+                albedo_data = year_data[col_mean].dropna()
+                if len(albedo_data) > 0:
+                    # Plot only non-null values
+                    valid_data = year_data[year_data[col_mean].notna()]
+                    ax.plot(valid_data['date'], valid_data[col_mean], 
+                           marker='o', markersize=3, linewidth=1.5, alpha=0.8,
+                           label=CLASS_LABELS[fraction],
+                           color=FRACTION_COLORS.get(fraction, 'gray'))
+        
+        # Configuration du graphique
+        ax.set_xlabel('Date')
+        ax.set_ylabel(f'Albédo ({ANALYSIS_VARIABLE.capitalize()})')
+        ax.set_ylim([0, 1])
+        ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+        ax.grid(True, alpha=0.3)
+        
+        # Ajouter des lignes verticales pour séparer les mois
+        for month in [7, 8, 9]:
+            month_start = year_data[year_data['month'] == month]['date'].min()
+            if not pd.isna(month_start):
+                ax.axvline(x=month_start, color='gray', linestyle='--', alpha=0.5)
+        
+        # Statistiques
+        stats_text = f"Période: {year_data['date'].min().strftime('%Y-%m-%d')} à {year_data['date'].max().strftime('%Y-%m-%d')}\n"
+        stats_text += f"Observations: {len(year_data)} jours"
+        ax.text(0.02, 0.98, stats_text, transform=ax.transAxes, 
+                verticalalignment='top', fontsize=10,
+                bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
+        
+        plt.tight_layout()
+        
+        # Sauvegarder
+        save_path = os.path.join(output_dir, f'daily_albedo_melt_season_{year}.png')
+        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+        plt.close()  # Close figure to free memory
+        
+        print(f"✅ Graphique d'albédo {year} sauvegardé: {save_path}")
+        saved_plots.append(save_path)
+    
+    return saved_plots
 
 def run_complete_analysis():
     """Exécute l'analyse complète (comme main_backup.py)"""
@@ -252,12 +255,18 @@ def run_complete_analysis():
         # ÉTAPE 8: Graphiques quotidiens
         print_section_header("ÉTAPE 8: Graphiques quotidiens par saison de fonte", level=1)
         try:
+            # Graphiques quotidiens pixels/QA
             if 'pixel_analyzer' in locals() and 'pixel_visualizer' in locals():
                 daily_plots = pixel_visualizer.create_daily_melt_season_plots(
                     pixel_analyzer, 
                     str(output_path)
                 )
-                print(f"✅ {len(daily_plots)} graphiques quotidiens créés")
+                print(f"✅ {len(daily_plots)} graphiques quotidiens pixels/QA créés")
+            
+            # Graphiques quotidiens d'albédo
+            albedo_plots = create_daily_albedo_plots(data_handler, str(output_path))
+            print(f"✅ {len(albedo_plots)} graphiques quotidiens d'albédo créés")
+            
         except Exception as e:
             print(f"⚠️  Erreur graphiques quotidiens: {e}")
         
@@ -450,6 +459,8 @@ def run_daily_only():
         data_handler = AlbedoDataHandler(CSV_PATH)
         data_handler.load_data()
         
+        # Graphiques quotidiens pixels/QA
+        print_section_header("Graphiques quotidiens pixels/QA", level=2)
         pixel_analyzer = PixelCountAnalyzer(data_handler, qa_csv_path=QA_CSV_PATH)
         pixel_visualizer = PixelVisualizer(data_handler)
         
@@ -457,9 +468,15 @@ def run_daily_only():
             pixel_analyzer, 
             str(output_path)
         )
-        print(f"✅ {len(daily_plots)} graphiques quotidiens créés")
+        print(f"✅ {len(daily_plots)} graphiques quotidiens pixels/QA créés")
         
-        print("\n✅ GRAPHIQUES QUOTIDIENS TERMINÉS !")
+        # Graphiques quotidiens d'albédo
+        albedo_plots = create_daily_albedo_plots(data_handler, str(output_path))
+        print(f"✅ {len(albedo_plots)} graphiques quotidiens d'albédo créés")
+        
+        print(f"\n✅ GRAPHIQUES QUOTIDIENS TERMINÉS !")
+        print(f"   📊 {len(daily_plots)} graphiques pixels/QA")
+        print(f"   📈 {len(albedo_plots)} graphiques d'albédo")
         return True
         
     except Exception as e:
@@ -477,46 +494,3 @@ def list_files(output_path):
             if file.is_file():
                 size_kb = file.stat().st_size / 1024
                 print(f"  ✅ {file.name} ({size_kb:.1f} KB)")
-
-def main():
-    """Fonction principale simple pour VS Code"""
-    print("\n" + "="*70)
-    print("🚀 SASKATCHEWAN GLACIER ALBEDO TREND ANALYSIS")
-    print("="*70)
-    print("📅 Session lancée le:", datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
-    
-    print_config_summary()
-    
-    if not check_config():
-        print("\n❌ Configuration invalide.")
-        return
-    
-    while True:
-        show_menu()
-        choice = get_choice()
-        
-        if choice == 1:
-            run_complete_analysis()
-        elif choice == 2:
-            run_trends_only()
-        elif choice == 3:
-            run_visualizations_only()
-        elif choice == 4:
-            run_pixels_only()
-        elif choice == 5:
-            run_daily_only()
-        elif choice == 6:
-            print("\n👋 Au revoir!")
-            break
-        
-        print("\n" + "="*60)
-        try:
-            cont = input("➤ Continuer avec une autre analyse? (o/n): ").strip().lower()
-            if cont not in ['o', 'oui', 'y', 'yes']:
-                print("\n👋 Au revoir!")
-                break
-        except:
-            break
-
-if __name__ == "__main__":
-    main()
