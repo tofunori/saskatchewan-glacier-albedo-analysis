@@ -159,7 +159,6 @@ class PixelVisualizer:
             ax.set_ylim(0, max(bottom_values) * 1.1 if len(bottom_values) > 0 else 1)
             ax.legend(loc='upper left', frameon=True, fancybox=True, shadow=True, 
                       fontsize=11, ncol=2)
-            ax.grid(True, alpha=0.4, linestyle=':', linewidth=0.8, axis='y')
             ax.set_facecolor('#fafafa')
             
             print(f"✅ Panel A: Barres empilées d'albédo quotidiennes pour {len(valid_dates)} jours")
@@ -715,12 +714,19 @@ class PixelVisualizer:
         for ax in axes:
             # Dates par semaine (tous les 7 jours)
             ax.xaxis.set_major_formatter(mdates.DateFormatter('%m/%d'))
-            ax.xaxis.set_major_locator(mdates.WeekdayLocator(interval=1))  # Toutes les semaines
+            locator = mdates.WeekdayLocator(interval=1)  # Toutes les semaines
+            ax.xaxis.set_major_locator(locator)
             ax.xaxis.set_minor_locator(mdates.DayLocator(interval=3))      # Marques mineures tous les 3 jours
             ax.tick_params(axis='x', rotation=45, labelsize=11)
             ax.tick_params(axis='y', labelsize=12)
             # Améliorer l'espacement des étiquettes
             plt.setp(ax.xaxis.get_majorticklabels(), ha='right')
+            
+            # Ajouter des lignes verticales légères aux positions des dates principales
+            ax.grid(True, which='major', axis='x', alpha=0.3, linestyle='-', linewidth=0.8, color='gray')
+            ax.grid(True, which='minor', axis='x', alpha=0.15, linestyle=':', linewidth=0.5, color='lightgray')
+            # Garder la grille horizontale existante
+            ax.grid(True, which='major', axis='y', alpha=0.4, linestyle=':', linewidth=0.8)
         
         # Create directory if it doesn't exist
         os.makedirs(save_dir, exist_ok=True)
