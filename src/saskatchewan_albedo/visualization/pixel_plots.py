@@ -94,14 +94,8 @@ class PixelVisualizer:
         """
         print(f"🎨 Création des barres empilées quotidiennes d'albédo pour {year}...")
         
-        # Palette de couleurs plus douces et subtiles
-        soft_colors = {
-            'border': '#c7a8a8',      # Rouge doux
-            'mixed_low': '#d4b896',   # Orange doux
-            'mixed_high': '#a8c7a8',  # Vert doux  
-            'mostly_ice': '#a8b8c7',  # Bleu doux
-            'pure_ice': '#b8a8c7'     # Violet doux
-        }
+        # Utiliser la palette de couleurs moderne originale
+        colors_to_use = modern_colors
         
         # Préparer les données pour barres empilées - contribution pondérée d'albédo
         albedo_data = {}
@@ -154,7 +148,7 @@ class PixelVisualizer:
                     
                     ax.bar(valid_dates, values, width, bottom=bottom_values,
                            label=f'{self.class_labels[fraction]}',
-                           color=soft_colors.get(fraction, '#b0b0b0'),
+                           color=colors_to_use.get(fraction, '#7f8c8d'),
                            alpha=0.8, edgecolor='white', linewidth=0.5)
                     
                     bottom_values += values
