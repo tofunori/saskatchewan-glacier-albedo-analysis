@@ -19,7 +19,8 @@
       "Bash(tail:*)",
       "Bash(sed:*)",
       "WebFetch(domain:developers.google.com)",
-      "WebFetch(domain:nsidc.org)"
+      "WebFetch(domain:nsidc.org)",
+      "Bash(git pull:*)"
     ],
     "deny": []
   }

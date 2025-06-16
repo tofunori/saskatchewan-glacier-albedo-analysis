@@ -332,24 +332,70 @@ class ComparisonAnalyzer:
         """
         trends = {}
         
+        # Importer pyMannKendall directement pour éviter les problèmes avec TrendCalculator
+        try:
+            import pyMannKendall as mk
+        except ImportError:
+            print("⚠️ pyMannKendall non installé. Installation de la méthode alternative.")
+            # Méthode alternative sans pyMannKendall
+            return self._calculate_mk_trends_simple(data, dataset_name)
+        
         for fraction in FRACTION_CLASSES:
             col_name = f'{fraction}_mean'
             if col_name in data.columns:
                 fraction_data = data[['decimal_year', col_name]].dropna()
                 
                 if len(fraction_data) >= 10:
-                    # Utiliser TrendCalculator existant
-                    calc = TrendCalculator(fraction_data, 'decimal_year', col_name)
-                    mk_result = calc.mann_kendall_test()
-                    sens_slope = calc.calculate_sens_slope()
+                    # Calculer directement avec pyMannKendall
+                    values = fraction_data[col_name].values
+                    
+                    # Test Mann-Kendall
+                    mk_result = mk.original_test(values)
+                    
+                    # Pente de Sen
+                    try:
+                        sen_result = mk.sens_slope(values)
+                        slope = sen_result.slope
+                    except:
+                        slope = np.nan
                     
                     trends[fraction] = {
                         'dataset': dataset_name,
-                        'tau': mk_result.get('tau', np.nan),
-                        'p_value': mk_result.get('p_value', np.nan),
-                        'slope': sens_slope.get('slope', np.nan),
-                        'significant': mk_result.get('p_value', 1) < COMPARISON_CONFIG['significance_level'],
-                        'trend_direction': mk_result.get('trend', 'no trend'),
+                        'tau': mk_result.Tau,
+                        'p_value': mk_result.p,
+                        'slope': slope * 10,  # Convertir en décennie
+                        'significant': mk_result.p < COMPARISON_CONFIG['significance_level'],
+                        'trend_direction': mk_result.trend,
+                        'n_observations': len(fraction_data)
+                    }
+        
+        return trends
+    
+    def _calculate_mk_trends_simple(self, data, dataset_name):
+        """
+        Calcule les tendances Mann-Kendall de manière simplifiée sans pyMannKendall
+        """
+        trends = {}
+        
+        for fraction in FRACTION_CLASSES:
+            col_name = f'{fraction}_mean'
+            if col_name in data.columns:
+                fraction_data = data[['decimal_year', col_name]].dropna()
+                
+                if len(fraction_data) >= 10:
+                    # Régression linéaire simple comme approximation
+                    x = fraction_data['decimal_year'].values
+                    y = fraction_data[col_name].values
+                    
+                    slope, intercept, r_value, p_value, std_err = stats.linregress(x, y)
+                    
+                    trends[fraction] = {
+                        'dataset': dataset_name,
+                        'tau': r_value,  # Utiliser r comme approximation
+                        'p_value': p_value,
+                        'slope': slope * 10,  # Convertir en décennie
+                        'significant': p_value < COMPARISON_CONFIG['significance_level'],
+                        'trend_direction': 'increasing' if slope > 0 else 'decreasing' if slope < 0 else 'no trend',
                         'n_observations': len(fraction_data)
                     }
         
