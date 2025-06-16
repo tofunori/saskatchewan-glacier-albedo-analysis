@@ -240,6 +240,10 @@ class MonthlyVisualizer:
         # Créer un pivot table pour les comptages
         count_data = monthly_stats.pivot(index='month', columns='fraction_label', values='count')
         
+        # Assurer l'ordre correct des mois (saisonnier)
+        month_order = [6, 7, 8, 9]
+        count_data = count_data.reindex(month_order)
+        
         # Graphique en barres groupées
         count_data.plot(kind='bar', ax=ax, width=0.8, 
                        color=[FRACTION_COLORS.get(f, 'gray') for f in self.fraction_classes])
@@ -306,6 +310,11 @@ class MonthlyVisualizer:
         # Graphique 1: Heatmap des pentes
         pivot_slopes = trend_df.pivot(index='fraction_label', columns='month_name', values='slope_decade')
         
+        # Assurer l'ordre correct des mois (saisonnier)
+        month_name_order = ['Juin', 'Juillet', 'Août', 'Septembre']
+        available_months = [m for m in month_name_order if m in pivot_slopes.columns]
+        pivot_slopes = pivot_slopes.reindex(columns=available_months)
+        
         # Gérer les valeurs manquantes pour la heatmap
         pivot_slopes_filled = pivot_slopes.fillna(0)
         
@@ -316,6 +325,7 @@ class MonthlyVisualizer:
         
         # Graphique 2: Nombre d'observations
         pivot_counts = trend_df.pivot(index='fraction_label', columns='month_name', values='n_obs')
+        pivot_counts = pivot_counts.reindex(columns=available_months)
         pivot_counts_filled = pivot_counts.fillna(0)
         
         im2 = sns.heatmap(pivot_counts_filled, annot=True, fmt='.0f', cmap='Blues',
