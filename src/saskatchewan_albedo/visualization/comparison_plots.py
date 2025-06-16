@@ -268,8 +268,8 @@ class ComparisonVisualizer:
         ax2.legend(loc='upper left', frameon=True, fancybox=True, shadow=True, fontsize=12)
         ax2.set_facecolor('#fafafa')
         
-        # GRAPHIQUE 3: DISPONIBILITÉ QUOTIDIENNE DES DONNÉES
-        print("✅ Génération du panneau de disponibilité quotidienne des données...")
+        # GRAPHIQUE 3: COMPARAISON QUOTIDIENNE DES VALEURS D'ALBÉDO
+        print("✅ Génération du panneau de comparaison quotidienne des albédos...")
         
         # Obtenir toutes les données originales (pas seulement les merged)
         mcd_data = self.comparison_data['mcd43a3']
@@ -279,48 +279,52 @@ class ComparisonVisualizer:
         mcd_fraction_col = f"{fraction}_mean"
         mod_fraction_col = f"{fraction}_mean"
         
-        # Points où MCD43A3 a des données
+        # Points MCD43A3 - TOUS les points disponibles
         if mcd_fraction_col in mcd_data.columns:
             mcd_available = mcd_data[mcd_data[mcd_fraction_col].notna()]
             if len(mcd_available) > 0:
-                ax3.scatter(mcd_available['date'], [1] * len(mcd_available), 
-                           c='#3498db', s=15, alpha=0.7, marker='|', 
-                           label=f'MCD43A3 Available ({len(mcd_available)} days)')
+                ax3.scatter(mcd_available['date'], mcd_available[mcd_fraction_col], 
+                           c='#3498db', s=25, alpha=0.7, 
+                           label=f'MCD43A3 Daily Values ({len(mcd_available)} points)', zorder=5)
         
-        # Points où MOD10A1 a des données  
+        # Points MOD10A1 - TOUS les points disponibles
         if mod_fraction_col in mod_data.columns:
             mod_available = mod_data[mod_data[mod_fraction_col].notna()]
             if len(mod_available) > 0:
-                ax3.scatter(mod_available['date'], [0.5] * len(mod_available), 
-                           c='#e74c3c', s=15, alpha=0.7, marker='|',
-                           label=f'MOD10A1 Available ({len(mod_available)} days)')
+                ax3.scatter(mod_available['date'], mod_available[mod_fraction_col], 
+                           c='#e74c3c', s=25, alpha=0.7,
+                           label=f'MOD10A1 Daily Values ({len(mod_available)} points)', zorder=5)
         
-        # Points où les deux datasets ont des données (merged)
-        ax3.scatter(plot_data['date'], [0.75] * len(plot_data), 
-                   c='#27ae60', s=20, alpha=0.8, marker='o',
-                   label=f'Both Available ({len(plot_data)} days)')
+        # Points superposés (même date, même valeur) en vert pour bien les identifier
+        if len(plot_data) > 0:
+            ax3.scatter(plot_data['date'], plot_data[mcd_col], 
+                       c='#27ae60', s=15, alpha=0.9, marker='x',
+                       label=f'Overlapping Dates ({len(plot_data)} points)', zorder=10)
         
-        ax3.set_ylim(-0.1, 1.3)
-        ax3.set_ylabel('Data Availability', fontsize=14, fontweight='bold')
+        ax3.set_ylabel('Albedo Values', fontsize=14, fontweight='bold')
         ax3.set_xlabel('Date', fontsize=14, fontweight='bold')
-        ax3.set_title('C) Daily Data Availability Comparison', fontsize=16, fontweight='bold', pad=15)
+        ax3.set_title('C) Daily Albedo Values Comparison (All Available Data)', fontsize=16, fontweight='bold', pad=15)
         ax3.legend(loc='upper left', frameon=True, fancybox=True, shadow=True, fontsize=12)
-        ax3.grid(True, alpha=0.4, linestyle=':', linewidth=0.8, axis='x')
+        ax3.grid(True, alpha=0.4, linestyle=':', linewidth=0.8)
         ax3.set_facecolor('#fafafa')
         
-        # Personnaliser les étiquettes Y
-        ax3.set_yticks([0.5, 0.75, 1.0])
-        ax3.set_yticklabels(['MOD10A1\nOnly', 'Both\nDatasets', 'MCD43A3\nOnly'], fontsize=11)
+        # Calculer et afficher les statistiques des valeurs
+        mcd_stats = mcd_data[mcd_fraction_col].describe() if mcd_fraction_col in mcd_data.columns else None
+        mod_stats = mod_data[mod_fraction_col].describe() if mod_fraction_col in mod_data.columns else None
         
-        # Calculer et afficher les statistiques de couverture
-        total_mcd = len(mcd_data[mcd_data[mcd_fraction_col].notna()]) if mcd_fraction_col in mcd_data.columns else 0
-        total_mod = len(mod_data[mod_data[mod_fraction_col].notna()]) if mod_fraction_col in mod_data.columns else 0
-        overlap = len(plot_data)
+        stats_text_lines = ['Daily Albedo Stats:']
+        if mcd_stats is not None:
+            stats_text_lines.append(f'MCD43A3: {mcd_stats["mean"]:.3f}±{mcd_stats["std"]:.3f}')
+        if mod_stats is not None:
+            stats_text_lines.append(f'MOD10A1: {mod_stats["mean"]:.3f}±{mod_stats["std"]:.3f}')
+        if len(plot_data) > 0:
+            correlation = plot_data[mcd_col].corr(plot_data[mod_col])
+            stats_text_lines.append(f'Correlation (overlap): r={correlation:.3f}')
         
-        coverage_text = f'Coverage Stats:\nMCD43A3: {total_mcd} days\nMOD10A1: {total_mod} days\nOverlap: {overlap} days\nOverlap %: {(overlap/max(total_mcd,total_mod)*100):.1f}%'
+        stats_text = '\n'.join(stats_text_lines)
         
-        ax3.text(0.98, 0.98, coverage_text, 
-                transform=ax3.transAxes, fontsize=11, verticalalignment='top', horizontalalignment='right',
+        ax3.text(0.02, 0.98, stats_text, 
+                transform=ax3.transAxes, fontsize=11, verticalalignment='top', horizontalalignment='left',
                 bbox=dict(boxstyle='round,pad=0.5', facecolor='white', edgecolor='lightgray', alpha=0.95))
         
         # Formater l'axe des dates de façon moderne
