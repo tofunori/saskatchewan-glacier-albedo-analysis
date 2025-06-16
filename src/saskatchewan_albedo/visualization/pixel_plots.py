@@ -419,7 +419,7 @@ class PixelVisualizer:
         ax2.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
         ax2.grid(True, alpha=0.3)
         
-        # Plot 3: Daily QA scores (if available)
+        # Plot 3: Daily QA scores (absolute counts)
         ax3 = axes[2]
         qa_plotted = False
         
@@ -432,16 +432,19 @@ class PixelVisualizer:
             if len(year_qa_data) > 0:
                 year_qa_data = year_qa_data.sort_values('date')
                 
-                # Plot QA scores 0-3
+                # Plot QA scores 0-3 with absolute counts
                 qa_colors = ['#2E8B57', '#4682B4', '#FF8C00', '#DC143C']
                 qa_labels = ['QA 0 (Meilleur)', 'QA 1 (Bon)', 'QA 2 (Modéré)', 'QA 3 (Mauvais)']
                 
                 for i, qa_col in enumerate(['quality_0_best', 'quality_1_good', 'quality_2_moderate', 'quality_3_poor']):
                     if qa_col in year_qa_data.columns:
-                        ax3.plot(year_qa_data['date'], year_qa_data[qa_col], 
-                                marker='s', markersize=2, linewidth=1, alpha=0.7,
-                                label=qa_labels[i], color=qa_colors[i])
-                        qa_plotted = True
+                        qa_data = year_qa_data[qa_col].dropna()
+                        # Only plot if there are non-zero values
+                        if len(qa_data) > 0 and qa_data.max() > 0:
+                            ax3.plot(year_qa_data['date'], year_qa_data[qa_col], 
+                                    marker='s', markersize=3, linewidth=2, alpha=0.8,
+                                    label=qa_labels[i], color=qa_colors[i])
+                            qa_plotted = True
         
         # If no QA data, plot data quality from main dataset
         if not qa_plotted:
@@ -457,9 +460,9 @@ class PixelVisualizer:
                         qa_plotted = True
         
         if qa_plotted:
-            ax3.set_title(f'📈 Scores de Qualité Quotidiens - {year}', fontweight='bold')
+            ax3.set_title(f'📈 Comptages QA Quotidiens (0-3) - {year}', fontweight='bold')
             ax3.set_xlabel('Date')
-            ax3.set_ylabel('Qualité (%)')
+            ax3.set_ylabel('Nombre de Pixels QA')
             ax3.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
             ax3.grid(True, alpha=0.3)
         else:
@@ -618,31 +621,32 @@ class PixelVisualizer:
         ax.grid(True, alpha=0.3)
     
     def _plot_qa_quality_heatmap(self, ax, true_qa_results):
-        """Plot QA quality ratios as heatmap"""
+        """Plot QA quality counts as heatmap (absolute values)"""
         if 'by_month' not in true_qa_results:
             ax.text(0.5, 0.5, 'Pas de données QA\ndisponibles', 
                    ha='center', va='center', transform=ax.transAxes)
             return
         
-        # Prepare heatmap data
+        # Prepare heatmap data with absolute counts
         heatmap_data = []
         months = []
         
         for month, month_data in true_qa_results['by_month'].items():
-            if 'quality_ratios' in month_data:
-                ratios = month_data['quality_ratios']
+            if 'quality_counts' in month_data:
+                counts = month_data['quality_counts']
                 months.append(MONTH_NAMES[month])
                 heatmap_data.append([
-                    ratios['best_ratio'],
-                    ratios['good_ratio'], 
-                    ratios['moderate_ratio'],
-                    ratios['poor_ratio']
+                    counts.get('quality_0_best', 0),
+                    counts.get('quality_1_good', 0), 
+                    counts.get('quality_2_moderate', 0),
+                    counts.get('quality_3_poor', 0)
                 ])
         
         if heatmap_data:
             heatmap_array = np.array(heatmap_data)
             
-            im = ax.imshow(heatmap_array.T, cmap='RdYlGn_r', aspect='auto')
+            # Use a color map suitable for count data
+            im = ax.imshow(heatmap_array.T, cmap='Blues', aspect='auto')
             
             # Set labels
             ax.set_xticks(range(len(months)))
@@ -650,19 +654,22 @@ class PixelVisualizer:
             ax.set_yticks(range(4))
             ax.set_yticklabels(['QA 0\n(Meilleur)', 'QA 1\n(Bon)', 'QA 2\n(Modéré)', 'QA 3\n(Mauvais)'])
             
-            # Add text annotations
+            # Add text annotations with absolute counts
             for i in range(len(months)):
                 for j in range(4):
-                    text = ax.text(i, j, f'{heatmap_array[i, j]:.1f}%',
-                                 ha="center", va="center", color="black", fontweight='bold')
+                    count_val = heatmap_array[i, j]
+                    if count_val > 0:
+                        text = ax.text(i, j, f'{count_val:.0f}',
+                                     ha="center", va="center", color="white" if count_val > heatmap_array.max()/2 else "black", 
+                                     fontweight='bold')
             
             # Add colorbar
             cbar = plt.colorbar(im, ax=ax, shrink=0.8)
-            cbar.set_label('Pourcentage (%)')
+            cbar.set_label('Comptages de Pixels')
             
-            ax.set_title('🌡️ Heatmap des Ratios QA', fontweight='bold')
+            ax.set_title('🌡️ Heatmap des Comptages QA Absolus', fontweight='bold')
         else:
-            ax.text(0.5, 0.5, 'Pas de données\nde ratios QA', 
+            ax.text(0.5, 0.5, 'Pas de données\nde comptages QA', 
                    ha='center', va='center', transform=ax.transAxes)
     
     def _plot_average_pixel_counts(self, ax, monthly_stats):
