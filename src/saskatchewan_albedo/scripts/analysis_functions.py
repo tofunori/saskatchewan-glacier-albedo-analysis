@@ -145,12 +145,6 @@ def run_complete_analysis():
                 )
             
             if true_qa_results:
-                pixel_visualizer.create_true_qa_plots(
-                    true_qa_results,
-                    str(output_path / 'true_qa_scores_analysis.png')
-                )
-            
-            if true_qa_results:
                 pixel_visualizer.create_qa_statistics_plots(
                     true_qa_results,
                     str(output_path / 'qa_statistics_by_season.png')
@@ -344,12 +338,6 @@ def run_pixels_only():
             pixel_visualizer.create_monthly_pixel_count_plots(
                 monthly_pixel_results,
                 str(output_path / 'pixel_counts_by_month_fraction.png')
-            )
-        
-        if true_qa_results:
-            pixel_visualizer.create_true_qa_plots(
-                true_qa_results,
-                str(output_path / 'true_qa_scores_analysis.png')
             )
         
         if true_qa_results:
