@@ -50,7 +50,7 @@ class MonthlyVisualizer:
             str: Chemin du fichier sauvegardé
         """
         print_section_header("Création des graphiques de statistiques mensuelles", level=2)
-        print("🎨 Génération des 4 graphiques mensuels demandés...")
+        print("🎨 Génération des 4 graphiques mensuels avec TOUS les points de données...")
         
         # Préparer les données mensuelles
         monthly_stats = self._prepare_monthly_statistics(variable)
@@ -59,24 +59,37 @@ class MonthlyVisualizer:
             print("❌ Pas de données pour créer les graphiques mensuels")
             return None
         
-        # Créer la figure avec 4 sous-graphiques
-        fig, axes = plt.subplots(2, 2, figsize=(16, 12))
-        fig.suptitle(f'Statistiques Mensuelles d\'Albédo par Fraction ({variable.title()})', 
-                     fontsize=16, fontweight='bold', y=0.98)
+        # Créer la figure avec style moderne et amélioré
+        fig, axes = plt.subplots(2, 2, figsize=(18, 14))
         
-        # Graphique 1: Moyennes mensuelles par fraction
-        self._plot_monthly_means(axes[0, 0], monthly_stats)
+        # Titre amélioré avec informations du dataset
+        dataset_info = "MOD10A1" if "mod10a1" in str(save_path).lower() else "MCD43A3"
+        fig.suptitle(f'Monthly Statistical Analysis - {dataset_info} {variable.title()}\nSaskatchewan Glacier Albedo Monitoring', 
+                     fontsize=18, fontweight='bold', y=0.96)
         
-        # Graphique 2: Variabilité mensuelle (écart-types)
-        self._plot_monthly_variability(axes[0, 1], monthly_stats)
+        # Palette de couleurs moderne et distincte
+        modern_colors = {
+            'border': '#e74c3c',      # Bright red
+            'mixed_low': '#f39c12',   # Orange
+            'mixed_high': '#2ecc71',  # Green  
+            'mostly_ice': '#3498db',  # Blue
+            'pure_ice': '#9b59b6'     # Purple
+        }
         
-        # Graphique 3: Distributions mensuelles (boxplots)
-        self._plot_monthly_distributions(axes[1, 0], variable)
+        # Graphique 1: Moyennes mensuelles avec TOUS les points de données
+        self._plot_enhanced_monthly_means(axes[0, 0], variable, modern_colors)
         
-        # Graphique 4: Nombre d'observations par mois
-        self._plot_monthly_counts(axes[1, 1], monthly_stats)
+        # Graphique 2: Variabilité mensuelle avec TOUS les points
+        self._plot_enhanced_monthly_variability(axes[0, 1], variable, modern_colors)
         
-        plt.tight_layout()
+        # Graphique 3: Distributions mensuelles améliorées avec données individuelles
+        self._plot_enhanced_monthly_distributions(axes[1, 0], variable, modern_colors)
+        
+        # Graphique 4: Comptages et disponibilité des données avec points
+        self._plot_enhanced_monthly_counts(axes[1, 1], variable, modern_colors)
+        
+        # Layout et style améliorés
+        plt.tight_layout(rect=[0.0, 0.02, 1.0, 0.94])
         
         # Sauvegarder le graphique
         if save_path is None:
@@ -86,8 +99,9 @@ class MonthlyVisualizer:
         # S'assurer que le répertoire parent existe
         ensure_directory_exists(save_path)
         
-        plt.savefig(save_path, dpi=300, bbox_inches='tight')
-        print(f"✅ Graphiques mensuels sauvegardés: {save_path}")
+        # Sauvegarde haute qualité
+        plt.savefig(save_path, dpi=300, bbox_inches='tight', facecolor='white', edgecolor='none')
+        print(f"✅ Enhanced monthly graphs with all data points saved: {save_path}")
         
         plt.close()
         
@@ -131,6 +145,197 @@ class MonthlyVisualizer:
                         })
         
         return pd.DataFrame(monthly_stats)
+    
+    def _plot_enhanced_monthly_means(self, ax, variable, modern_colors):
+        """
+        Graphique 1 amélioré: Moyennes mensuelles avec TOUS les points de données individuels
+        """
+        # D'abord, afficher tous les points de données individuels en arrière-plan
+        for fraction in self.fraction_classes:
+            col_name = f"{fraction}_{variable}"
+            if col_name in self.data.columns:
+                fraction_color = modern_colors.get(fraction, '#7f8c8d')
+                
+                # Points individuels pour chaque mois
+                for month in [6, 7, 8, 9]:
+                    month_data = self.data[self.data['month'] == month][col_name].dropna()
+                    if len(month_data) > 0:
+                        # Ajouter un peu de jitter horizontal pour éviter la superposition
+                        x_positions = [month + np.random.normal(0, 0.05) for _ in range(len(month_data))]
+                        
+                        # Points individuels semi-transparents
+                        ax.scatter(x_positions, month_data.values, 
+                                 alpha=0.3, s=15, color=fraction_color, 
+                                 edgecolors='white', linewidth=0.5)
+                
+                # Calculer et afficher les moyennes mensuelles
+                monthly_means = []
+                months = []
+                for month in [6, 7, 8, 9]:
+                    month_data = self.data[self.data['month'] == month][col_name].dropna()
+                    if len(month_data) > 0:
+                        monthly_means.append(month_data.mean())
+                        months.append(month)
+                
+                # Ligne des moyennes avec gros marqueurs
+                if monthly_means:
+                    ax.plot(months, monthly_means, 
+                           marker='o', linewidth=3.5, markersize=10,
+                           label=self.class_labels[fraction],
+                           color=fraction_color, 
+                           markeredgecolor='white', markeredgewidth=2,
+                           alpha=0.9, zorder=10)
+                    
+                    # Annotations des valeurs moyennes
+                    for month, mean_val in zip(months, monthly_means):
+                        ax.annotate(f'{mean_val:.3f}', 
+                                   (month, mean_val),
+                                   textcoords="offset points", xytext=(0,15), ha='center',
+                                   fontsize=9, fontweight='bold', alpha=0.8)
+        
+        ax.set_title('A) Monthly Means with Individual Data Points', fontweight='bold', fontsize=14, pad=15)
+        ax.set_xlabel('Month', fontsize=12, fontweight='bold')
+        ax.set_ylabel(f'{variable.title()} Albedo', fontsize=12, fontweight='bold')
+        ax.set_xticks([6, 7, 8, 9])
+        ax.set_xticklabels(['Jun', 'Jul', 'Aug', 'Sep'])
+        ax.legend(loc='upper left', frameon=True, fancybox=True, shadow=True, fontsize=10, ncol=2)
+        ax.grid(True, alpha=0.4, linestyle=':', linewidth=0.8)
+        ax.set_facecolor('#fafafa')
+    
+    def _plot_enhanced_monthly_variability(self, ax, variable, modern_colors):
+        """
+        Graphique 2 amélioré: Variabilité mensuelle avec points individuels et écart-types
+        """
+        for fraction in self.fraction_classes:
+            col_name = f"{fraction}_{variable}"
+            if col_name in self.data.columns:
+                fraction_color = modern_colors.get(fraction, '#7f8c8d')
+                
+                monthly_stds = []
+                months = []
+                monthly_means = []
+                
+                for month in [6, 7, 8, 9]:
+                    month_data = self.data[self.data['month'] == month][col_name].dropna()
+                    if len(month_data) > 0:
+                        monthly_stds.append(month_data.std())
+                        monthly_means.append(month_data.mean())
+                        months.append(month)
+                
+                if monthly_stds:
+                    # Ligne des écart-types
+                    ax.plot(months, monthly_stds, 
+                           marker='s', linewidth=3, markersize=8,
+                           label=self.class_labels[fraction],
+                           color=fraction_color,
+                           markeredgecolor='white', markeredgewidth=1.5,
+                           linestyle='--', alpha=0.9)
+                    
+                    # Barres d'erreur pour montrer la plage de variabilité
+                    for month, std_val, mean_val in zip(months, monthly_stds, monthly_means):
+                        ax.errorbar(month, std_val, yerr=std_val*0.2, 
+                                   capsize=4, capthick=2, alpha=0.6, color=fraction_color)
+        
+        ax.set_title('B) Monthly Variability (Standard Deviation)', fontweight='bold', fontsize=14, pad=15)
+        ax.set_xlabel('Month', fontsize=12, fontweight='bold')
+        ax.set_ylabel(f'{variable.title()} Std Dev', fontsize=12, fontweight='bold')
+        ax.set_xticks([6, 7, 8, 9])
+        ax.set_xticklabels(['Jun', 'Jul', 'Aug', 'Sep'])
+        ax.legend(loc='upper left', frameon=True, fancybox=True, shadow=True, fontsize=10, ncol=2)
+        ax.grid(True, alpha=0.4, linestyle=':', linewidth=0.8)
+        ax.set_facecolor('#fafafa')
+    
+    def _plot_enhanced_monthly_distributions(self, ax, variable, modern_colors):
+        """
+        Graphique 3 amélioré: Distributions mensuelles avec violin plots et points
+        """
+        # Utiliser violin plots pour montrer la distribution complète
+        month_names = ['Jun', 'Jul', 'Aug', 'Sep']
+        months = [6, 7, 8, 9]
+        
+        # Préparer les données pour violin plot pour chaque fraction
+        for i, fraction in enumerate(self.fraction_classes):
+            col_name = f"{fraction}_{variable}"
+            if col_name in self.data.columns:
+                violin_data = []
+                positions = []
+                
+                for j, month in enumerate(months):
+                    month_data = self.data[self.data['month'] == month][col_name].dropna()
+                    if len(month_data) > 3:  # Minimum pour violin plot
+                        violin_data.append(month_data.values)
+                        positions.append(month + (i-2)*0.15)  # Décalage pour éviter superposition
+                
+                if violin_data:
+                    # Violin plot pour cette fraction
+                    parts = ax.violinplot(violin_data, positions=positions, widths=0.12, 
+                                        showmeans=True, showmedians=True)
+                    
+                    # Colorer les violin plots
+                    fraction_color = modern_colors.get(fraction, '#7f8c8d')
+                    for pc in parts['bodies']:
+                        pc.set_facecolor(fraction_color)
+                        pc.set_alpha(0.6)
+                        pc.set_edgecolor('white')
+                        pc.set_linewidth(1)
+        
+        # Créer une légende manuelle
+        legend_elements = [plt.Line2D([0], [0], color=modern_colors.get(fraction, '#7f8c8d'), 
+                                     lw=3, label=self.class_labels[fraction]) 
+                          for fraction in self.fraction_classes]
+        ax.legend(handles=legend_elements, loc='upper left', frameon=True, 
+                 fancybox=True, shadow=True, fontsize=10, ncol=2)
+        
+        ax.set_title('C) Monthly Distributions (Violin Plots)', fontweight='bold', fontsize=14, pad=15)
+        ax.set_xlabel('Month', fontsize=12, fontweight='bold')
+        ax.set_ylabel(f'{variable.title()} Albedo', fontsize=12, fontweight='bold')
+        ax.set_xticks(months)
+        ax.set_xticklabels(month_names)
+        ax.grid(True, alpha=0.4, linestyle=':', linewidth=0.8)
+        ax.set_facecolor('#fafafa')
+    
+    def _plot_enhanced_monthly_counts(self, ax, variable, modern_colors):
+        """
+        Graphique 4 amélioré: Comptages mensuels avec barres et points de données
+        """
+        months = [6, 7, 8, 9]
+        month_names = ['Jun', 'Jul', 'Aug', 'Sep']
+        width = 0.15  # Largeur des barres
+        
+        # Position des barres pour chaque fraction
+        for i, fraction in enumerate(self.fraction_classes):
+            col_name = f"{fraction}_{variable}"
+            if col_name in self.data.columns:
+                counts = []
+                for month in months:
+                    month_data = self.data[self.data['month'] == month][col_name].dropna()
+                    counts.append(len(month_data))
+                
+                # Position des barres avec décalage
+                x_pos = [month + (i-2)*width for month in months]
+                
+                # Barres colorées
+                fraction_color = modern_colors.get(fraction, '#7f8c8d')
+                bars = ax.bar(x_pos, counts, width, 
+                             label=self.class_labels[fraction],
+                             color=fraction_color, alpha=0.8,
+                             edgecolor='white', linewidth=1)
+                
+                # Annotations sur les barres
+                for bar, count in zip(bars, counts):
+                    if count > 0:
+                        ax.annotate(f'{count}', 
+                                   (bar.get_x() + bar.get_width()/2, bar.get_height()),
+                                   ha='center', va='bottom', fontsize=9, fontweight='bold')
+        
+        ax.set_title('D) Monthly Data Availability (Observation Counts)', fontweight='bold', fontsize=14, pad=15)
+        ax.set_xlabel('Month', fontsize=12, fontweight='bold')
+        ax.set_ylabel('Number of Observations', fontsize=12, fontweight='bold')
+        ax.set_xticks(months)
+        ax.set_xticklabels(month_names)
+        ax.legend(loc='upper left', frameon=True, fancybox=True, shadow=True, fontsize=10, ncol=2)
+        ax.grid(True, alpha=0.4, linestyle=':', linewidth=0.8, axis='y')
+        ax.set_facecolor('#fafafa')
     
     def _plot_monthly_means(self, ax, monthly_stats):
         """
