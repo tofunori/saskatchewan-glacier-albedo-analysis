@@ -553,13 +553,13 @@ class PixelVisualizer:
         for i, qa_score in enumerate(['0', '1', '2', '3']):
             score_data = qa_stats[qa_stats['qa_score'] == qa_score]
             if not score_data.empty:
-                ax.plot(score_data['month'], score_data['mean_percentage'], 
+                ax.plot(score_data['month'], score_data['mean_count'], 
                        marker='o', linewidth=2, markersize=6,
                        label=qa_labels[i], color=qa_colors[i])
         
-        ax.set_title('📊 Distribution des Scores QA par Mois', fontweight='bold')
+        ax.set_title('📊 Distribution des Comptages QA par Mois', fontweight='bold')
         ax.set_xlabel('Mois')
-        ax.set_ylabel('Pourcentage Moyen (%)')
+        ax.set_ylabel('Comptage Moyen (pixels)')
         ax.set_xticks([6, 7, 8, 9])
         ax.set_xticklabels(['Juin', 'Juillet', 'Août', 'Sept'])
         ax.legend()
@@ -580,7 +580,7 @@ class PixelVisualizer:
             for qa_score in ['0', '1', '2', '3']:
                 score_data = month_data[month_data['qa_score'] == qa_score]
                 if not score_data.empty:
-                    qa_data_by_month[month][qa_score] = score_data['mean_percentage'].iloc[0]
+                    qa_data_by_month[month][qa_score] = score_data['mean_count'].iloc[0]
                 else:
                     qa_data_by_month[month][qa_score] = 0
         
@@ -603,18 +603,18 @@ class PixelVisualizer:
         poor_data = qa_stats[qa_stats['qa_score'] == '3']
         
         if not best_data.empty:
-            ax.plot(best_data['month'], best_data['mean_percentage'], 
+            ax.plot(best_data['month'], best_data['mean_count'], 
                    marker='o', linewidth=3, markersize=8,
                    label='QA 0 (Meilleur)', color='#2E8B57')
         
         if not poor_data.empty:
-            ax.plot(poor_data['month'], poor_data['mean_percentage'], 
+            ax.plot(poor_data['month'], poor_data['mean_count'], 
                    marker='s', linewidth=3, markersize=8,
                    label='QA 3 (Mauvais)', color='#DC143C')
         
         ax.set_title('📈 Tendances QA: Meilleur vs Mauvais', fontweight='bold')
         ax.set_xlabel('Mois')
-        ax.set_ylabel('Pourcentage (%)')
+        ax.set_ylabel('Comptages (pixels)')
         ax.set_xticks([6, 7, 8, 9])
         ax.set_xticklabels(['Juin', 'Juillet', 'Août', 'Sept'])
         ax.legend()
