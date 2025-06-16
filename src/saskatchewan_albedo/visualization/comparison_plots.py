@@ -219,8 +219,8 @@ class ComparisonVisualizer:
         
         print(f"✅ Affichage de {len(plot_data)} points de données pour {fraction}")
         
-        # Créer le graphique avec style moderne
-        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(16, 12), sharex=True)
+        # Créer le graphique avec style moderne - 3 panneaux
+        fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(16, 16), sharex=True)
         
         # GRAPHIQUE 1: SÉRIES TEMPORELLES - POINTS SEULEMENT
         # MCD43A3 - Points bleus
@@ -268,17 +268,72 @@ class ComparisonVisualizer:
         ax2.legend(loc='upper left', frameon=True, fancybox=True, shadow=True, fontsize=12)
         ax2.set_facecolor('#fafafa')
         
+        # GRAPHIQUE 3: DISPONIBILITÉ QUOTIDIENNE DES DONNÉES
+        print("✅ Génération du panneau de disponibilité quotidienne des données...")
+        
+        # Obtenir toutes les données originales (pas seulement les merged)
+        mcd_data = self.comparison_data['mcd43a3']
+        mod_data = self.comparison_data['mod10a1']
+        
+        # Filtrer pour la fraction spécifique
+        mcd_fraction_col = f"{fraction}_mean"
+        mod_fraction_col = f"{fraction}_mean"
+        
+        # Points où MCD43A3 a des données
+        if mcd_fraction_col in mcd_data.columns:
+            mcd_available = mcd_data[mcd_data[mcd_fraction_col].notna()]
+            if len(mcd_available) > 0:
+                ax3.scatter(mcd_available['date'], [1] * len(mcd_available), 
+                           c='#3498db', s=15, alpha=0.7, marker='|', 
+                           label=f'MCD43A3 Available ({len(mcd_available)} days)')
+        
+        # Points où MOD10A1 a des données  
+        if mod_fraction_col in mod_data.columns:
+            mod_available = mod_data[mod_data[mod_fraction_col].notna()]
+            if len(mod_available) > 0:
+                ax3.scatter(mod_available['date'], [0.5] * len(mod_available), 
+                           c='#e74c3c', s=15, alpha=0.7, marker='|',
+                           label=f'MOD10A1 Available ({len(mod_available)} days)')
+        
+        # Points où les deux datasets ont des données (merged)
+        ax3.scatter(plot_data['date'], [0.75] * len(plot_data), 
+                   c='#27ae60', s=20, alpha=0.8, marker='o',
+                   label=f'Both Available ({len(plot_data)} days)')
+        
+        ax3.set_ylim(-0.1, 1.3)
+        ax3.set_ylabel('Data Availability', fontsize=14, fontweight='bold')
+        ax3.set_xlabel('Date', fontsize=14, fontweight='bold')
+        ax3.set_title('C) Daily Data Availability Comparison', fontsize=16, fontweight='bold', pad=15)
+        ax3.legend(loc='upper left', frameon=True, fancybox=True, shadow=True, fontsize=12)
+        ax3.grid(True, alpha=0.4, linestyle=':', linewidth=0.8, axis='x')
+        ax3.set_facecolor('#fafafa')
+        
+        # Personnaliser les étiquettes Y
+        ax3.set_yticks([0.5, 0.75, 1.0])
+        ax3.set_yticklabels(['MOD10A1\nOnly', 'Both\nDatasets', 'MCD43A3\nOnly'], fontsize=11)
+        
+        # Calculer et afficher les statistiques de couverture
+        total_mcd = len(mcd_data[mcd_data[mcd_fraction_col].notna()]) if mcd_fraction_col in mcd_data.columns else 0
+        total_mod = len(mod_data[mod_data[mod_fraction_col].notna()]) if mod_fraction_col in mod_data.columns else 0
+        overlap = len(plot_data)
+        
+        coverage_text = f'Coverage Stats:\nMCD43A3: {total_mcd} days\nMOD10A1: {total_mod} days\nOverlap: {overlap} days\nOverlap %: {(overlap/max(total_mcd,total_mod)*100):.1f}%'
+        
+        ax3.text(0.98, 0.98, coverage_text, 
+                transform=ax3.transAxes, fontsize=11, verticalalignment='top', horizontalalignment='right',
+                bbox=dict(boxstyle='round,pad=0.5', facecolor='white', edgecolor='lightgray', alpha=0.95))
+        
         # Formater l'axe des dates de façon moderne
-        ax2.xaxis.set_major_formatter(mdates.DateFormatter('%Y'))
-        ax2.xaxis.set_major_locator(mdates.YearLocator(2))  # Tous les 2 ans
-        ax2.xaxis.set_minor_locator(mdates.YearLocator())   # Marques mineures chaque année
-        plt.setp(ax2.xaxis.get_majorticklabels(), rotation=45, fontsize=12)
+        ax3.xaxis.set_major_formatter(mdates.DateFormatter('%Y'))
+        ax3.xaxis.set_major_locator(mdates.YearLocator(2))  # Tous les 2 ans
+        ax3.xaxis.set_minor_locator(mdates.YearLocator())   # Marques mineures chaque année
+        plt.setp(ax3.xaxis.get_majorticklabels(), rotation=45, fontsize=12)
         
         # Statistiques des différences améliorées
         diff_mean = differences.mean()
         diff_std = differences.std()
         diff_median = differences.median()
-        stats_text = f'Statistics:\nMean: {diff_mean:+.4f}\nStd: {diff_std:.4f}\nMedian: {diff_median:+.4f}\nPoints: {len(differences)}'
+        stats_text = f'Difference Stats:\nMean: {diff_mean:+.4f}\nStd: {diff_std:.4f}\nMedian: {diff_median:+.4f}\nPoints: {len(differences)}'
         
         ax2.text(0.02, 0.98, stats_text, 
                 transform=ax2.transAxes, fontsize=11, verticalalignment='top',
