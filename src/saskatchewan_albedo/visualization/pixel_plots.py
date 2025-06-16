@@ -84,115 +84,96 @@ class PixelVisualizer:
     
     def _create_hybrid_albedo_analysis(self, ax, year, year_data, modern_colors):
         """
-        Crée des box plots quotidiens pour chaque fraction avec statistiques détaillées
+        Crée des barres empilées quotidiennes d'albédo avec couleurs plus douces
         
         Args:
             ax: Matplotlib axes object
             year: Année analysée
             year_data: Données pour cette année
-            modern_colors: Palette de couleurs
+            modern_colors: Palette de couleurs (sera remplacée par des couleurs plus douces)
         """
-        print(f"🎨 Création des box plots quotidiens par fraction pour {year}...")
+        print(f"🎨 Création des barres empilées quotidiennes d'albédo pour {year}...")
         
-        # Collecter les données quotidiennes par fraction
-        fraction_data = {}
+        # Palette de couleurs plus douces et subtiles
+        soft_colors = {
+            'border': '#c7a8a8',      # Rouge doux
+            'mixed_low': '#d4b896',   # Orange doux
+            'mixed_high': '#a8c7a8',  # Vert doux  
+            'mostly_ice': '#a8b8c7',  # Bleu doux
+            'pure_ice': '#b8a8c7'     # Violet doux
+        }
         
-        for fraction in self.fraction_classes:
-            albedo_col = f"{fraction}_mean"
+        # Préparer les données pour barres empilées - contribution pondérée d'albédo
+        albedo_data = {}
+        valid_dates = []
+        
+        for _, row in year_data.iterrows():
+            date = row['date']
+            day_contributions = {}
+            total_weighted_albedo = 0
+            total_pixels = 0
             
-            if albedo_col in year_data.columns:
-                # Extraire toutes les valeurs quotidiennes valides pour cette fraction
-                valid_values = year_data[albedo_col].dropna()
-                if len(valid_values) > 0:
-                    fraction_data[fraction] = valid_values.values
+            # Calculer la contribution pondérée de chaque fraction
+            for fraction in self.fraction_classes:
+                albedo_col = f"{fraction}_mean"
+                pixel_col = f"{fraction}_pixel_count"
+                
+                if (albedo_col in row.index and pixel_col in row.index and 
+                    pd.notna(row[albedo_col]) and pd.notna(row[pixel_col]) and row[pixel_col] > 0):
+                    
+                    # Pondérer l'albédo par le nombre de pixels
+                    weighted_contribution = row[albedo_col] * row[pixel_col]
+                    day_contributions[fraction] = weighted_contribution
+                    total_weighted_albedo += weighted_contribution
+                    total_pixels += row[pixel_col]
+            
+            # N'inclure que les jours avec des données
+            if day_contributions and total_pixels > 0:
+                valid_dates.append(date)
+                # Normaliser les contributions pour obtenir l'albédo proportionnel
+                for fraction in day_contributions:
+                    if fraction not in albedo_data:
+                        albedo_data[fraction] = []
+                    albedo_data[fraction].append(day_contributions[fraction] / total_pixels)
+                
+                # Remplir les fractions manquantes avec 0
+                for fraction in self.fraction_classes:
+                    if fraction not in day_contributions:
+                        if fraction not in albedo_data:
+                            albedo_data[fraction] = []
+                        albedo_data[fraction].append(0)
         
-        if not fraction_data:
+        if valid_dates and albedo_data:
+            # Créer les barres empilées
+            bottom_values = np.zeros(len(valid_dates))
+            width = 1.0  # Largeur complète pour les données quotidiennes
+            
+            for fraction in self.fraction_classes:
+                if fraction in albedo_data and len(albedo_data[fraction]) == len(valid_dates):
+                    values = np.array(albedo_data[fraction])
+                    
+                    ax.bar(valid_dates, values, width, bottom=bottom_values,
+                           label=f'{self.class_labels[fraction]}',
+                           color=soft_colors.get(fraction, '#b0b0b0'),
+                           alpha=0.8, edgecolor='white', linewidth=0.5)
+                    
+                    bottom_values += values
+            
+            ax.set_title('A) Daily Albedo Composition (Stacked by Ice Coverage Fraction)', 
+                         fontsize=16, fontweight='bold', pad=15)
+            ax.set_ylabel('Weighted Albedo', fontsize=14, fontweight='bold')
+            ax.set_ylim(0, max(bottom_values) * 1.1 if len(bottom_values) > 0 else 1)
+            ax.legend(loc='upper left', frameon=True, fancybox=True, shadow=True, 
+                      fontsize=11, ncol=2)
+            ax.grid(True, alpha=0.4, linestyle=':', linewidth=0.8, axis='y')
+            ax.set_facecolor('#fafafa')
+            
+            print(f"✅ Panel A: Barres empilées d'albédo quotidiennes pour {len(valid_dates)} jours")
+        else:
             ax.text(0.5, 0.5, 'No albedo data available for this year', 
-                   ha='center', va='center', transform=ax.transAxes, fontsize=14)
-            ax.set_title('A) Daily Albedo Distribution by Fraction (No Data)', 
-                        fontsize=16, fontweight='bold', pad=15)
-            return
-        
-        # Préparer les données pour les box plots
-        box_data = []
-        box_labels = []
-        box_colors = []
-        fraction_stats = {}
-        
-        for fraction in self.fraction_classes:
-            if fraction in fraction_data:
-                data = fraction_data[fraction]
-                box_data.append(data)
-                box_labels.append(self.class_labels[fraction])
-                box_colors.append(modern_colors.get(fraction, '#7f8c8d'))
-                
-                # Calculer les statistiques détaillées
-                fraction_stats[fraction] = {
-                    'mean': np.mean(data),
-                    'median': np.median(data),
-                    'std': np.std(data),
-                    'min': np.min(data),
-                    'max': np.max(data),
-                    'p5': np.percentile(data, 5),
-                    'p95': np.percentile(data, 95),
-                    'n': len(data)
-                }
-        
-        # Créer les box plots horizontaux
-        if box_data:
-            # Box plots horizontaux pour un meilleur affichage des étiquettes
-            bp = ax.boxplot(box_data, vert=False, patch_artist=True, 
-                           showmeans=True, meanline=False,
-                           meanprops={'marker': 'D', 'markerfacecolor': 'white', 
-                                     'markeredgecolor': 'black', 'markersize': 6})
-            
-            # Colorer les boîtes
-            for patch, color in zip(bp['boxes'], box_colors):
-                patch.set_facecolor(color)
-                patch.set_alpha(0.7)
-                patch.set_edgecolor('white')
-                patch.set_linewidth(1.5)
-            
-            # Définir les étiquettes Y
-            ax.set_yticklabels(box_labels)
-            ax.set_yticks(range(1, len(box_labels) + 1))
-            
-            # Ajouter les annotations statistiques à droite de chaque box plot
-            y_positions = range(1, len(box_data) + 1)
-            x_max = max([np.max(data) for data in box_data])
-            
-            for i, (fraction, stats) in enumerate(fraction_stats.items()):
-                y_pos = y_positions[i]
-                
-                # Texte des statistiques bien formaté
-                stats_text = f"Mean: {stats['mean']:.3f}  |  "
-                stats_text += f"Median: {stats['median']:.3f}  |  "
-                stats_text += f"Std: {stats['std']:.3f}\\n"
-                stats_text += f"Min: {stats['min']:.3f}  |  "
-                stats_text += f"Max: {stats['max']:.3f}  |  "
-                stats_text += f"N: {stats['n']}\\n"
-                stats_text += f"5th: {stats['p5']:.3f}  |  "
-                stats_text += f"95th: {stats['p95']:.3f}"
-                
-                # Positionner l'annotation à droite du box plot
-                ax.text(x_max * 1.05, y_pos, stats_text, fontsize=9, 
-                       verticalalignment='center', horizontalalignment='left',
-                       bbox=dict(boxstyle='round,pad=0.4', facecolor='white', 
-                                edgecolor=modern_colors.get(fraction, '#7f8c8d'), 
-                                alpha=0.9, linewidth=1.5))
-        
-        # Configuration du graphique
-        ax.set_title(f'A) Daily Albedo Distribution by Ice Coverage Fraction ({year})', 
-                    fontsize=16, fontweight='bold', pad=15)
-        ax.set_xlabel('Albedo', fontsize=14, fontweight='bold')
-        ax.set_ylabel('Ice Coverage Fractions', fontsize=14, fontweight='bold')
-        ax.grid(True, alpha=0.3, linestyle=':', linewidth=0.8, axis='x')
-        ax.set_facecolor('#fafafa')
-        
-        # Ajuster les marges pour les annotations
-        ax.margins(x=0.3)  # Plus d'espace à droite pour les annotations
-        
-        print(f"✅ Panel A: Box plots quotidiens pour {len(fraction_data)} fractions")
+                    ha='center', va='center', transform=ax.transAxes, fontsize=14)
+            ax.set_title('A) Daily Albedo Composition (No Data)', 
+                         fontsize=16, fontweight='bold', pad=15)
         
     def create_monthly_pixel_count_plots(self, pixel_results, save_path=None):
         """
