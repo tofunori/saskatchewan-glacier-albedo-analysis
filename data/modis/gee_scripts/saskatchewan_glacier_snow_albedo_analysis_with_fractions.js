@@ -611,13 +611,13 @@ print('Statistiques quotidiennes d\'albédo de neige par fraction calculées:', 
 // 16. Créer un graphique de l'évolution quotidienne par classe principale (Mann-Kendall ready)
 var dailySnowChart = ui.Chart.feature.byFeature(
     dailySnowAlbedoByFraction, 
-    'system:time_start', 
+    'decimal_year', 
     ['border_mean', 'mixed_high_mean', 'mostly_ice_mean', 'pure_ice_mean']
   )
   .setChartType('LineChart')
   .setOptions({
     title: 'Évolution quotidienne albédo de neige par fraction - MOD10A1 optimisé Mann-Kendall (2010-2024)',
-    hAxis: {title: 'Date', format: 'yyyy'},
+    hAxis: {title: 'Année (décimale)', format: '#.##'},
     vAxis: {title: 'Albédo de neige moyen', viewWindow: {min: 0.3, max: 0.9}},
     series: {
       0: {color: 'red', lineWidth: 1, pointSize: 2},      // Border
@@ -721,25 +721,37 @@ print('Distribution de qualité globale MOD10A1 calculée pour:', globalSnowQual
 // Filtrer pour une année spécifique (exemple : 2020) pour le graphique détaillé
 var singleYearSnowQuality = globalSnowQualityDistribution.filter(ee.Filter.calendarRange(2020, 2020, 'year'));
 
-// Créer le graphique en barres empilées pour une saison de fonte
-var globalSnowStackedChart = ui.Chart.feature.byFeature(
-    singleYearSnowQuality, 
-    'system:time_start', 
-    ['quality_0_best', 'quality_1_good', 'quality_2_ok', 'quality_other_night_ocean']
+// Créer un graphique simplifié pour éviter les erreurs de format de date
+var qualityChart2020 = ui.Chart.feature.groups(
+    singleYearSnowQuality,
+    'date',
+    'quality_0_best',
+    'quality_0_best'
   )
+  .setChartType('LineChart')
+  .setOptions({
+    title: 'Évolution qualité MOD10A1 (Qualité Best) - Saison de fonte 2020',
+    hAxis: {title: 'Date'},
+    vAxis: {title: 'Nombre de pixels qualité Best'},
+    colors: ['#2166ac'],
+    lineWidth: 2,
+    pointSize: 3,
+    height: 400
+  });
+
+// Alternative : Graphique en barres simple pour la qualité
+var globalSnowStackedChart = ui.Chart.feature.byProperty({
+    features: singleYearSnowQuality,
+    xProperty: 'date',
+    yProperties: ['quality_0_best', 'quality_1_good', 'quality_2_ok', 'quality_other_night_ocean']
+  })
   .setChartType('ColumnChart')
   .setOptions({
     title: 'Distribution quotidienne de la qualité des pixels MOD10A1 Snow Albedo - Saison de fonte 2020',
-    hAxis: {
-      title: 'Date',
-      format: 'MM/dd'
-    },
-    vAxis: {
-      title: 'Nombre de pixels'
-    },
-    colors: ['#2166ac', '#92c5de', '#fddbc7', '#d6604d'], // Bleu foncé à rouge
+    hAxis: {title: 'Date'},
+    vAxis: {title: 'Nombre de pixels'},
+    colors: ['#2166ac', '#92c5de', '#fddbc7', '#d6604d'],
     isStacked: true,
-    bar: {groupWidth: '90%'},
     height: 500,
     legend: {
       position: 'top',
