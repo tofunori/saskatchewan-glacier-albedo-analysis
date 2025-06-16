@@ -463,10 +463,10 @@ class PixelVisualizer:
             if albedo_col in year_data.columns:
                 albedo_data = year_data[albedo_col].dropna()
                 if len(albedo_data) > 0:
-                    ax1.scatter(year_data['date'], year_data[albedo_col], 
-                               s=35, alpha=0.7, 
-                               label=self.class_labels[fraction],
-                               color=self.academic_colors.get(fraction, 'gray'))
+                    ax1.plot(year_data['date'], year_data[albedo_col], 
+                            marker='o', markersize=4, linewidth=2, alpha=0.8,
+                            label=self.class_labels[fraction],
+                            color=self.academic_colors.get(fraction, 'gray'))
         
         ax1.set_title('A) Daily Albedo Values by Ice Coverage Fraction', fontweight='bold', pad=20)
         ax1.set_xlabel('Date', fontsize=12)
