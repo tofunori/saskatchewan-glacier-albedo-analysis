@@ -215,16 +215,21 @@ def print_section_header(title, level=1):
     else:
         print(f"\n### {title}")
 
-def ensure_directory_exists(file_path):
+def ensure_directory_exists(path):
     """
-    S'assure que le répertoire pour un fichier existe
+    S'assure que le répertoire existe
     
     Args:
-        file_path (str): Chemin vers le fichier
+        path (str): Chemin vers le fichier ou répertoire
     """
-    directory = os.path.dirname(file_path)
+    # Si le chemin se termine par une extension de fichier, extraire le répertoire
+    if os.path.splitext(path)[1]:  # A une extension de fichier
+        directory = os.path.dirname(path)
+    else:  # C'est déjà un répertoire
+        directory = path
+    
     if directory and not os.path.exists(directory):
-        os.makedirs(directory)
+        os.makedirs(directory, exist_ok=True)
 
 def get_timestamp():
     """
