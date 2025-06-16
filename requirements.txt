@@ -1,0 +1,34 @@
+# Saskatchewan Glacier Albedo Analysis Requirements
+# Installation: pip install -r requirements.txt
+
+# Core dependencies
+pandas>=1.5.0
+numpy>=1.21.0
+matplotlib>=3.5.0
+seaborn>=0.11.0
+scipy>=1.9.0
+scikit-learn>=1.1.0
+
+# Statistical analysis
+pymannkendall>=1.4.3
+
+# File I/O
+openpyxl>=3.0.10
+
+# Optional: Advanced visualization
+plotly>=5.0.0
+
+# Optional: Data processing (install separately if needed)
+# modis-tools>=1.0.0
+# jupyter>=1.0.0
+# netCDF4>=1.5.0
+# xarray>=0.20.0
+# h5py>=3.0.0
+
+# Optional: Spatial processing (install separately if needed)
+# geopandas>=0.10.0
+# rasterio>=1.2.0
+# shapely>=1.8.0
+# pyproj>=3.2.0
+# gdal>=3.0.0
+# folium>=0.12.0

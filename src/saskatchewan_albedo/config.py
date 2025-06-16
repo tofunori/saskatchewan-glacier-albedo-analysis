@@ -21,7 +21,7 @@ sns.set_palette("husl")
 CSV_PATH = r"D:\Downloads\daily_albedo_mann_kendall_ready_2010_2024.csv"
 
 # Répertoire de sortie pour les résultats
-OUTPUT_DIR = "analysis_results"
+OUTPUT_DIR = "results"
 
 # Variable à analyser ('mean' ou 'median')
 ANALYSIS_VARIABLE = "mean"

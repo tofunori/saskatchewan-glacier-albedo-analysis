@@ -9,7 +9,7 @@ Tous les modules sont dans le même dossier - pas de problèmes d'imports !
 POUR UTILISER :
 1. Modifiez le chemin CSV_PATH ci-dessous si nécessaire
 2. Appuyez sur F5 dans VS Code ou exécutez : python main.py  
-3. Consultez les résultats dans le dossier analysis_results/
+3. Consultez les résultats dans le dossier results/
 
 ANALYSES INCLUSES :
 - Tests Mann-Kendall et Sen's slope pour toutes les fractions
@@ -26,56 +26,28 @@ from pathlib import Path
 import warnings
 warnings.filterwarnings('ignore')
 
-# Ajouter le répertoire du script au path pour trouver les modules
+# Ajouter le répertoire du projet au path pour trouver les modules
 script_dir = Path(__file__).parent.absolute()
+project_dir = script_dir.parent  # Remonte d'un niveau depuis scripts/
 
-# Pour VS Code/WSL, s'assurer qu'on trouve le bon répertoire
-# Si on est dans un répertoire VS Code, chercher le vrai répertoire du projet
-if 'Microsoft VS Code' in str(script_dir) or not (script_dir / 'config.py').exists():
-    # Essayer de trouver le bon répertoire
-    possible_dirs = [
-        Path('/home/tofunori/saskatchewan-glacier-albedo-analysis'),
-        Path(__file__).parent.absolute(),
-        Path.cwd(),
-    ]
-    
-    for dir_path in possible_dirs:
-        if (dir_path / 'config.py').exists() and (dir_path / 'data_handler.py').exists():
-            script_dir = dir_path
-            break
-    else:
-        print("❌ ERREUR: Impossible de trouver le répertoire du projet!")
-        print("🔍 Répertoires testés:")
-        for dir_path in possible_dirs:
-            print(f"   - {dir_path} (existe: {dir_path.exists()})")
-        sys.exit(1)
-
-sys.path.insert(0, str(script_dir))
+# Ajouter le répertoire src au path pour les imports
+src_dir = project_dir / 'src'
+sys.path.insert(0, str(src_dir))
 
 print(f"📂 Répertoire de travail actuel: {Path.cwd()}")
-print(f"📁 Répertoire du script détecté: {script_dir}")
-print(f"🔍 Recherche des modules dans: {script_dir}")
+print(f"📁 Répertoire du projet: {project_dir}")
+print(f"📁 Répertoire src: {src_dir}")
 
-# Vérifier que les modules essentiels sont trouvables
-required_files = ['config.py', 'data_handler.py', 'trend_calculator.py', 'monthly_visualizer.py', 'helpers.py']
-missing_files = [f for f in required_files if not (script_dir / f).exists()]
-if missing_files:
-    print(f"❌ ERREUR: Fichiers manquants: {missing_files}")
-    print(f"📁 Dans le répertoire: {script_dir}")
-    sys.exit(1)
+# Variable globale pour le répertoire du projet
+PROJECT_DIR = project_dir
 
-print(f"✅ Tous les fichiers requis trouvés dans: {script_dir}")
-
-# Variable globale pour le répertoire du script
-SCRIPT_DIR = script_dir
-
-# Imports des modules locaux (tous dans le même dossier)
+# Imports des modules du package saskatchewan_albedo
 try:
-    from config import CSV_PATH, OUTPUT_DIR, ANALYSIS_VARIABLE, print_config_summary
-    from data_handler import AlbedoDataHandler
-    from trend_calculator import TrendCalculator
-    from monthly_visualizer import MonthlyVisualizer
-    from helpers import print_section_header, ensure_directory_exists, print_analysis_summary
+    from saskatchewan_albedo.config import CSV_PATH, OUTPUT_DIR, ANALYSIS_VARIABLE, print_config_summary
+    from saskatchewan_albedo.data.handler import AlbedoDataHandler
+    from saskatchewan_albedo.analysis.trends import TrendCalculator
+    from saskatchewan_albedo.visualization.monthly import MonthlyVisualizer
+    from saskatchewan_albedo.utils.helpers import print_section_header, ensure_directory_exists, print_analysis_summary
     print("✅ Tous les modules importés avec succès")
 except ImportError as e:
     print(f"❌ Erreur d'import des modules: {e}")

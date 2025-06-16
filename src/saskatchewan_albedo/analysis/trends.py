@@ -9,11 +9,11 @@ dans les données d'albédo : Mann-Kendall, Sen's slope, autocorrélation, boots
 import numpy as np
 import pandas as pd
 from sklearn.utils import resample
-from config import (FRACTION_CLASSES, CLASS_LABELS, TREND_SYMBOLS, 
-                   get_significance_marker, ANALYSIS_CONFIG)
-from helpers import (perform_mann_kendall_test, calculate_sen_slope, 
-                    calculate_autocorrelation, prewhiten_series, 
-                    validate_data, print_section_header, format_pvalue)
+from ..config import (FRACTION_CLASSES, CLASS_LABELS, TREND_SYMBOLS, 
+                     get_significance_marker, ANALYSIS_CONFIG)
+from ..utils.helpers import (perform_mann_kendall_test, calculate_sen_slope, 
+                            calculate_autocorrelation, prewhiten_series, 
+                            validate_data, print_section_header, format_pvalue)
 
 class TrendCalculator:
     """

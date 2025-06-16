@@ -10,9 +10,9 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-from config import (FRACTION_CLASSES, CLASS_LABELS, MONTH_NAMES, FRACTION_COLORS,
-                   PLOT_STYLES, OUTPUT_DIR)
-from helpers import print_section_header, ensure_directory_exists
+from ..config import (FRACTION_CLASSES, CLASS_LABELS, MONTH_NAMES, FRACTION_COLORS,
+                     PLOT_STYLES, OUTPUT_DIR)
+from ..utils.helpers import print_section_header, ensure_directory_exists
 import os
 
 class MonthlyVisualizer:

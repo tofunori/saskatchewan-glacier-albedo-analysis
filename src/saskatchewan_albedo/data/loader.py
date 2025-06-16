@@ -1,6 +1,6 @@
 """
-Gestionnaire de données pour l'analyse des tendances d'albédo
-===========================================================
+Chargement et préparation des données d'albédo
+=============================================
 
 Ce module gère le chargement, le nettoyage et la préparation des données
 CSV exportées depuis Google Earth Engine.
@@ -9,17 +9,23 @@ CSV exportées depuis Google Earth Engine.
 import pandas as pd
 import numpy as np
 import os
-from config import FRACTION_CLASSES, CLASS_LABELS, ANALYSIS_CONFIG
-from helpers import print_section_header, validate_data, load_and_validate_csv
 
-class AlbedoDataHandler:
+# Gérer les imports relatifs et absolus
+try:
+    from .config import FRACTION_CLASSES, CLASS_LABELS, ANALYSIS_CONFIG
+    from .utils import print_section_header, validate_data
+except ImportError:
+    from config import FRACTION_CLASSES, CLASS_LABELS, ANALYSIS_CONFIG
+    from utils import print_section_header, validate_data
+
+class SaskatchewanDataLoader:
     """
     Classe pour charger et préparer les données d'albédo du glacier Saskatchewan
     """
     
     def __init__(self, csv_path):
         """
-        Initialise le gestionnaire de données
+        Initialise le chargeur de données
         
         Args:
             csv_path (str): Chemin vers le fichier CSV
@@ -43,9 +49,17 @@ class AlbedoDataHandler:
         """
         print_section_header("Chargement des données", level=2)
         
-        # Charger et valider le CSV
-        self.raw_data = load_and_validate_csv(self.csv_path)
-        self.data = self.raw_data.copy()
+        # Vérifier l'existence du fichier
+        if not os.path.exists(self.csv_path):
+            raise FileNotFoundError(f"Fichier non trouvé: {self.csv_path}")
+        
+        # Charger le CSV
+        try:
+            self.raw_data = pd.read_csv(self.csv_path)
+            self.data = self.raw_data.copy()
+            print(f"✓ Fichier chargé: {len(self.data)} lignes, {len(self.data.columns)} colonnes")
+        except Exception as e:
+            raise ValueError(f"Erreur lors du chargement du CSV: {e}")
         
         # Préparer les données
         self._prepare_temporal_data()
@@ -250,27 +264,6 @@ class AlbedoDataHandler:
         
         return result
     
-    def get_monthly_data(self, fraction, variable='mean', month=None):
-        """
-        Retourne les données pour un mois spécifique
-        
-        Args:
-            fraction (str): Nom de la fraction
-            variable (str): Variable à extraire
-            month (int, optional): Mois spécifique (6-9)
-            
-        Returns:
-            pd.DataFrame: Données filtrées pour le mois
-        """
-        data = self.get_fraction_data(fraction, variable, dropna=True)
-        
-        if month is not None:
-            # Ajouter la colonne month si nécessaire
-            data['month'] = data['date'].dt.month
-            data = data[data['month'] == month]
-        
-        return data
-    
     def export_cleaned_data(self, output_path=None):
         """
         Exporte les données nettoyées vers un nouveau CSV
@@ -287,24 +280,3 @@ class AlbedoDataHandler:
         
         self.data.to_csv(output_path, index=False)
         print(f"✓ Données nettoyées exportées: {output_path}")
-        
-        return output_path
-
-    def get_available_fractions(self, variable='mean'):
-        """
-        Retourne la liste des fractions avec des données disponibles
-        
-        Args:
-            variable (str): Variable à vérifier
-            
-        Returns:
-            list: Liste des fractions avec données disponibles
-        """
-        available = []
-        
-        for fraction in self.fraction_classes:
-            col_name = f"{fraction}_{variable}"
-            if col_name in self.data.columns and not self.data[col_name].isna().all():
-                available.append(fraction)
-        
-        return available
