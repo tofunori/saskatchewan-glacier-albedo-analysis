@@ -177,9 +177,10 @@ def run_complete_analysis():
                 )
                 print(f"✅ {len(daily_plots)} graphiques quotidiens pixels/QA créés")
             
-            # Graphiques quotidiens d'albédo
-            albedo_plots = create_daily_albedo_plots(data_handler, str(output_path))
-            print(f"✅ {len(albedo_plots)} graphiques quotidiens d'albédo créés")
+            # Graphiques quotidiens d'albédo - DÉSACTIVÉ
+            # albedo_plots = create_daily_albedo_plots(data_handler, str(output_path))
+            # print(f"✅ {len(albedo_plots)} graphiques quotidiens d'albédo créés")
+            albedo_plots = []
             
         except Exception as e:
             print(f"⚠️  Erreur graphiques quotidiens: {e}")
@@ -382,9 +383,10 @@ def run_daily_only():
         )
         print(f"✅ {len(daily_plots)} graphiques quotidiens pixels/QA créés")
         
-        # Graphiques quotidiens d'albédo
-        albedo_plots = create_daily_albedo_plots(data_handler, str(output_path))
-        print(f"✅ {len(albedo_plots)} graphiques quotidiens d'albédo créés")
+        # Graphiques quotidiens d'albédo - DÉSACTIVÉ
+        # albedo_plots = create_daily_albedo_plots(data_handler, str(output_path))
+        # print(f"✅ {len(albedo_plots)} graphiques quotidiens d'albédo créés")
+        albedo_plots = []
         
         print(f"\n✅ GRAPHIQUES QUOTIDIENS TERMINÉS !")
         print(f"   📊 {len(daily_plots)} graphiques pixels/QA")
