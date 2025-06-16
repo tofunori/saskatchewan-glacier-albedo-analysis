@@ -81,6 +81,198 @@ class PixelVisualizer:
         except:
             # Fallback to original data if interpolation fails
             return x_data, y_data
+    
+    def _create_hybrid_albedo_analysis(self, ax, year, year_data, modern_colors):
+        """
+        Crée une analyse hybride avec box plots mensuels et barres empilées de fractions
+        
+        Args:
+            ax: Matplotlib axes object
+            year: Année analysée
+            year_data: Données pour cette année
+            modern_colors: Palette de couleurs
+        """
+        print(f"🎨 Création de l'analyse hybride albédo pour {year}...")
+        
+        # Préparer les données mensuelles
+        monthly_data = {}
+        monthly_fractions = {}
+        
+        # Ajouter la colonne de mois si elle n'existe pas
+        if 'month' not in year_data.columns:
+            year_data = year_data.copy()
+            year_data['month'] = pd.to_datetime(year_data['date']).dt.month
+        
+        # Collecter les données par mois
+        for month in [6, 7, 8, 9]:  # Juin à Septembre
+            month_data = year_data[year_data['month'] == month].copy()
+            
+            if len(month_data) == 0:
+                continue
+            
+            # Calcul de l'albédo global quotidien pour les box plots
+            daily_albedos = []
+            monthly_fraction_contributions = {fraction: [] for fraction in self.fraction_classes}
+            
+            for _, row in month_data.iterrows():
+                total_weighted_albedo = 0
+                total_pixels = 0
+                
+                # Calculer l'albédo pondéré total et les contributions par fraction
+                for fraction in self.fraction_classes:
+                    albedo_col = f"{fraction}_mean"
+                    pixel_col = f"{fraction}_pixel_count"
+                    
+                    if (albedo_col in row.index and pixel_col in row.index and 
+                        pd.notna(row[albedo_col]) and pd.notna(row[pixel_col]) and row[pixel_col] > 0):
+                        
+                        weighted_albedo = row[albedo_col] * row[pixel_col]
+                        monthly_fraction_contributions[fraction].append(weighted_albedo)
+                        total_weighted_albedo += weighted_albedo
+                        total_pixels += row[pixel_col]
+                
+                # Ajouter l'albédo global si on a des données
+                if total_pixels > 0:
+                    daily_albedos.append(total_weighted_albedo / total_pixels)
+            
+            if daily_albedos:
+                monthly_data[month] = daily_albedos
+                
+                # Calculer les contributions moyennes des fractions pour ce mois
+                month_fraction_means = {}
+                total_month_weighted = sum([sum(monthly_fraction_contributions[f]) for f in self.fraction_classes])
+                
+                if total_month_weighted > 0:
+                    for fraction in self.fraction_classes:
+                        contribution = sum(monthly_fraction_contributions[fraction])
+                        month_fraction_means[fraction] = contribution / len(month_data) if contribution > 0 else 0
+                
+                monthly_fractions[month] = month_fraction_means
+        
+        if not monthly_data:
+            ax.text(0.5, 0.5, 'No albedo data available for this year', 
+                   ha='center', va='center', transform=ax.transAxes, fontsize=14)
+            ax.set_title('A) Monthly Albedo Analysis (No Data)', 
+                        fontsize=16, fontweight='bold', pad=15)
+            return
+        
+        # Créer les subplots dans l'axe principal
+        from matplotlib.gridspec import GridSpecFromSubplotSpec
+        gs = GridSpecFromSubplotSpec(2, 1, ax, height_ratios=[1.5, 1], hspace=0.3)
+        
+        # Section supérieure: Box plots
+        ax_box = ax.figure.add_subplot(gs[0])
+        ax_box.set_facecolor('#fafafa')
+        
+        # Section inférieure: Barres empilées  
+        ax_bar = ax.figure.add_subplot(gs[1])
+        ax_bar.set_facecolor('#fafafa')
+        
+        # PARTIE 1: BOX PLOTS AVEC STATISTIQUES
+        month_colors = {6: '#e67e22', 7: '#27ae60', 8: '#e74c3c', 9: '#8e44ad'}
+        month_names = {6: 'Jun', 7: 'Jul', 8: 'Aug', 9: 'Sep'}
+        month_positions = {6: 1, 7: 2, 8: 3, 9: 4}
+        
+        box_data = []
+        box_positions = []
+        box_colors = []
+        
+        for month in sorted(monthly_data.keys()):
+            box_data.append(monthly_data[month])
+            box_positions.append(month_positions[month])
+            box_colors.append(month_colors[month])
+        
+        if box_data:
+            # Créer les box plots
+            bp = ax_box.boxplot(box_data, positions=box_positions, widths=0.6, 
+                               patch_artist=True, showmeans=True, meanline=False,
+                               meanprops={'marker': 'D', 'markerfacecolor': 'white', 'markeredgecolor': 'black', 'markersize': 6})
+            
+            # Colorer les boîtes
+            for patch, color in zip(bp['boxes'], box_colors):
+                patch.set_facecolor(color)
+                patch.set_alpha(0.7)
+            
+            # Ajouter les annotations statistiques
+            for i, (month, data) in enumerate(sorted(monthly_data.items())):
+                if len(data) > 0:
+                    stats = {
+                        'mean': np.mean(data),
+                        'median': np.median(data),
+                        'std': np.std(data),
+                        'min': np.min(data),
+                        'max': np.max(data),
+                        'p5': np.percentile(data, 5),
+                        'p95': np.percentile(data, 95),
+                        'n': len(data)
+                    }
+                    
+                    pos = month_positions[month]
+                    y_max = max(data)
+                    
+                    # Texte des statistiques
+                    stats_text = f"Mean: {stats['mean']:.3f}\\n"
+                    stats_text += f"Median: {stats['median']:.3f}\\n" 
+                    stats_text += f"Std: {stats['std']:.3f}\\n"
+                    stats_text += f"Min/Max: {stats['min']:.3f}/{stats['max']:.3f}\\n"
+                    stats_text += f"5th/95th: {stats['p5']:.3f}/{stats['p95']:.3f}\\n"
+                    stats_text += f"N: {stats['n']}"
+                    
+                    # Positionner l'annotation à droite du box plot
+                    ax_box.text(pos + 0.4, y_max, stats_text, fontsize=8, 
+                               verticalalignment='top', horizontalalignment='left',
+                               bbox=dict(boxstyle='round,pad=0.3', facecolor='white', 
+                                        edgecolor=month_colors[month], alpha=0.9))
+        
+        ax_box.set_title('A) Monthly Albedo Distribution with Statistics', 
+                        fontsize=14, fontweight='bold', pad=15)
+        ax_box.set_ylabel('Albedo', fontsize=12, fontweight='bold')
+        ax_box.set_xticks(list(month_positions.values()))
+        ax_box.set_xticklabels([month_names[m] for m in sorted(monthly_data.keys())])
+        ax_box.grid(True, alpha=0.3, linestyle=':', linewidth=0.8)
+        
+        # PARTIE 2: BARRES EMPILÉES DES FRACTIONS
+        if monthly_fractions:
+            months_sorted = sorted(monthly_fractions.keys())
+            bar_positions = [month_positions[m] for m in months_sorted]
+            
+            # Préparer les données empilées
+            bottom_values = np.zeros(len(months_sorted))
+            
+            for fraction in self.fraction_classes:
+                values = []
+                for month in months_sorted:
+                    if month in monthly_fractions and fraction in monthly_fractions[month]:
+                        values.append(monthly_fractions[month][fraction])
+                    else:
+                        values.append(0)
+                
+                if any(v > 0 for v in values):
+                    ax_bar.bar(bar_positions, values, width=0.6, bottom=bottom_values,
+                              label=f'{self.class_labels[fraction]}',
+                              color=modern_colors.get(fraction, '#7f8c8d'),
+                              alpha=0.8, edgecolor='white', linewidth=0.8)
+                    bottom_values += np.array(values)
+        
+        ax_bar.set_title('Monthly Fraction Contributions (Stacked)', 
+                        fontsize=12, fontweight='bold', pad=10)
+        ax_bar.set_ylabel('Weighted Albedo', fontsize=10, fontweight='bold')
+        ax_bar.set_xlabel('Month', fontsize=10, fontweight='bold')
+        ax_bar.set_xticks(list(month_positions.values()))
+        ax_bar.set_xticklabels([month_names[m] for m in sorted(monthly_fractions.keys())])
+        ax_bar.legend(loc='upper right', frameon=True, fancybox=True, shadow=True, 
+                     fontsize=9, ncol=3)
+        ax_bar.grid(True, alpha=0.3, linestyle=':', linewidth=0.8, axis='y')
+        
+        # Masquer l'axe principal pour éviter les conflits
+        ax.set_xticks([])
+        ax.set_yticks([])
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        ax.spines['bottom'].set_visible(False)
+        ax.spines['left'].set_visible(False)
+        
+        print(f"✅ Panel A: Analyse hybride avec {len(monthly_data)} mois de données")
         
     def create_monthly_pixel_count_plots(self, pixel_results, save_path=None):
         """
@@ -471,81 +663,10 @@ class PixelVisualizer:
         dates = year_data['date']
         
         # =================================================================
-        # SUBPLOT A: Daily Albedo Composition - STACKED BARS
+        # SUBPLOT A: Monthly Albedo Analysis - HYBRID (Box plots + Stacked bars)
         # =================================================================
         ax1 = axes[0]
-        
-        # Prepare data for stacked bars - weighted albedo contribution
-        albedo_data = {}
-        valid_dates = []
-        
-        for _, row in year_data.iterrows():
-            date = row['date']
-            day_contributions = {}
-            total_weighted_albedo = 0
-            total_pixels = 0
-            
-            # Calculate weighted contribution of each fraction
-            for fraction in self.fraction_classes:
-                albedo_col = f"{fraction}_mean"
-                pixel_col = f"{fraction}_pixel_count"
-                
-                if (albedo_col in row.index and pixel_col in row.index and 
-                    pd.notna(row[albedo_col]) and pd.notna(row[pixel_col]) and row[pixel_col] > 0):
-                    
-                    # Weight the albedo by pixel count
-                    weighted_contribution = row[albedo_col] * row[pixel_col]
-                    day_contributions[fraction] = weighted_contribution
-                    total_weighted_albedo += weighted_contribution
-                    total_pixels += row[pixel_col]
-            
-            # Only include days with data
-            if day_contributions and total_pixels > 0:
-                valid_dates.append(date)
-                # Normalize contributions to get proportional albedo
-                for fraction in day_contributions:
-                    if fraction not in albedo_data:
-                        albedo_data[fraction] = []
-                    albedo_data[fraction].append(day_contributions[fraction] / total_pixels)
-                
-                # Fill missing fractions with 0
-                for fraction in self.fraction_classes:
-                    if fraction not in day_contributions:
-                        if fraction not in albedo_data:
-                            albedo_data[fraction] = []
-                        albedo_data[fraction].append(0)
-        
-        if valid_dates and albedo_data:
-            # Create stacked bars
-            bottom_values = np.zeros(len(valid_dates))
-            width = 1.0  # Full width bars for daily data
-            
-            for fraction in self.fraction_classes:
-                if fraction in albedo_data and len(albedo_data[fraction]) == len(valid_dates):
-                    values = np.array(albedo_data[fraction])
-                    
-                    ax1.bar(valid_dates, values, width, bottom=bottom_values,
-                           label=f'{self.class_labels[fraction]}',
-                           color=modern_colors.get(fraction, '#7f8c8d'),
-                           alpha=0.8, edgecolor='white', linewidth=0.5)
-                    
-                    bottom_values += values
-            
-            ax1.set_title('A) Daily Albedo Composition (Stacked by Ice Coverage Fraction)', 
-                         fontsize=16, fontweight='bold', pad=15)
-            ax1.set_ylabel('Weighted Albedo', fontsize=14, fontweight='bold')
-            ax1.set_ylim(0, max(bottom_values) * 1.1 if len(bottom_values) > 0 else 1)
-            ax1.legend(loc='upper left', frameon=True, fancybox=True, shadow=True, 
-                      fontsize=11, ncol=2)
-            ax1.grid(True, alpha=0.4, linestyle=':', linewidth=0.8, axis='y')
-            ax1.set_facecolor('#fafafa')
-            
-            print(f"✅ Panel A: Stacked albedo bars for {len(valid_dates)} days")
-        else:
-            ax1.text(0.5, 0.5, 'No albedo data available for this year', 
-                    ha='center', va='center', transform=ax1.transAxes, fontsize=14)
-            ax1.set_title('A) Daily Albedo Composition (No Data)', 
-                         fontsize=16, fontweight='bold', pad=15)
+        self._create_hybrid_albedo_analysis(ax1, year, year_data, modern_colors)
         
         # =================================================================
         # SUBPLOT B: Daily Pixel Count Composition - STACKED BARS
