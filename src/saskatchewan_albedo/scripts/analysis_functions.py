@@ -476,8 +476,11 @@ def run_dataset_analysis(dataset_name):
         # Export avec suffixe dataset
         output_suffix = f"_{dataset_name.lower()}"
         
+        # Export des résultats de tendances
+        summary_table = trend_calculator.get_summary_table(ANALYSIS_VARIABLE)
         trend_path = str(output_path / f'summary_trends_{ANALYSIS_VARIABLE}{output_suffix}.csv')
-        trend_calculator.export_trend_results(trend_path, ANALYSIS_VARIABLE)
+        summary_table.to_csv(trend_path, index=False)
+        print(f"📊 Résultats de tendances exportés : {trend_path}")
         
         print(f"\n✅ ANALYSE {dataset_name} TERMINÉE !")
         return True
