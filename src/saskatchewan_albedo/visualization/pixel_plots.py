@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from datetime import datetime
 import os
+from scipy.interpolate import make_interp_spline
 
 # Import from parent package
 from ..config import (FRACTION_CLASSES, CLASS_LABELS, MONTH_NAMES, FRACTION_COLORS,
@@ -35,6 +36,51 @@ class PixelVisualizer:
         self.data = data_handler.data
         self.fraction_classes = FRACTION_CLASSES
         self.class_labels = CLASS_LABELS
+        
+        # Academic color scheme for publication
+        self.academic_colors = {
+            'border': '#d62728',      # Red
+            'mixed_low': '#ff7f0e',   # Orange  
+            'mixed_high': '#2ca02c',  # Green
+            'mostly_ice': '#1f77b4',  # Blue
+            'pure_ice': '#17becf'     # Cyan
+        }
+    
+    def _create_smooth_line(self, x_data, y_data, num_points=300):
+        """
+        Create smooth interpolated line for plotting
+        
+        Args:
+            x_data: X coordinates (dates converted to numeric)
+            y_data: Y coordinates (values)
+            num_points: Number of points for smooth line
+            
+        Returns:
+            tuple: (x_smooth, y_smooth) for plotting
+        """
+        if len(x_data) < 3:  # Need at least 3 points for spline
+            return x_data, y_data
+        
+        try:
+            # Convert dates to numeric for interpolation
+            x_numeric = np.arange(len(x_data))
+            
+            # Create spline interpolation
+            spline = make_interp_spline(x_numeric, y_data, k=min(3, len(x_data)-1))
+            
+            # Generate smooth line
+            x_smooth_numeric = np.linspace(x_numeric.min(), x_numeric.max(), num_points)
+            y_smooth = spline(x_smooth_numeric)
+            
+            # Map back to original x scale
+            x_smooth = np.interp(x_smooth_numeric, x_numeric, np.arange(len(x_data)))
+            x_smooth_dates = [x_data.iloc[int(i)] if int(i) < len(x_data) else x_data.iloc[-1] 
+                             for i in x_smooth]
+            
+            return x_smooth_dates, y_smooth
+        except:
+            # Fallback to original data if interpolation fails
+            return x_data, y_data
         
     def create_monthly_pixel_count_plots(self, pixel_results, save_path=None):
         """
@@ -401,54 +447,76 @@ class PixelVisualizer:
         Returns:
             str: Path to saved plot
         """
-        # Create figure with 4 subplots: albedo, pixel counts, QA scores, and total pixels
-        fig, axes = plt.subplots(4, 1, figsize=(16, 20))
-        fig.suptitle(f'Saison de Fonte {year} - Albédo, Pixels et Qualité QA Quotidiens', 
-                     fontsize=16, fontweight='bold')
+        # Create figure with 2x2 subplots: albedo, pixel counts, QA scores, and total pixels
+        fig, axes = plt.subplots(2, 2, figsize=(20, 16))
+        fig.suptitle(f'Daily Analysis for Melt Season {year}', 
+                     fontsize=18, fontweight='bold', y=0.95)
         
         # Sort data by date
         year_data = year_data.sort_values('date')
         dates = year_data['date']
         
-        # Plot 1: Daily albedo values by fraction
-        ax1 = axes[0]
+        # Plot A: Daily albedo values by fraction (top-left)
+        ax1 = axes[0, 0]
         for fraction in self.fraction_classes:
             albedo_col = f"{fraction}_mean"
             if albedo_col in year_data.columns:
                 albedo_data = year_data[albedo_col].dropna()
                 if len(albedo_data) > 0:
-                    ax1.plot(year_data['date'], year_data[albedo_col], 
-                            marker='o', markersize=3, linewidth=2, alpha=0.8,
-                            label=self.class_labels[fraction],
-                            color=FRACTION_COLORS.get(fraction, 'gray'))
+                    # Get data points for this fraction
+                    dates_fraction = year_data.loc[year_data[albedo_col].notna(), 'date']
+                    values_fraction = year_data.loc[year_data[albedo_col].notna(), albedo_col]
+                    
+                    # Create smooth line
+                    if len(dates_fraction) > 2:
+                        x_smooth, y_smooth = self._create_smooth_line(dates_fraction, values_fraction)
+                        ax1.plot(x_smooth, y_smooth, linewidth=2.5, alpha=0.8,
+                                color=self.academic_colors.get(fraction, 'gray'), zorder=2)
+                    
+                    # Plot original data points
+                    ax1.scatter(dates_fraction, values_fraction, 
+                               s=25, alpha=0.7, zorder=3,
+                               label=self.class_labels[fraction],
+                               color=self.academic_colors.get(fraction, 'gray'))
         
-        ax1.set_title(f'📈 Albédo Quotidien par Fraction - {year}', fontweight='bold')
-        ax1.set_xlabel('Date')
-        ax1.set_ylabel('Albédo')
+        ax1.set_title('A) Daily Albedo Values by Ice Coverage Fraction', fontweight='bold', pad=20)
+        ax1.set_xlabel('Date', fontsize=12)
+        ax1.set_ylabel('Albedo', fontsize=12)
         ax1.set_ylim(0, 1)  # Albedo ranges from 0 to 1
-        ax1.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
-        ax1.grid(True, alpha=0.3)
+        ax1.legend(loc='upper right', frameon=True, fancybox=True, shadow=True, fontsize=10)
+        ax1.grid(True, alpha=0.3, linestyle='--')
         
-        # Plot 2: Daily pixel counts by fraction
-        ax2 = axes[1]
+        # Plot B: Daily pixel counts by fraction (top-right)
+        ax2 = axes[0, 1]
         for fraction in self.fraction_classes:
             pixel_col = f"{fraction}_pixel_count"
             if pixel_col in year_data.columns:
                 pixel_data = year_data[pixel_col].dropna()
                 if len(pixel_data) > 0:
-                    ax2.plot(year_data['date'], year_data[pixel_col], 
-                            marker='o', markersize=3, linewidth=1, alpha=0.8,
-                            label=self.class_labels[fraction],
-                            color=FRACTION_COLORS.get(fraction, 'gray'))
+                    # Get data points for this fraction
+                    dates_fraction = year_data.loc[year_data[pixel_col].notna(), 'date']
+                    values_fraction = year_data.loc[year_data[pixel_col].notna(), pixel_col]
+                    
+                    # Create smooth line
+                    if len(dates_fraction) > 2:
+                        x_smooth, y_smooth = self._create_smooth_line(dates_fraction, values_fraction)
+                        ax2.plot(x_smooth, y_smooth, linewidth=2.5, alpha=0.8,
+                                color=self.academic_colors.get(fraction, 'gray'), zorder=2)
+                    
+                    # Plot original data points
+                    ax2.scatter(dates_fraction, values_fraction, 
+                               s=25, alpha=0.7, zorder=3,
+                               label=self.class_labels[fraction],
+                               color=self.academic_colors.get(fraction, 'gray'))
         
-        ax2.set_title(f'📊 Comptages Quotidiens de Pixels - {year}', fontweight='bold')
-        ax2.set_xlabel('Date')
-        ax2.set_ylabel('Nombre de Pixels')
-        ax2.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
-        ax2.grid(True, alpha=0.3)
+        ax2.set_title('B) Daily Pixel Counts by Ice Coverage Fraction', fontweight='bold', pad=20)
+        ax2.set_xlabel('Date', fontsize=12)
+        ax2.set_ylabel('Number of Pixels', fontsize=12)
+        ax2.legend(loc='upper right', frameon=True, fancybox=True, shadow=True, fontsize=10)
+        ax2.grid(True, alpha=0.3, linestyle='--')
         
-        # Plot 3: Daily QA scores (absolute counts)
-        ax3 = axes[2]
+        # Plot C: Daily QA scores (absolute counts) (bottom-left)
+        ax3 = axes[1, 0]
         qa_plotted = False
         
         # Try to plot QA data if available
@@ -460,18 +528,29 @@ class PixelVisualizer:
             if len(year_qa_data) > 0:
                 year_qa_data = year_qa_data.sort_values('date')
                 
-                # Plot QA scores 0-3 with absolute counts
-                qa_colors = ['#2E8B57', '#4682B4', '#FF8C00', '#DC143C']
-                qa_labels = ['QA 0 (Meilleur)', 'QA 1 (Bon)', 'QA 2 (Modéré)', 'QA 3 (Mauvais)']
+                # Plot QA scores 0-3 with absolute counts (academic colors)
+                qa_colors = ['#2ca02c', '#1f77b4', '#ff7f0e', '#d62728']  # Green, Blue, Orange, Red
+                qa_labels = ['QA 0 (Best)', 'QA 1 (Good)', 'QA 2 (Moderate)', 'QA 3 (Poor)']
                 
                 for i, qa_col in enumerate(['quality_0_best', 'quality_1_good', 'quality_2_moderate', 'quality_3_poor']):
                     if qa_col in year_qa_data.columns:
                         qa_data = year_qa_data[qa_col].dropna()
                         # Only plot if there are non-zero values (these are absolute counts now)
                         if len(qa_data) > 0 and qa_data.max() > 0:
-                            ax3.plot(year_qa_data['date'], year_qa_data[qa_col], 
-                                    marker='s', markersize=3, linewidth=2, alpha=0.8,
-                                    label=qa_labels[i], color=qa_colors[i])
+                            # Get data points for this QA level
+                            dates_qa = year_qa_data.loc[year_qa_data[qa_col].notna(), 'date']
+                            values_qa = year_qa_data.loc[year_qa_data[qa_col].notna(), qa_col]
+                            
+                            # Create smooth line
+                            if len(dates_qa) > 2:
+                                x_smooth, y_smooth = self._create_smooth_line(dates_qa, values_qa)
+                                ax3.plot(x_smooth, y_smooth, linewidth=2.5, alpha=0.8,
+                                        color=qa_colors[i], zorder=2)
+                            
+                            # Plot original data points
+                            ax3.scatter(dates_qa, values_qa, 
+                                       s=25, alpha=0.7, zorder=3, marker='s',
+                                       label=qa_labels[i], color=qa_colors[i])
                             qa_plotted = True
         
         # If no QA data, plot data quality from main dataset
@@ -488,21 +567,33 @@ class PixelVisualizer:
                         qa_plotted = True
         
         if qa_plotted:
-            ax3.set_title(f'📈 Comptages QA Quotidiens (0-3) - {year}', fontweight='bold')
-            ax3.set_xlabel('Date')
-            ax3.set_ylabel('Nombre de Pixels QA')
-            ax3.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
-            ax3.grid(True, alpha=0.3)
+            ax3.set_title('C) Daily QA Score Distribution (Absolute Counts)', fontweight='bold', pad=20)
+            ax3.set_xlabel('Date', fontsize=12)
+            ax3.set_ylabel('Number of Pixels', fontsize=12)
+            ax3.legend(loc='upper right', frameon=True, fancybox=True, shadow=True, fontsize=10)
+            ax3.grid(True, alpha=0.3, linestyle='--')
         else:
             ax3.text(0.5, 0.5, 'Aucune donnée QA disponible pour cette année', 
                     ha='center', va='center', transform=ax3.transAxes, fontsize=12)
-            ax3.set_title(f'📈 Scores de Qualité - {year} (Non disponible)', fontweight='bold')
+            ax3.set_title('C) Daily QA Score Distribution (Not Available)', fontweight='bold', pad=20)
         
-        # Plot 4: Total valid pixels over time
-        ax4 = axes[3]
+        # Plot D: Total valid pixels over time (bottom-right)
+        ax4 = axes[1, 1]
         if 'total_valid_pixels' in year_data.columns:
-            ax4.plot(year_data['date'], year_data['total_valid_pixels'], 
-                    'b-', linewidth=2, alpha=0.8, label='Pixels Valides Totaux')
+            # Get data points for total pixels
+            dates_total = year_data.loc[year_data['total_valid_pixels'].notna(), 'date']
+            values_total = year_data.loc[year_data['total_valid_pixels'].notna(), 'total_valid_pixels']
+            
+            # Create smooth line
+            if len(dates_total) > 2:
+                x_smooth, y_smooth = self._create_smooth_line(dates_total, values_total)
+                ax4.plot(x_smooth, y_smooth, linewidth=3, alpha=0.8, 
+                        color='#1f77b4', zorder=2)
+            
+            # Plot original data points
+            ax4.scatter(dates_total, values_total, 
+                       s=30, alpha=0.7, zorder=3,
+                       label='Total Valid Pixels', color='#1f77b4')
             
             # Add monthly averages
             monthly_avg = year_data.groupby(year_data['date'].dt.month)['total_valid_pixels'].mean()
@@ -510,24 +601,25 @@ class PixelVisualizer:
                 month_data = year_data[year_data['date'].dt.month == month]
                 if len(month_data) > 0:
                     ax4.axhline(y=avg_pixels, alpha=0.5, linestyle='--', 
-                              label=f'Moy. {MONTH_NAMES[month]}: {avg_pixels:.0f}')
+                              label=f'Avg. {MONTH_NAMES[month]}: {avg_pixels:.0f}')
             
-            ax4.set_title(f'📊 Pixels Valides Totaux Quotidiens - {year}', fontweight='bold')
-            ax4.set_xlabel('Date')
-            ax4.set_ylabel('Nombre Total de Pixels')
-            ax4.legend()
-            ax4.grid(True, alpha=0.3)
+            ax4.set_title('D) Total Valid Pixels Over Time', fontweight='bold', pad=20)
+            ax4.set_xlabel('Date', fontsize=12)
+            ax4.set_ylabel('Total Number of Pixels', fontsize=12)
+            ax4.legend(loc='upper right', frameon=True, fancybox=True, shadow=True, fontsize=10)
+            ax4.grid(True, alpha=0.3, linestyle='--')
         else:
             ax4.text(0.5, 0.5, 'Données de pixels totaux non disponibles', 
                     ha='center', va='center', transform=ax4.transAxes, fontsize=12)
-            ax4.set_title(f'📊 Pixels Totaux - {year} (Non disponible)', fontweight='bold')
+            ax4.set_title('D) Total Valid Pixels Over Time (Not Available)', fontweight='bold', pad=20)
         
-        # Add summary statistics text box
+        # Add summary statistics text box (repositioned for 2x2 layout)
         stats_text = self._generate_year_summary_stats(year, year_data, pixel_analyzer)
-        fig.text(0.02, 0.02, stats_text, fontsize=9, 
-                bbox=dict(boxstyle='round', facecolor='lightgray', alpha=0.8))
+        fig.text(0.02, 0.01, stats_text, fontsize=9, 
+                bbox=dict(boxstyle='round', facecolor='#f0f0f0', alpha=0.9))
         
-        plt.tight_layout()
+        # Adjust layout with proper spacing for 2x2 grid
+        plt.tight_layout(rect=[0.0, 0.1, 1.0, 0.93])
         
         # Create directory if it doesn't exist
         os.makedirs(save_dir, exist_ok=True)
