@@ -482,10 +482,10 @@ class PixelVisualizer:
             if pixel_col in year_data.columns:
                 pixel_data = year_data[pixel_col].dropna()
                 if len(pixel_data) > 0:
-                    ax2.scatter(year_data['date'], year_data[pixel_col], 
-                               s=35, alpha=0.7, 
-                               label=self.class_labels[fraction],
-                               color=self.academic_colors.get(fraction, 'gray'))
+                    ax2.plot(year_data['date'], year_data[pixel_col], 
+                            marker='o', markersize=4, linewidth=2, alpha=0.8,
+                            label=self.class_labels[fraction],
+                            color=self.academic_colors.get(fraction, 'gray'))
         
         ax2.set_title('B) Daily Pixel Counts by Ice Coverage Fraction', fontweight='bold', pad=20)
         ax2.set_xlabel('Date', fontsize=12)
@@ -515,9 +515,9 @@ class PixelVisualizer:
                         qa_data = year_qa_data[qa_col].dropna()
                         # Only plot if there are non-zero values (these are absolute counts now)
                         if len(qa_data) > 0 and qa_data.max() > 0:
-                            ax3.scatter(year_qa_data['date'], year_qa_data[qa_col], 
-                                       s=35, alpha=0.7, marker='s',
-                                       label=qa_labels[i], color=qa_colors[i])
+                            ax3.plot(year_qa_data['date'], year_qa_data[qa_col], 
+                                    marker='s', markersize=4, linewidth=2, alpha=0.8,
+                                    label=qa_labels[i], color=qa_colors[i])
                             qa_plotted = True
         
         # If no QA data, plot data quality from main dataset
@@ -547,9 +547,9 @@ class PixelVisualizer:
         # Plot D: Total valid pixels over time (bottom-right)
         ax4 = axes[1, 1]
         if 'total_valid_pixels' in year_data.columns:
-            ax4.scatter(year_data['date'], year_data['total_valid_pixels'], 
-                       s=40, alpha=0.7, 
-                       color='#1f77b4', label='Total Valid Pixels')
+            ax4.plot(year_data['date'], year_data['total_valid_pixels'], 
+                    marker='o', markersize=4, linewidth=2.5, alpha=0.8, 
+                    color='#1f77b4', label='Total Valid Pixels')
             
             # Add monthly averages
             monthly_avg = year_data.groupby(year_data['date'].dt.month)['total_valid_pixels'].mean()
