@@ -463,19 +463,8 @@ class PixelVisualizer:
             if albedo_col in year_data.columns:
                 albedo_data = year_data[albedo_col].dropna()
                 if len(albedo_data) > 0:
-                    # Get data points for this fraction
-                    dates_fraction = year_data.loc[year_data[albedo_col].notna(), 'date']
-                    values_fraction = year_data.loc[year_data[albedo_col].notna(), albedo_col]
-                    
-                    # Create smooth line
-                    if len(dates_fraction) > 2:
-                        x_smooth, y_smooth = self._create_smooth_line(dates_fraction, values_fraction)
-                        ax1.plot(x_smooth, y_smooth, linewidth=2.5, alpha=0.8,
-                                color=self.academic_colors.get(fraction, 'gray'), zorder=2)
-                    
-                    # Plot original data points
-                    ax1.scatter(dates_fraction, values_fraction, 
-                               s=25, alpha=0.7, zorder=3,
+                    ax1.scatter(year_data['date'], year_data[albedo_col], 
+                               s=35, alpha=0.7, 
                                label=self.class_labels[fraction],
                                color=self.academic_colors.get(fraction, 'gray'))
         
@@ -493,19 +482,8 @@ class PixelVisualizer:
             if pixel_col in year_data.columns:
                 pixel_data = year_data[pixel_col].dropna()
                 if len(pixel_data) > 0:
-                    # Get data points for this fraction
-                    dates_fraction = year_data.loc[year_data[pixel_col].notna(), 'date']
-                    values_fraction = year_data.loc[year_data[pixel_col].notna(), pixel_col]
-                    
-                    # Create smooth line
-                    if len(dates_fraction) > 2:
-                        x_smooth, y_smooth = self._create_smooth_line(dates_fraction, values_fraction)
-                        ax2.plot(x_smooth, y_smooth, linewidth=2.5, alpha=0.8,
-                                color=self.academic_colors.get(fraction, 'gray'), zorder=2)
-                    
-                    # Plot original data points
-                    ax2.scatter(dates_fraction, values_fraction, 
-                               s=25, alpha=0.7, zorder=3,
+                    ax2.scatter(year_data['date'], year_data[pixel_col], 
+                               s=35, alpha=0.7, 
                                label=self.class_labels[fraction],
                                color=self.academic_colors.get(fraction, 'gray'))
         
@@ -537,19 +515,8 @@ class PixelVisualizer:
                         qa_data = year_qa_data[qa_col].dropna()
                         # Only plot if there are non-zero values (these are absolute counts now)
                         if len(qa_data) > 0 and qa_data.max() > 0:
-                            # Get data points for this QA level
-                            dates_qa = year_qa_data.loc[year_qa_data[qa_col].notna(), 'date']
-                            values_qa = year_qa_data.loc[year_qa_data[qa_col].notna(), qa_col]
-                            
-                            # Create smooth line
-                            if len(dates_qa) > 2:
-                                x_smooth, y_smooth = self._create_smooth_line(dates_qa, values_qa)
-                                ax3.plot(x_smooth, y_smooth, linewidth=2.5, alpha=0.8,
-                                        color=qa_colors[i], zorder=2)
-                            
-                            # Plot original data points
-                            ax3.scatter(dates_qa, values_qa, 
-                                       s=25, alpha=0.7, zorder=3, marker='s',
+                            ax3.scatter(year_qa_data['date'], year_qa_data[qa_col], 
+                                       s=35, alpha=0.7, marker='s',
                                        label=qa_labels[i], color=qa_colors[i])
                             qa_plotted = True
         
@@ -580,20 +547,9 @@ class PixelVisualizer:
         # Plot D: Total valid pixels over time (bottom-right)
         ax4 = axes[1, 1]
         if 'total_valid_pixels' in year_data.columns:
-            # Get data points for total pixels
-            dates_total = year_data.loc[year_data['total_valid_pixels'].notna(), 'date']
-            values_total = year_data.loc[year_data['total_valid_pixels'].notna(), 'total_valid_pixels']
-            
-            # Create smooth line
-            if len(dates_total) > 2:
-                x_smooth, y_smooth = self._create_smooth_line(dates_total, values_total)
-                ax4.plot(x_smooth, y_smooth, linewidth=3, alpha=0.8, 
-                        color='#1f77b4', zorder=2)
-            
-            # Plot original data points
-            ax4.scatter(dates_total, values_total, 
-                       s=30, alpha=0.7, zorder=3,
-                       label='Total Valid Pixels', color='#1f77b4')
+            ax4.scatter(year_data['date'], year_data['total_valid_pixels'], 
+                       s=40, alpha=0.7, 
+                       color='#1f77b4', label='Total Valid Pixels')
             
             # Add monthly averages
             monthly_avg = year_data.groupby(year_data['date'].dt.month)['total_valid_pixels'].mean()
