@@ -81,7 +81,7 @@ def main():
     print(f"✅ Fichier CSV trouvé : {CSV_PATH}")
     
     # Créer le répertoire de sortie (chemin absolu)
-    output_path = SCRIPT_DIR / OUTPUT_DIR
+    output_path = PROJECT_DIR / OUTPUT_DIR
     ensure_directory_exists(str(output_path))
     print(f"📁 Répertoire de sortie : {output_path}/")
     print()
