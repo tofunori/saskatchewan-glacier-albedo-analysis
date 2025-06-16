@@ -11,7 +11,13 @@
       "Bash(python:*)",
       "Bash(grep:*)",
       "Bash(find:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(rg:*)",
+      "Bash(head:*)",
+      "Bash(awk:*)",
+      "Bash(wc:*)",
+      "Bash(tail:*)",
+      "Bash(sed:*)"
     ],
     "deny": []
   }

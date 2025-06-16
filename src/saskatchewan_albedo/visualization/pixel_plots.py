@@ -581,88 +581,86 @@ class PixelVisualizer:
         for i, qa_score in enumerate(['0', '1', '2', '3']):
             score_data = qa_stats[qa_stats['qa_score'] == qa_score]
             if not score_data.empty:
-                ax.plot(score_data['month'], score_data['mean_count'], 
+                ax.plot(score_data['year'], score_data['mean_count'], 
                        marker='o', linewidth=2, markersize=6,
                        label=qa_labels[i], color=qa_colors[i])
         
-        ax.set_title('📊 Distribution des Comptages QA par Mois', fontweight='bold')
-        ax.set_xlabel('Mois')
+        ax.set_title('📊 Distribution des Comptages QA par Année', fontweight='bold')
+        ax.set_xlabel('Année')
         ax.set_ylabel('Comptage Moyen (pixels)')
-        ax.set_xticks([6, 7, 8, 9])
-        ax.set_xticklabels(['Juin', 'Juillet', 'Août', 'Sept'])
+        ax.set_xticks(range(2010, 2025, 2))  # Show every 2 years to avoid crowding
         ax.legend()
         ax.grid(True, alpha=0.3)
     
     def _plot_qa_stacked_bars(self, ax, qa_stats):
-        """Plot QA scores as stacked bars by month"""
-        months = [6, 7, 8, 9]
-        month_names = ['Juin', 'Juillet', 'Août', 'Sept']
+        """Plot QA scores as stacked bars by year"""
+        years = sorted(qa_stats['year'].unique())
         qa_colors = ['#2E8B57', '#4682B4', '#FF8C00', '#DC143C']
         qa_labels = ['QA 0 (Meilleur)', 'QA 1 (Bon)', 'QA 2 (Modéré)', 'QA 3 (Mauvais)']
         
         # Prepare data for stacking
-        qa_data_by_month = {}
-        for month in months:
-            month_data = qa_stats[qa_stats['month'] == month]
-            qa_data_by_month[month] = {}
+        qa_data_by_year = {}
+        for year in years:
+            year_data = qa_stats[qa_stats['year'] == year]
+            qa_data_by_year[year] = {}
             for qa_score in ['0', '1', '2', '3']:
-                score_data = month_data[month_data['qa_score'] == qa_score]
+                score_data = year_data[year_data['qa_score'] == qa_score]
                 if not score_data.empty:
-                    qa_data_by_month[month][qa_score] = score_data['mean_count'].iloc[0]
+                    qa_data_by_year[year][qa_score] = score_data['mean_count'].iloc[0]
                 else:
-                    qa_data_by_month[month][qa_score] = 0
+                    qa_data_by_year[year][qa_score] = 0
         
         # Create stacked bar chart
-        bottom = np.zeros(len(months))
+        bottom = np.zeros(len(years))
         for i, qa_score in enumerate(['0', '1', '2', '3']):
-            values = [qa_data_by_month[month][qa_score] for month in months]
-            ax.bar(month_names, values, bottom=bottom, 
+            values = [qa_data_by_year[year][qa_score] for year in years]
+            ax.bar(years, values, bottom=bottom, 
                   label=qa_labels[i], color=qa_colors[i])
             bottom += values
         
-        ax.set_title('📊 Répartition des Scores QA (Empilés)', fontweight='bold')
-        ax.set_xlabel('Mois')
-        ax.set_ylabel('Pourcentage (%)')
+        ax.set_title('📊 Répartition des Scores QA par Année (Empilés)', fontweight='bold')
+        ax.set_xlabel('Année')
+        ax.set_ylabel('Comptages de Pixels')
+        ax.set_xticks(range(2010, 2025, 2))  # Show every 2 years
         ax.legend()
     
     def _plot_qa_trends_by_month(self, ax, qa_stats):
-        """Plot QA trends by month with focus on best vs poor quality"""
+        """Plot QA trends by year with focus on best vs poor quality"""
         best_data = qa_stats[qa_stats['qa_score'] == '0']
         poor_data = qa_stats[qa_stats['qa_score'] == '3']
         
         if not best_data.empty:
-            ax.plot(best_data['month'], best_data['mean_count'], 
+            ax.plot(best_data['year'], best_data['mean_count'], 
                    marker='o', linewidth=3, markersize=8,
                    label='QA 0 (Meilleur)', color='#2E8B57')
         
         if not poor_data.empty:
-            ax.plot(poor_data['month'], poor_data['mean_count'], 
+            ax.plot(poor_data['year'], poor_data['mean_count'], 
                    marker='s', linewidth=3, markersize=8,
                    label='QA 3 (Mauvais)', color='#DC143C')
         
-        ax.set_title('📈 Tendances QA: Meilleur vs Mauvais', fontweight='bold')
-        ax.set_xlabel('Mois')
+        ax.set_title('📈 Tendances QA: Meilleur vs Mauvais par Année', fontweight='bold')
+        ax.set_xlabel('Année')
         ax.set_ylabel('Comptages (pixels)')
-        ax.set_xticks([6, 7, 8, 9])
-        ax.set_xticklabels(['Juin', 'Juillet', 'Août', 'Sept'])
+        ax.set_xticks(range(2010, 2025, 2))  # Show every 2 years
         ax.legend()
         ax.grid(True, alpha=0.3)
     
     def _plot_qa_quality_heatmap(self, ax, true_qa_results):
-        """Plot QA quality counts as heatmap (absolute values)"""
+        """Plot QA quality counts as heatmap by year (absolute values)"""
         if 'by_month' not in true_qa_results:
             ax.text(0.5, 0.5, 'Pas de données QA\ndisponibles', 
                    ha='center', va='center', transform=ax.transAxes)
             return
         
-        # Prepare heatmap data with absolute counts
+        # Prepare heatmap data with absolute counts by year
         heatmap_data = []
-        months = []
+        years = []
         
-        for month, month_data in true_qa_results['by_month'].items():
-            if 'quality_counts' in month_data:
-                counts = month_data['quality_counts']
-                months.append(MONTH_NAMES[month])
+        for year, year_data in true_qa_results['by_month'].items():
+            if 'quality_counts' in year_data:
+                counts = year_data['quality_counts']
+                years.append(str(year))
                 heatmap_data.append([
                     counts.get('quality_0_best', 0),
                     counts.get('quality_1_good', 0), 
@@ -677,13 +675,13 @@ class PixelVisualizer:
             im = ax.imshow(heatmap_array.T, cmap='Blues', aspect='auto')
             
             # Set labels
-            ax.set_xticks(range(len(months)))
-            ax.set_xticklabels(months)
+            ax.set_xticks(range(len(years)))
+            ax.set_xticklabels(years, rotation=45)  # Rotate years for better readability
             ax.set_yticks(range(4))
             ax.set_yticklabels(['QA 0\n(Meilleur)', 'QA 1\n(Bon)', 'QA 2\n(Modéré)', 'QA 3\n(Mauvais)'])
             
             # Add text annotations with absolute counts
-            for i in range(len(months)):
+            for i in range(len(years)):
                 for j in range(4):
                     count_val = heatmap_array[i, j]
                     if count_val > 0:
@@ -695,7 +693,7 @@ class PixelVisualizer:
             cbar = plt.colorbar(im, ax=ax, shrink=0.8)
             cbar.set_label('Comptages de Pixels')
             
-            ax.set_title('🌡️ Heatmap des Comptages QA Absolus', fontweight='bold')
+            ax.set_title('🌡️ Heatmap des Comptages QA par Année', fontweight='bold')
         else:
             ax.text(0.5, 0.5, 'Pas de données\nde comptages QA', 
                    ha='center', va='center', transform=ax.transAxes)
