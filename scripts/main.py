@@ -19,6 +19,10 @@ from pathlib import Path
 import warnings
 warnings.filterwarnings('ignore')
 
+# Set matplotlib to non-interactive backend to prevent blocking
+import matplotlib
+matplotlib.use('Agg')
+
 # Ajouter le répertoire du projet au path pour trouver les modules
 script_dir = Path(__file__).parent.absolute()
 project_dir = script_dir.parent  # Remonte d'un niveau depuis scripts/
@@ -93,14 +97,21 @@ def get_menu_choice():
     Obtient et valide le choix de l'utilisateur
     """
     while True:
-        choice = input("\n➤ Choisissez une option (1-6): ").strip()
-        
-        if choice in ['1', '2', '3', '4', '5', '6']:
-            return choice
-        elif choice.lower() in ['q', 'exit', 'quit']:
+        try:
+            choice = input("\n➤ Choisissez une option (1-6): ").strip()
+            
+            if choice in ['1', '2', '3', '4', '5', '6']:
+                return choice
+            elif choice.lower() in ['q', 'exit', 'quit']:
+                return '6'
+            else:
+                print("❌ Choix invalide. Veuillez entrer un nombre entre 1 et 6.")
+        except (EOFError, KeyboardInterrupt):
+            print("\n\n👋 Interruption détectée. Au revoir!")
             return '6'
-        else:
-            print("❌ Choix invalide. Veuillez entrer un nombre entre 1 et 6.")
+        except Exception as e:
+            print(f"❌ Erreur de saisie: {e}")
+            print("Veuillez réessayer...")
 
 def check_configuration():
     """
@@ -480,7 +491,7 @@ def create_daily_albedo_plots(data_handler, output_dir):
         # Sauvegarder
         save_path = os.path.join(output_dir, f'daily_albedo_melt_season_{year}.png')
         plt.savefig(save_path, dpi=300, bbox_inches='tight')
-        plt.show()
+        plt.close()  # Close figure to free memory
         saved_plots.append(save_path)
     
     return saved_plots
@@ -770,13 +781,20 @@ def ask_continue():
     Demande à l'utilisateur s'il veut continuer
     """
     while True:
-        response = input("\n➤ Voulez-vous effectuer une autre analyse? (o/n): ").strip().lower()
-        if response in ['o', 'oui', 'y', 'yes']:
-            return True
-        elif response in ['n', 'non', 'no']:
+        try:
+            response = input("\n➤ Voulez-vous effectuer une autre analyse? (o/n): ").strip().lower()
+            if response in ['o', 'oui', 'y', 'yes']:
+                return True
+            elif response in ['n', 'non', 'no']:
+                return False
+            else:
+                print("❌ Réponse invalide. Veuillez répondre par 'o' ou 'n'.")
+        except (EOFError, KeyboardInterrupt):
+            print("\n\n👋 Interruption détectée. Fermeture...")
             return False
-        else:
-            print("❌ Réponse invalide. Veuillez répondre par 'o' ou 'n'.")
+        except Exception as e:
+            print(f"❌ Erreur de saisie: {e}")
+            return False
 
 def main():
     """
