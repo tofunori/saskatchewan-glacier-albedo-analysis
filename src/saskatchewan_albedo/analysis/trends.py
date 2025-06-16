@@ -132,11 +132,11 @@ class TrendCalculator:
         """
         print_section_header(f"Analyses mensuelles - Variable: {variable}", level=2)
         
+        from ..config import MONTH_NAMES
         results = {}
         
         # Analyser chaque mois de la saison de fonte
         for month in [6, 7, 8, 9]:
-            from config import MONTH_NAMES
             month_name = MONTH_NAMES[month]
             print(f"\n📅 Analyse pour {month_name} (mois {month})")
             
