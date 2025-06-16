@@ -177,23 +177,25 @@ class PixelCountAnalyzer:
             'quality_3_poor': 'QA 3 (Mauvais)'
         }
         
-        for month in [6, 7, 8, 9]:
-            month_name = MONTH_NAMES[month]
-            month_data = self.qa_data[self.qa_data['month'] == month].copy()
+        # Group by year instead of month for better visualization
+        years = sorted(self.qa_data['year'].unique())
+        
+        for year in years:
+            year_data = self.qa_data[self.qa_data['year'] == year].copy()
             
-            print(f"\n📅 Analyse QA pour {month_name} (mois {month})")
+            print(f"\n📅 Analyse QA pour l'année {year}")
             
-            month_qa = {
-                'month': month,
-                'month_name': month_name,
-                'total_observations': len(month_data),
+            year_qa = {
+                'year': year,
+                'year_name': str(year),
+                'total_observations': len(year_data),
                 'qa_distribution': {}
             }
             
-            if len(month_data) > 0:
+            if len(year_data) > 0:
                 for qa_col, qa_label in qa_columns.items():
-                    if qa_col in month_data.columns:
-                        qa_values = month_data[qa_col].dropna()
+                    if qa_col in year_data.columns:
+                        qa_values = year_data[qa_col].dropna()
                         
                         if len(qa_values) > 0:
                             qa_stats = {
@@ -206,12 +208,12 @@ class PixelCountAnalyzer:
                                 'observations': len(qa_values)
                             }
                             
-                            month_qa['qa_distribution'][qa_col] = qa_stats
+                            year_qa['qa_distribution'][qa_col] = qa_stats
                             
-                            # Add to monthly stats
+                            # Add to yearly stats
                             qa_monthly_stats.append({
-                                'month': month,
-                                'month_name': month_name,
+                                'year': year,
+                                'year_name': str(year),
                                 'qa_score': qa_col.split('_')[1],  # Extract score number
                                 'qa_label': qa_label,
                                 **qa_stats
@@ -222,32 +224,32 @@ class PixelCountAnalyzer:
                                   f"Total={qa_stats['total_count']:.0f} pixels, "
                                   f"Obs={qa_stats['observations']}")
                 
-                # Calculate quality counts for this month (absolute counts)
-                month_qa['quality_counts'] = {
-                    'quality_0_best': month_data['quality_0_best'].mean() if 'quality_0_best' in month_data.columns else 0,
-                    'quality_1_good': month_data['quality_1_good'].mean() if 'quality_1_good' in month_data.columns else 0,
-                    'quality_2_moderate': month_data['quality_2_moderate'].mean() if 'quality_2_moderate' in month_data.columns else 0,
-                    'quality_3_poor': month_data['quality_3_poor'].mean() if 'quality_3_poor' in month_data.columns else 0
+                # Calculate quality counts for this year (absolute counts)
+                year_qa['quality_counts'] = {
+                    'quality_0_best': year_data['quality_0_best'].mean() if 'quality_0_best' in year_data.columns else 0,
+                    'quality_1_good': year_data['quality_1_good'].mean() if 'quality_1_good' in year_data.columns else 0,
+                    'quality_2_moderate': year_data['quality_2_moderate'].mean() if 'quality_2_moderate' in year_data.columns else 0,
+                    'quality_3_poor': year_data['quality_3_poor'].mean() if 'quality_3_poor' in year_data.columns else 0
                 }
                 
                 # Also calculate ratios for compatibility
-                total_pixels_month = month_data['total_pixels'].mean() if 'total_pixels' in month_data.columns else 0
+                total_pixels_year = year_data['total_pixels'].mean() if 'total_pixels' in year_data.columns else 0
                 
-                if total_pixels_month > 0:
-                    month_qa['quality_ratios'] = {
-                        'best_ratio': month_qa['quality_counts']['quality_0_best'] / total_pixels_month * 100,
-                        'good_ratio': month_qa['quality_counts']['quality_1_good'] / total_pixels_month * 100,
-                        'moderate_ratio': month_qa['quality_counts']['quality_2_moderate'] / total_pixels_month * 100,
-                        'poor_ratio': month_qa['quality_counts']['quality_3_poor'] / total_pixels_month * 100
+                if total_pixels_year > 0:
+                    year_qa['quality_ratios'] = {
+                        'best_ratio': year_qa['quality_counts']['quality_0_best'] / total_pixels_year * 100,
+                        'good_ratio': year_qa['quality_counts']['quality_1_good'] / total_pixels_year * 100,
+                        'moderate_ratio': year_qa['quality_counts']['quality_2_moderate'] / total_pixels_year * 100,
+                        'poor_ratio': year_qa['quality_counts']['quality_3_poor'] / total_pixels_year * 100
                     }
                     
                     print(f"  📊 Comptages absolus: "
-                          f"QA0={month_qa['quality_counts']['quality_0_best']:.1f}, "
-                          f"QA1={month_qa['quality_counts']['quality_1_good']:.1f}, "
-                          f"QA2={month_qa['quality_counts']['quality_2_moderate']:.1f}, "
-                          f"QA3={month_qa['quality_counts']['quality_3_poor']:.1f}")
+                          f"QA0={year_qa['quality_counts']['quality_0_best']:.1f}, "
+                          f"QA1={year_qa['quality_counts']['quality_1_good']:.1f}, "
+                          f"QA2={year_qa['quality_counts']['quality_2_moderate']:.1f}, "
+                          f"QA3={year_qa['quality_counts']['quality_3_poor']:.1f}")
             
-            results['by_month'][month] = month_qa
+            results['by_month'][year] = year_qa
         
         # Create QA DataFrame
         self.true_qa_stats_df = pd.DataFrame(qa_monthly_stats)
@@ -276,8 +278,8 @@ class PixelCountAnalyzer:
                     'seasonal_mean_count': score_data['mean_count'].mean(),
                     'seasonal_total_count': score_data['total_count'].sum(),
                     'seasonal_variability': score_data['mean_count'].std(),
-                    'best_month': score_data.loc[score_data['mean_count'].idxmax(), 'month_name'] if len(score_data) > 0 else 'N/A',
-                    'worst_month': score_data.loc[score_data['mean_count'].idxmin(), 'month_name'] if len(score_data) > 0 else 'N/A'
+                    'best_year': score_data.loc[score_data['mean_count'].idxmax(), 'year_name'] if len(score_data) > 0 else 'N/A',
+                    'worst_year': score_data.loc[score_data['mean_count'].idxmin(), 'year_name'] if len(score_data) > 0 else 'N/A'
                 }
         
         results['seasonal_summary'] = seasonal_summary
