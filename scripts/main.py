@@ -251,8 +251,8 @@ def test_imports():
         from scipy import stats
         print("✅ Dépendances principales OK")
         
-        from config import FRACTION_CLASSES
-        from helpers import print_section_header
+        from saskatchewan_albedo.config import FRACTION_CLASSES
+        from saskatchewan_albedo.utils.helpers import print_section_header
         print("✅ Modules locaux OK")
         
         print(f"✅ Configuration: {len(FRACTION_CLASSES)} fractions")
