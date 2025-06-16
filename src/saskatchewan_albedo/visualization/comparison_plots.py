@@ -191,7 +191,7 @@ class ComparisonVisualizer:
     
     def plot_time_series_comparison(self, fraction='pure_ice', save=True):
         """
-        Crée un graphique de séries temporelles pour comparer l'évolution
+        Crée un graphique de séries temporelles pour comparer l'évolution - POINTS SEULEMENT
         
         Args:
             fraction (str): Fraction à analyser
@@ -200,7 +200,7 @@ class ComparisonVisualizer:
         Returns:
             matplotlib.figure.Figure: Figure du graphique
         """
-        print_section_header(f"Séries temporelles - {CLASS_LABELS[fraction]}", level=3)
+        print_section_header(f"Séries temporelles - {CLASS_LABELS[fraction]} - TOUS LES POINTS", level=3)
         
         mcd_col = f'mcd43a3_{fraction}_mean'
         mod_col = f'mod10a1_{fraction}_mean'
@@ -217,47 +217,79 @@ class ComparisonVisualizer:
             print(f"❌ Données insuffisantes pour {fraction}")
             return None
         
-        # Créer le graphique
-        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(14, 10), sharex=True)
+        print(f"✅ Affichage de {len(plot_data)} points de données pour {fraction}")
         
-        # Graphique 1: Séries temporelles
-        ax1.plot(plot_data['date'], plot_data[mcd_col], 'b-', label='MCD43A3', linewidth=1.5, alpha=0.8)
-        ax1.plot(plot_data['date'], plot_data[mod_col], 'r-', label='MOD10A1', linewidth=1.5, alpha=0.8)
+        # Créer le graphique avec style moderne
+        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(16, 12), sharex=True)
         
-        ax1.set_ylabel('Albédo', fontsize=12, fontweight='bold')
-        ax1.set_title(f'Évolution temporelle - {CLASS_LABELS[fraction]}', 
-                     fontsize=14, fontweight='bold', pad=20)
-        ax1.grid(True, alpha=0.3)
-        ax1.legend()
+        # GRAPHIQUE 1: SÉRIES TEMPORELLES - POINTS SEULEMENT
+        # MCD43A3 - Points bleus
+        ax1.scatter(plot_data['date'], plot_data[mcd_col], 
+                   c='#3498db', s=25, alpha=0.8, edgecolors='white', linewidth=0.8,
+                   label=f'MCD43A3 ({len(plot_data)} points)', zorder=5)
         
-        # Graphique 2: Différences (MOD10A1 - MCD43A3)
+        # MOD10A1 - Points rouges
+        ax1.scatter(plot_data['date'], plot_data[mod_col], 
+                   c='#e74c3c', s=25, alpha=0.8, edgecolors='white', linewidth=0.8,
+                   label=f'MOD10A1 ({len(plot_data)} points)', zorder=5)
+        
+        ax1.set_ylabel('Albedo', fontsize=14, fontweight='bold')
+        ax1.set_title(f'Time Series Comparison - {CLASS_LABELS[fraction]}\nAll Individual Data Points (No Lines)', 
+                     fontsize=16, fontweight='bold', pad=20)
+        ax1.grid(True, alpha=0.4, linestyle=':', linewidth=0.8)
+        ax1.legend(loc='upper left', frameon=True, fancybox=True, shadow=True, fontsize=12)
+        ax1.set_facecolor('#fafafa')
+        
+        # GRAPHIQUE 2: DIFFÉRENCES - POINTS SEULEMENT
         differences = plot_data[mod_col] - plot_data[mcd_col]
-        ax2.plot(plot_data['date'], differences, 'g-', linewidth=1.5, alpha=0.8)
-        ax2.axhline(y=0, color='k', linestyle='--', alpha=0.7)
-        ax2.fill_between(plot_data['date'], differences, 0, alpha=0.3, color='green')
         
-        ax2.set_xlabel('Date', fontsize=12, fontweight='bold')
-        ax2.set_ylabel('Différence\\n(MOD10A1 - MCD43A3)', fontsize=12, fontweight='bold')
-        ax2.grid(True, alpha=0.3)
+        # Points de différence colorés selon le signe
+        positive_mask = differences >= 0
+        negative_mask = differences < 0
         
-        # Formater l'axe des dates
+        # Points positifs (MOD10A1 > MCD43A3) en vert
+        if positive_mask.any():
+            ax2.scatter(plot_data.loc[positive_mask, 'date'], differences[positive_mask], 
+                       c='#27ae60', s=30, alpha=0.8, edgecolors='white', linewidth=0.8,
+                       label=f'MOD10A1 > MCD43A3 ({positive_mask.sum()} points)', zorder=5)
+        
+        # Points négatifs (MOD10A1 < MCD43A3) en orange
+        if negative_mask.any():
+            ax2.scatter(plot_data.loc[negative_mask, 'date'], differences[negative_mask], 
+                       c='#f39c12', s=30, alpha=0.8, edgecolors='white', linewidth=0.8,
+                       label=f'MOD10A1 < MCD43A3 ({negative_mask.sum()} points)', zorder=5)
+        
+        # Ligne de référence zéro
+        ax2.axhline(y=0, color='#2c3e50', linestyle='--', alpha=0.8, linewidth=2)
+        
+        ax2.set_xlabel('Date', fontsize=14, fontweight='bold')
+        ax2.set_ylabel('Difference\n(MOD10A1 - MCD43A3)', fontsize=14, fontweight='bold')
+        ax2.grid(True, alpha=0.4, linestyle=':', linewidth=0.8)
+        ax2.legend(loc='upper left', frameon=True, fancybox=True, shadow=True, fontsize=12)
+        ax2.set_facecolor('#fafafa')
+        
+        # Formater l'axe des dates de façon moderne
         ax2.xaxis.set_major_formatter(mdates.DateFormatter('%Y'))
-        ax2.xaxis.set_major_locator(mdates.YearLocator())
-        plt.setp(ax2.xaxis.get_majorticklabels(), rotation=45)
+        ax2.xaxis.set_major_locator(mdates.YearLocator(2))  # Tous les 2 ans
+        ax2.xaxis.set_minor_locator(mdates.YearLocator())   # Marques mineures chaque année
+        plt.setp(ax2.xaxis.get_majorticklabels(), rotation=45, fontsize=12)
         
-        # Statistiques des différences
+        # Statistiques des différences améliorées
         diff_mean = differences.mean()
         diff_std = differences.std()
-        ax2.text(0.02, 0.98, f'Différence moyenne: {diff_mean:+.4f} ± {diff_std:.4f}', 
-                transform=ax2.transAxes, fontsize=10, verticalalignment='top',
-                bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
+        diff_median = differences.median()
+        stats_text = f'Statistics:\nMean: {diff_mean:+.4f}\nStd: {diff_std:.4f}\nMedian: {diff_median:+.4f}\nPoints: {len(differences)}'
+        
+        ax2.text(0.02, 0.98, stats_text, 
+                transform=ax2.transAxes, fontsize=11, verticalalignment='top',
+                bbox=dict(boxstyle='round,pad=0.5', facecolor='white', edgecolor='lightgray', alpha=0.95))
         
         plt.tight_layout()
         
         if save:
             filepath = f"{self.output_dir}/timeseries_comparison_{fraction}.png"
-            plt.savefig(filepath, dpi=300, bbox_inches='tight')
-            print(f"✓ Séries temporelles sauvegardées: {filepath}")
+            plt.savefig(filepath, dpi=300, bbox_inches='tight', facecolor='white', edgecolor='none')
+            print(f"✓ Enhanced timeseries with ALL POINTS saved: {filepath}")
         
         return fig
     
