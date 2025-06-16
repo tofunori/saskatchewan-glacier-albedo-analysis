@@ -551,12 +551,18 @@ class PixelVisualizer:
                     marker='o', markersize=4, linewidth=2.5, alpha=0.8, 
                     color='#1f77b4', label='Total Valid Pixels')
             
-            # Add monthly averages
+            # Add monthly averages with different colors and styles
             monthly_avg = year_data.groupby(year_data['date'].dt.month)['total_valid_pixels'].mean()
+            month_colors = {6: '#ff7f0e', 7: '#2ca02c', 8: '#d62728', 9: '#9467bd'}
+            month_styles = {6: '--', 7: '-.', 8: ':', 9: '-'}
+            
             for month, avg_pixels in monthly_avg.items():
                 month_data = year_data[year_data['date'].dt.month == month]
                 if len(month_data) > 0:
-                    ax4.axhline(y=avg_pixels, alpha=0.5, linestyle='--', 
+                    ax4.axhline(y=avg_pixels, alpha=0.7, 
+                              linestyle=month_styles.get(month, '--'),
+                              color=month_colors.get(month, 'gray'),
+                              linewidth=2,
                               label=f'Avg. {MONTH_NAMES[month]}: {avg_pixels:.0f}')
             
             ax4.set_title('D) Total Valid Pixels Over Time', fontweight='bold', pad=20)
