@@ -8,6 +8,8 @@ dans l'analyse autonome des tendances d'albédo.
 
 import matplotlib.pyplot as plt
 import seaborn as sns
+import os
+from pathlib import Path
 
 # Configuration des graphiques
 plt.style.use('seaborn-v0_8')
@@ -17,13 +19,26 @@ sns.set_palette("husl")
 # CONFIGURATION PRINCIPALE
 # ==========================================
 
+# Déterminer le répertoire racine du projet
+def get_project_root():
+    """Trouve le répertoire racine du projet depuis n'importe où"""
+    current_path = Path(__file__).resolve()
+    # Remonter jusqu'à trouver le dossier contenant 'data' et 'scripts'
+    for parent in current_path.parents:
+        if (parent / 'data' / 'csv').exists() and (parent / 'scripts').exists():
+            return parent
+    # Fallback: répertoire parent de src
+    return current_path.parent.parent.parent
+
+PROJECT_ROOT = get_project_root()
+
 # Choix du dataset par défaut ('MCD43A3', 'MOD10A1', ou 'COMPARISON')
 DEFAULT_DATASET = "MCD43A3"
 
 # Configuration pour MCD43A3 (Albédo général)
 MCD43A3_CONFIG = {
-    'csv_path': r"D:\UQTR\Maitrîse\Code\saskatchewan-glacier-albedo-analysis\data\csv\daily_albedo_mann_kendall_ready_2010_2024.csv",
-    'qa_csv_path': r"D:\UQTR\Maitrîse\Code\saskatchewan-glacier-albedo-analysis\data\csv\global_quality_distribution_daily_2010_2024.csv",
+    'csv_path': str(PROJECT_ROOT / "data" / "csv" / "daily_albedo_mann_kendall_ready_2010_2024.csv"),
+    'qa_csv_path': str(PROJECT_ROOT / "data" / "csv" / "global_quality_distribution_daily_2010_2024.csv"),
     'name': 'MCD43A3',
     'description': 'Albédo général (MODIS Combined)',
     'quality_levels': ['quality_0_best', 'quality_1_good', 'quality_2_moderate', 'quality_3_poor'],
@@ -33,8 +48,8 @@ MCD43A3_CONFIG = {
 
 # Configuration pour MOD10A1 (Albédo de neige)
 MOD10A1_CONFIG = {
-    'csv_path': r"D:\UQTR\Maitrîse\Code\saskatchewan-glacier-albedo-analysis\data\csv\daily_snow_albedo_mann_kendall_mod10a1_2010_2024.csv",
-    'qa_csv_path': r"D:\UQTR\Maitrîse\Code\saskatchewan-glacier-albedo-analysis\data\csv\snow_quality_distribution_daily_mod10a1_2010_2024.csv",
+    'csv_path': str(PROJECT_ROOT / "data" / "csv" / "daily_snow_albedo_mann_kendall_mod10a1_2010_2024.csv"),
+    'qa_csv_path': str(PROJECT_ROOT / "data" / "csv" / "snow_quality_distribution_daily_mod10a1_2010_2024.csv"),
     'name': 'MOD10A1',
     'description': 'Albédo de neige (Terra Snow Cover)',
     'quality_levels': ['quality_0_best', 'quality_1_good', 'quality_2_ok', 'quality_other_night_ocean'],
