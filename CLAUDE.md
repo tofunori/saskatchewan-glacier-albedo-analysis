@@ -1,0 +1,1 @@
+- Always keep the main.py small and short and break the new code in smaller sections and organise them in the appropriate folders of the project

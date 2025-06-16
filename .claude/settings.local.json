@@ -10,7 +10,8 @@
       "Bash(rm:*)",
       "Bash(python:*)",
       "Bash(grep:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(ls:*)"
     ],
     "deny": []
   }

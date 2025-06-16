@@ -37,8 +37,8 @@ print(f"📁 Répertoire du projet: {project_dir}")
 # Import de la configuration et des fonctions d'analyse
 try:
     from saskatchewan_albedo.config import print_config_summary
-    from analysis_functions import (check_config, run_complete_analysis, run_trends_only, 
-                                  run_visualizations_only, run_pixels_only, run_daily_only)
+    from saskatchewan_albedo.scripts.analysis_functions import (check_config, run_complete_analysis, run_trends_only, 
+                                                               run_visualizations_only, run_pixels_only, run_daily_only)
     print("✅ Modules importés avec succès")
 except ImportError as e:
     print(f"❌ Erreur d'import: {e}")
