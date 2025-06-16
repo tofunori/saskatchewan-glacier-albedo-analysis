@@ -25,7 +25,8 @@ sys.path.insert(0, str(src_dir))
 PROJECT_DIR = project_dir
 
 # Imports
-from saskatchewan_albedo.config import CSV_PATH, QA_CSV_PATH, OUTPUT_DIR, ANALYSIS_VARIABLE
+import numpy as np
+from saskatchewan_albedo.config import CSV_PATH, QA_CSV_PATH, OUTPUT_DIR, ANALYSIS_VARIABLE, FRACTION_CLASSES
 from saskatchewan_albedo.data.handler import AlbedoDataHandler
 from saskatchewan_albedo.analysis.trends import TrendCalculator
 from saskatchewan_albedo.analysis.pixel_analysis import PixelCountAnalyzer
@@ -408,3 +409,333 @@ def list_files(output_path):
             if file.is_file():
                 size_kb = file.stat().st_size / 1024
                 print(f"  ✅ {file.name} ({size_kb:.1f} KB)")
+
+# ============================================================================
+# NOUVELLES FONCTIONS POUR SUPPORT MULTI-DATASETS
+# ============================================================================
+
+def check_datasets_availability():
+    """Vérifie la disponibilité des datasets"""
+    try:
+        from saskatchewan_albedo.config import get_available_datasets
+        datasets = get_available_datasets()
+        
+        available_count = 0
+        for name, info in datasets.items():
+            if info['csv_exists']:
+                available_count += 1
+        
+        if available_count == 0:
+            print("❌ Aucun dataset disponible")
+            return False
+        
+        print(f"✅ {available_count} dataset(s) disponible(s)")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Erreur vérification datasets: {e}")
+        return False
+
+def run_dataset_analysis(dataset_name):
+    """Exécute l'analyse pour un dataset spécifique"""
+    output_path = PROJECT_DIR / OUTPUT_DIR
+    
+    try:
+        from saskatchewan_albedo.config import get_dataset_config, print_config_summary
+        from saskatchewan_albedo.data.dataset_manager import DatasetManager
+        
+        print_section_header(f"ANALYSE DATASET {dataset_name}", level=1)
+        
+        # Afficher la configuration du dataset
+        print_config_summary(dataset_name)
+        
+        # Charger le dataset
+        manager = DatasetManager()
+        dataset = manager.load_dataset(dataset_name)
+        
+        # Créer le data handler compatible
+        config = get_dataset_config(dataset_name)
+        data_handler = AlbedoDataHandler(config['csv_path'])
+        data_handler.load_data()
+        
+        # Exécuter l'analyse complète avec ce dataset
+        trend_calculator = TrendCalculator(data_handler)
+        basic_results = trend_calculator.calculate_basic_trends(ANALYSIS_VARIABLE)
+        trend_calculator.print_summary(ANALYSIS_VARIABLE)
+        
+        # Visualisations
+        print_section_header("Visualisations standards", level=2)
+        monthly_visualizer = MonthlyVisualizer(data_handler)
+        monthly_plots = monthly_visualizer.create_all_monthly_plots(str(output_path))
+        
+        # Export avec suffixe dataset
+        output_suffix = f"_{dataset_name.lower()}"
+        
+        trend_path = str(output_path / f'summary_trends_{ANALYSIS_VARIABLE}{output_suffix}.csv')
+        trend_calculator.export_trend_results(trend_path, ANALYSIS_VARIABLE)
+        
+        print(f"\n✅ ANALYSE {dataset_name} TERMINÉE !")
+        return True
+        
+    except Exception as e:
+        print(f"\n❌ ERREUR ANALYSE {dataset_name}: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+def run_comparison_analysis():
+    """Exécute l'analyse comparative complète"""
+    output_path = PROJECT_DIR / OUTPUT_DIR
+    
+    try:
+        from saskatchewan_albedo.data.dataset_manager import DatasetManager
+        from saskatchewan_albedo.analysis.comparison import ComparisonAnalyzer
+        from saskatchewan_albedo.visualization.comparison_plots import ComparisonVisualizer
+        
+        print_section_header("ANALYSE COMPARATIVE MCD43A3 vs MOD10A1", level=1)
+        
+        # Préparer les données de comparaison
+        manager = DatasetManager()
+        comparison_data = manager.prepare_comparison_data(sync_dates=True)
+        manager.print_comparison_summary()
+        
+        # Analyses statistiques
+        print_section_header("Analyses statistiques comparatives", level=2)
+        analyzer = ComparisonAnalyzer(comparison_data)
+        
+        # Corrélations
+        correlations = analyzer.calculate_correlations('pearson')
+        
+        # Différences
+        differences = analyzer.calculate_differences()
+        
+        # Patterns temporels
+        temporal_patterns = analyzer.analyze_temporal_patterns()
+        
+        # Comparaison des tendances
+        trend_comparison = analyzer.compare_trend_analyses()
+        
+        # Résumé
+        analyzer.print_summary()
+        
+        # Visualisations
+        print_section_header("Visualisations comparatives", level=2)
+        visualizer = ComparisonVisualizer(comparison_data, str(output_path))
+        plots = visualizer.generate_all_plots()
+        
+        # Exports
+        analyzer.export_comparison_results(str(output_path))
+        
+        print(f"\n✅ ANALYSE COMPARATIVE TERMINÉE !")
+        print(f"   📊 {len(plots)} graphiques générés")
+        return True
+        
+    except Exception as e:
+        print(f"\n❌ ERREUR ANALYSE COMPARATIVE: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+def run_correlation_analysis():
+    """Exécute seulement l'analyse de corrélation"""
+    output_path = PROJECT_DIR / OUTPUT_DIR
+    
+    try:
+        from saskatchewan_albedo.data.dataset_manager import DatasetManager
+        from saskatchewan_albedo.analysis.comparison import ComparisonAnalyzer
+        
+        print_section_header("ANALYSE DE CORRÉLATION", level=1)
+        
+        manager = DatasetManager()
+        comparison_data = manager.prepare_comparison_data(sync_dates=True)
+        
+        analyzer = ComparisonAnalyzer(comparison_data)
+        
+        # Corrélations Pearson et Spearman
+        print_section_header("Corrélations Pearson", level=2)
+        pearson_corr = analyzer.calculate_correlations('pearson')
+        
+        print_section_header("Corrélations Spearman", level=2)
+        spearman_corr = analyzer.calculate_correlations('spearman')
+        
+        # Export
+        corr_path = str(output_path / 'correlations_detailed.csv')
+        import pandas as pd
+        
+        corr_df = pd.DataFrame({
+            'fraction': FRACTION_CLASSES,
+            'pearson_r': [pearson_corr.get(f, {}).get('correlation', np.nan) for f in FRACTION_CLASSES],
+            'pearson_p': [pearson_corr.get(f, {}).get('p_value', np.nan) for f in FRACTION_CLASSES],
+            'spearman_r': [spearman_corr.get(f, {}).get('correlation', np.nan) for f in FRACTION_CLASSES],
+            'spearman_p': [spearman_corr.get(f, {}).get('p_value', np.nan) for f in FRACTION_CLASSES]
+        })
+        corr_df.to_csv(corr_path, index=False)
+        
+        print(f"\n✅ ANALYSE DE CORRÉLATION TERMINÉE !")
+        print(f"   📊 Résultats exportés: {corr_path}")
+        return True
+        
+    except Exception as e:
+        print(f"\n❌ ERREUR ANALYSE CORRÉLATION: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+def run_custom_analysis(dataset_name, analysis_type):
+    """Exécute une analyse personnalisée"""
+    try:
+        print_section_header(f"ANALYSE PERSONNALISÉE - {dataset_name}", level=1)
+        
+        if analysis_type == 1:  # Analyse complète
+            return run_dataset_analysis(dataset_name)
+        elif analysis_type == 2:  # Tendances seulement
+            return _run_trends_for_dataset(dataset_name)
+        elif analysis_type == 3:  # Visualisations seulement
+            return _run_visualizations_for_dataset(dataset_name)
+        elif analysis_type == 4:  # Pixels/QA seulement
+            return _run_pixels_for_dataset(dataset_name)
+        elif analysis_type == 5:  # Graphiques quotidiens
+            return _run_daily_for_dataset(dataset_name)
+        else:
+            print("❌ Type d'analyse invalide")
+            return False
+            
+    except Exception as e:
+        print(f"\n❌ ERREUR ANALYSE PERSONNALISÉE: {e}")
+        return False
+
+def _run_trends_for_dataset(dataset_name):
+    """Exécute les tendances pour un dataset spécifique"""
+    try:
+        from saskatchewan_albedo.config import get_dataset_config
+        
+        config = get_dataset_config(dataset_name)
+        data_handler = AlbedoDataHandler(config['csv_path'])
+        data_handler.load_data()
+        
+        trend_calculator = TrendCalculator(data_handler)
+        basic_results = trend_calculator.calculate_basic_trends(ANALYSIS_VARIABLE)
+        trend_calculator.print_summary(ANALYSIS_VARIABLE)
+        
+        return True
+    except Exception as e:
+        print(f"❌ Erreur tendances {dataset_name}: {e}")
+        return False
+
+def _run_visualizations_for_dataset(dataset_name):
+    """Exécute les visualisations pour un dataset spécifique"""
+    try:
+        from saskatchewan_albedo.config import get_dataset_config
+        
+        output_path = PROJECT_DIR / OUTPUT_DIR
+        config = get_dataset_config(dataset_name)
+        data_handler = AlbedoDataHandler(config['csv_path'])
+        data_handler.load_data()
+        
+        monthly_visualizer = MonthlyVisualizer(data_handler)
+        plots = monthly_visualizer.create_all_monthly_plots(str(output_path))
+        
+        print(f"✅ {len(plots)} visualisations créées pour {dataset_name}")
+        return True
+    except Exception as e:
+        print(f"❌ Erreur visualisations {dataset_name}: {e}")
+        return False
+
+def _run_pixels_for_dataset(dataset_name):
+    """Exécute l'analyse pixels pour un dataset spécifique"""
+    try:
+        from saskatchewan_albedo.config import get_dataset_config
+        
+        output_path = PROJECT_DIR / OUTPUT_DIR
+        config = get_dataset_config(dataset_name)
+        data_handler = AlbedoDataHandler(config['csv_path'])
+        data_handler.load_data()
+        
+        qa_path = config.get('qa_csv_path')
+        if qa_path and os.path.exists(qa_path):
+            pixel_analyzer = PixelCountAnalyzer(data_handler, qa_csv_path=qa_path)
+            pixel_analyzer.load_qa_data()
+            
+            pixel_visualizer = PixelVisualizer(data_handler)
+            plots = pixel_visualizer.create_daily_melt_season_plots(pixel_analyzer, str(output_path))
+            
+            print(f"✅ {len(plots)} analyses pixels créées pour {dataset_name}")
+        else:
+            print(f"⚠️ Pas de données QA disponibles pour {dataset_name}")
+        
+        return True
+    except Exception as e:
+        print(f"❌ Erreur pixels {dataset_name}: {e}")
+        return False
+
+def _run_daily_for_dataset(dataset_name):
+    """Exécute les graphiques quotidiens pour un dataset spécifique"""
+    try:
+        return _run_pixels_for_dataset(dataset_name)  # Même fonction pour l'instant
+    except Exception as e:
+        print(f"❌ Erreur quotidien {dataset_name}: {e}")
+        return False
+
+def run_comparative_visualizations():
+    """Génère toutes les visualisations comparatives"""
+    try:
+        from saskatchewan_albedo.data.dataset_manager import DatasetManager
+        from saskatchewan_albedo.visualization.comparison_plots import ComparisonVisualizer
+        
+        output_path = PROJECT_DIR / OUTPUT_DIR
+        
+        print_section_header("VISUALISATIONS COMPARATIVES", level=1)
+        
+        manager = DatasetManager()
+        comparison_data = manager.prepare_comparison_data(sync_dates=True)
+        
+        visualizer = ComparisonVisualizer(comparison_data, str(output_path))
+        plots = visualizer.generate_all_plots()
+        
+        print(f"\n✅ VISUALISATIONS COMPARATIVES TERMINÉES !")
+        print(f"   📈 {len(plots)} graphiques générés")
+        return True
+        
+    except Exception as e:
+        print(f"\n❌ ERREUR VISUALISATIONS: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+def run_export_all():
+    """Exporte tous les résultats disponibles"""
+    try:
+        print_section_header("EXPORT DE TOUS LES RÉSULTATS", level=1)
+        
+        output_path = PROJECT_DIR / OUTPUT_DIR
+        success_count = 0
+        
+        # Export MCD43A3
+        try:
+            run_dataset_analysis('MCD43A3')
+            success_count += 1
+        except Exception as e:
+            print(f"⚠️ Échec export MCD43A3: {e}")
+        
+        # Export MOD10A1
+        try:
+            run_dataset_analysis('MOD10A1')
+            success_count += 1
+        except Exception as e:
+            print(f"⚠️ Échec export MOD10A1: {e}")
+        
+        # Export comparaison
+        try:
+            run_comparison_analysis()
+            success_count += 1
+        except Exception as e:
+            print(f"⚠️ Échec export comparaison: {e}")
+        
+        print(f"\n✅ EXPORTS TERMINÉS !")
+        print(f"   📊 {success_count}/3 analyses exportées avec succès")
+        list_files(output_path)
+        return True
+        
+    except Exception as e:
+        print(f"\n❌ ERREUR EXPORTS: {e}")
+        return False
