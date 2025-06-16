@@ -471,77 +471,148 @@ class PixelVisualizer:
         dates = year_data['date']
         
         # =================================================================
-        # SUBPLOT A: Daily Albedo Values by Ice Coverage Fraction
+        # SUBPLOT A: Daily Albedo Composition - STACKED BARS
         # =================================================================
         ax1 = axes[0]
         
-        albedo_plotted = False
-        for fraction in self.fraction_classes:
-            albedo_col = f"{fraction}_mean"
-            if albedo_col in year_data.columns:
-                # Get valid data points
-                valid_mask = year_data[albedo_col].notna()
-                if valid_mask.sum() > 0:
-                    dates_valid = year_data.loc[valid_mask, 'date']
-                    values_valid = year_data.loc[valid_mask, albedo_col]
-                    
-                    # Plot ALL points as SCATTER ONLY - NO LINES!
-                    ax1.scatter(dates_valid, values_valid, 
-                               s=35, alpha=0.85, 
-                               label=f'{self.class_labels[fraction]} ({len(dates_valid)} pts)',
-                               color=modern_colors.get(fraction, '#7f8c8d'),
-                               edgecolors='white', linewidths=1.2)
-                    albedo_plotted = True
+        # Prepare data for stacked bars - weighted albedo contribution
+        albedo_data = {}
+        valid_dates = []
         
-        if albedo_plotted:
-            ax1.set_title('A) Daily Albedo Values by Ice Coverage Fraction (All Data Points)', 
+        for _, row in year_data.iterrows():
+            date = row['date']
+            day_contributions = {}
+            total_weighted_albedo = 0
+            total_pixels = 0
+            
+            # Calculate weighted contribution of each fraction
+            for fraction in self.fraction_classes:
+                albedo_col = f"{fraction}_mean"
+                pixel_col = f"{fraction}_pixel_count"
+                
+                if (albedo_col in row.index and pixel_col in row.index and 
+                    pd.notna(row[albedo_col]) and pd.notna(row[pixel_col]) and row[pixel_col] > 0):
+                    
+                    # Weight the albedo by pixel count
+                    weighted_contribution = row[albedo_col] * row[pixel_col]
+                    day_contributions[fraction] = weighted_contribution
+                    total_weighted_albedo += weighted_contribution
+                    total_pixels += row[pixel_col]
+            
+            # Only include days with data
+            if day_contributions and total_pixels > 0:
+                valid_dates.append(date)
+                # Normalize contributions to get proportional albedo
+                for fraction in day_contributions:
+                    if fraction not in albedo_data:
+                        albedo_data[fraction] = []
+                    albedo_data[fraction].append(day_contributions[fraction] / total_pixels)
+                
+                # Fill missing fractions with 0
+                for fraction in self.fraction_classes:
+                    if fraction not in day_contributions:
+                        if fraction not in albedo_data:
+                            albedo_data[fraction] = []
+                        albedo_data[fraction].append(0)
+        
+        if valid_dates and albedo_data:
+            # Create stacked bars
+            bottom_values = np.zeros(len(valid_dates))
+            width = 1.0  # Full width bars for daily data
+            
+            for fraction in self.fraction_classes:
+                if fraction in albedo_data and len(albedo_data[fraction]) == len(valid_dates):
+                    values = np.array(albedo_data[fraction])
+                    
+                    ax1.bar(valid_dates, values, width, bottom=bottom_values,
+                           label=f'{self.class_labels[fraction]}',
+                           color=modern_colors.get(fraction, '#7f8c8d'),
+                           alpha=0.8, edgecolor='white', linewidth=0.5)
+                    
+                    bottom_values += values
+            
+            ax1.set_title('A) Daily Albedo Composition (Stacked by Ice Coverage Fraction)', 
                          fontsize=16, fontweight='bold', pad=15)
-            ax1.set_ylabel('Albedo', fontsize=14, fontweight='bold')
-            ax1.set_ylim(0, 1)
+            ax1.set_ylabel('Weighted Albedo', fontsize=14, fontweight='bold')
+            ax1.set_ylim(0, max(bottom_values) * 1.1 if len(bottom_values) > 0 else 1)
             ax1.legend(loc='upper left', frameon=True, fancybox=True, shadow=True, 
                       fontsize=11, ncol=2)
-            ax1.grid(True, alpha=0.4, linestyle=':', linewidth=0.8)
+            ax1.grid(True, alpha=0.4, linestyle=':', linewidth=0.8, axis='y')
             ax1.set_facecolor('#fafafa')
+            
+            print(f"✅ Panel A: Stacked albedo bars for {len(valid_dates)} days")
         else:
             ax1.text(0.5, 0.5, 'No albedo data available for this year', 
                     ha='center', va='center', transform=ax1.transAxes, fontsize=14)
+            ax1.set_title('A) Daily Albedo Composition (No Data)', 
+                         fontsize=16, fontweight='bold', pad=15)
         
         # =================================================================
-        # SUBPLOT B: Daily Pixel Counts by Ice Coverage Fraction
+        # SUBPLOT B: Daily Pixel Count Composition - STACKED BARS
         # =================================================================
         ax2 = axes[1]
         
-        pixel_plotted = False
-        for fraction in self.fraction_classes:
-            pixel_col = f"{fraction}_pixel_count"
-            if pixel_col in year_data.columns:
-                valid_mask = year_data[pixel_col].notna()
-                if valid_mask.sum() > 0:
-                    dates_valid = year_data.loc[valid_mask, 'date']
-                    values_valid = year_data.loc[valid_mask, pixel_col]
-                    
-                    # Plot ALL points as SCATTER ONLY - NO LINES!
-                    ax2.scatter(dates_valid, values_valid, 
-                               s=30, alpha=0.85, marker='s',
-                               label=f'{self.class_labels[fraction]} ({len(dates_valid)} pts)',
-                               color=modern_colors.get(fraction, '#7f8c8d'),
-                               edgecolors='white', linewidths=1.2)
-                    pixel_plotted = True
+        # Prepare data for stacked pixel count bars
+        pixel_data = {}
+        pixel_valid_dates = []
         
-        if pixel_plotted:
-            ax2.set_title('B) Daily Pixel Counts by Ice Coverage Fraction (All Data Points)', 
+        for _, row in year_data.iterrows():
+            date = row['date']
+            day_pixels = {}
+            
+            # Get pixel count for each fraction
+            for fraction in self.fraction_classes:
+                pixel_col = f"{fraction}_pixel_count"
+                
+                if pixel_col in row.index and pd.notna(row[pixel_col]) and row[pixel_col] > 0:
+                    day_pixels[fraction] = row[pixel_col]
+            
+            # Only include days with pixel data
+            if day_pixels:
+                pixel_valid_dates.append(date)
+                
+                for fraction in self.fraction_classes:
+                    if fraction not in pixel_data:
+                        pixel_data[fraction] = []
+                    
+                    if fraction in day_pixels:
+                        pixel_data[fraction].append(day_pixels[fraction])
+                    else:
+                        pixel_data[fraction].append(0)
+        
+        if pixel_valid_dates and pixel_data:
+            # Create stacked bars for pixel counts
+            bottom_values = np.zeros(len(pixel_valid_dates))
+            width = 1.0  # Full width bars for daily data
+            
+            for fraction in self.fraction_classes:
+                if fraction in pixel_data and len(pixel_data[fraction]) == len(pixel_valid_dates):
+                    values = np.array(pixel_data[fraction])
+                    
+                    ax2.bar(pixel_valid_dates, values, width, bottom=bottom_values,
+                           label=f'{self.class_labels[fraction]}',
+                           color=modern_colors.get(fraction, '#7f8c8d'),
+                           alpha=0.8, edgecolor='white', linewidth=0.5)
+                    
+                    bottom_values += values
+            
+            ax2.set_title('B) Daily Pixel Count Composition (Stacked by Ice Coverage Fraction)', 
                          fontsize=16, fontweight='bold', pad=15)
             ax2.set_ylabel('Number of Pixels', fontsize=14, fontweight='bold')
             ax2.legend(loc='upper left', frameon=True, fancybox=True, shadow=True, 
                       fontsize=11, ncol=2)
-            ax2.grid(True, alpha=0.4, linestyle=':', linewidth=0.8)
+            ax2.grid(True, alpha=0.4, linestyle=':', linewidth=0.8, axis='y')
             ax2.set_facecolor('#fafafa')
+            
+            print(f"✅ Panel B: Stacked pixel count bars for {len(pixel_valid_dates)} days")
         else:
             ax2.text(0.5, 0.5, 'No pixel count data available for this year', 
                     ha='center', va='center', transform=ax2.transAxes, fontsize=14)
+            ax2.set_title('B) Daily Pixel Count Composition (No Data)', 
+                         fontsize=16, fontweight='bold', pad=15)
         
         # =================================================================
-        # SUBPLOT C: Daily Quality Assessment Distribution
+        # SUBPLOT C: Daily Quality Assessment Distribution - STACKED BARS
         # =================================================================
         ax3 = axes[2]
         qa_plotted = False
@@ -549,7 +620,7 @@ class PixelVisualizer:
         # Enhanced QA color scheme with better contrast
         qa_colors = ['#27ae60', '#3498db', '#f39c12', '#e74c3c']  # Green, Blue, Orange, Red
         qa_labels = ['QA 0 (Excellent)', 'QA 1 (Good)', 'QA 2 (Fair)', 'QA 3 (Poor)']
-        qa_markers = ['o', 's', '^', 'D']  # Different markers for each QA level
+        qa_columns = ['quality_0_best', 'quality_1_good', 'quality_2_moderate', 'quality_3_poor']
         
         # Try to plot QA data if available
         if pixel_analyzer.qa_data is not None:
@@ -560,26 +631,46 @@ class PixelVisualizer:
             if len(year_qa_data) > 0:
                 year_qa_data = year_qa_data.sort_values('date')
                 
-                for i, qa_col in enumerate(['quality_0_best', 'quality_1_good', 'quality_2_moderate', 'quality_3_poor']):
-                    if qa_col in year_qa_data.columns:
-                        valid_mask = year_qa_data[qa_col].notna() & (year_qa_data[qa_col] > 0)
-                        if valid_mask.sum() > 0:
-                            dates_valid = year_qa_data.loc[valid_mask, 'date']
-                            values_valid = year_qa_data.loc[valid_mask, qa_col]
-                            
-                            ax3.scatter(dates_valid, values_valid, 
-                                       s=35, alpha=0.85, marker=qa_markers[i],
-                                       label=f'{qa_labels[i]} ({len(dates_valid)} pts)', color=qa_colors[i],
-                                       edgecolors='white', linewidths=1.2)
-                            qa_plotted = True
+                # Prepare data for stacked bars
+                qa_valid_dates = []
+                qa_stacked_data = {qa_col: [] for qa_col in qa_columns}
+                
+                for _, row in year_qa_data.iterrows():
+                    has_data = False
+                    for qa_col in qa_columns:
+                        if qa_col in year_qa_data.columns and pd.notna(row[qa_col]) and row[qa_col] > 0:
+                            has_data = True
+                            break
+                    
+                    if has_data:
+                        qa_valid_dates.append(row['date'])
+                        for qa_col in qa_columns:
+                            value = row[qa_col] if qa_col in year_qa_data.columns and pd.notna(row[qa_col]) else 0
+                            qa_stacked_data[qa_col].append(max(0, value))
+                
+                if qa_valid_dates:
+                    # Create stacked bars
+                    width = pd.Timedelta(days=1)  # Bar width
+                    bottom_values = np.zeros(len(qa_valid_dates))
+                    
+                    for i, (qa_col, qa_label, qa_color) in enumerate(zip(qa_columns, qa_labels, qa_colors)):
+                        values = qa_stacked_data[qa_col]
+                        if any(v > 0 for v in values):
+                            ax3.bar(qa_valid_dates, values, width, bottom=bottom_values,
+                                   label=f'{qa_label}',
+                                   color=qa_color, alpha=0.8, edgecolor='white', linewidth=0.5)
+                            bottom_values += np.array(values)
+                    
+                    qa_plotted = True
+                    print(f"✅ Panel C: Stacked QA distribution bars for {len(qa_valid_dates)} days")
         
         if qa_plotted:
-            ax3.set_title('C) Daily Quality Assessment Distribution (All Data Points)', 
+            ax3.set_title('C) Daily Quality Assessment Distribution (Stacked Bars)', 
                          fontsize=16, fontweight='bold', pad=15)
             ax3.set_ylabel('Number of Pixels', fontsize=14, fontweight='bold')
             ax3.legend(loc='upper left', frameon=True, fancybox=True, shadow=True, 
                       fontsize=11, ncol=2)
-            ax3.grid(True, alpha=0.4, linestyle=':', linewidth=0.8)
+            ax3.grid(True, alpha=0.4, linestyle=':', linewidth=0.8, axis='y')
             ax3.set_facecolor('#fafafa')
         else:
             ax3.text(0.5, 0.5, 'No quality assessment data available for this year', 
@@ -588,58 +679,82 @@ class PixelVisualizer:
                          fontsize=16, fontweight='bold', pad=15)
         
         # =================================================================
-        # SUBPLOT D: Total Valid Pixels and Data Availability
+        # SUBPLOT D: Total Valid Pixels and Data Availability - STACKED BARS
         # =================================================================
         ax4 = axes[3]
         
         total_pixel_plotted = False
         
-        # Calculate total valid pixels if not available
-        total_pixels = None
-        if 'total_valid_pixels' in year_data.columns:
-            total_pixels = year_data['total_valid_pixels']
-        else:
-            # Calculate from fraction pixel counts
-            pixel_cols = [f"{fraction}_pixel_count" for fraction in self.fraction_classes 
-                         if f"{fraction}_pixel_count" in year_data.columns]
-            if pixel_cols:
-                total_pixels = year_data[pixel_cols].sum(axis=1)
+        # Check if we have fraction pixel count data for stacked bars
+        pixel_cols = [f"{fraction}_pixel_count" for fraction in self.fraction_classes 
+                     if f"{fraction}_pixel_count" in year_data.columns]
         
-        if total_pixels is not None:
-            valid_mask = total_pixels.notna() & (total_pixels > 0)
-            if valid_mask.sum() > 0:
-                dates_valid = year_data.loc[valid_mask, 'date']
-                values_valid = total_pixels.loc[valid_mask]
+        if pixel_cols:
+            # Create stacked bars showing fraction composition
+            pixel_valid_dates = []
+            pixel_stacked_data = {fraction: [] for fraction in self.fraction_classes}
+            
+            for _, row in year_data.iterrows():
+                total_day_pixels = sum(row[f"{fraction}_pixel_count"] 
+                                     for fraction in self.fraction_classes 
+                                     if f"{fraction}_pixel_count" in year_data.columns 
+                                     and pd.notna(row[f"{fraction}_pixel_count"]))
                 
-                # Main total pixels POINTS ONLY - NO LINES!
-                ax4.scatter(dates_valid, values_valid, 
-                           s=40, alpha=0.9, 
-                           color='#2c3e50', label=f'Total Valid Pixels ({len(dates_valid)} pts)',
-                           edgecolors='white', linewidths=1.5)
+                if total_day_pixels > 0:
+                    pixel_valid_dates.append(row['date'])
+                    for fraction in self.fraction_classes:
+                        col_name = f"{fraction}_pixel_count"
+                        if col_name in year_data.columns and pd.notna(row[col_name]):
+                            pixel_stacked_data[fraction].append(max(0, row[col_name]))
+                        else:
+                            pixel_stacked_data[fraction].append(0)
+            
+            if pixel_valid_dates:
+                # Create stacked bars for total pixel composition
+                width = pd.Timedelta(days=1)  # Bar width
+                bottom_values = np.zeros(len(pixel_valid_dates))
                 
-                # Add monthly averages as horizontal reference lines
-                if len(values_valid) > 10:  # Only if enough data
-                    monthly_avg = year_data.groupby(year_data['date'].dt.month)[total_pixels.name if hasattr(total_pixels, 'name') else 'total_pixels'].mean()
-                    month_colors = ['#e67e22', '#27ae60', '#e74c3c', '#8e44ad']  # June, July, August, September
-                    month_names = ['June', 'July', 'August', 'September']
-                    
-                    for i, (month, avg_pixels) in enumerate(monthly_avg.items()):
-                        if not np.isnan(avg_pixels):
-                            ax4.axhline(y=avg_pixels, alpha=0.6, 
-                                      linestyle='--', linewidth=2.5,
-                                      color=month_colors[i % len(month_colors)],
-                                      label=f'{month_names[i % len(month_names)]}: {avg_pixels:.0f}')
+                for fraction in self.fraction_classes:
+                    values = pixel_stacked_data[fraction]
+                    if any(v > 0 for v in values):
+                        ax4.bar(pixel_valid_dates, values, width, bottom=bottom_values,
+                               label=f'{self.class_labels[fraction]}',
+                               color=modern_colors.get(fraction, '#7f8c8d'),
+                               alpha=0.8, edgecolor='white', linewidth=0.5)
+                        bottom_values += np.array(values)
                 
                 total_pixel_plotted = True
+                print(f"✅ Panel D: Stacked total pixel bars for {len(pixel_valid_dates)} days")
+        else:
+            # Fallback to total pixels if fraction data not available
+            total_pixels = None
+            if 'total_valid_pixels' in year_data.columns:
+                total_pixels = year_data['total_valid_pixels']
+            
+            if total_pixels is not None:
+                valid_mask = total_pixels.notna() & (total_pixels > 0)
+                if valid_mask.sum() > 0:
+                    dates_valid = year_data.loc[valid_mask, 'date']
+                    values_valid = total_pixels.loc[valid_mask]
+                    
+                    # Single-color bars for total pixels
+                    width = pd.Timedelta(days=1)
+                    ax4.bar(dates_valid, values_valid, width,
+                           color='#2c3e50', alpha=0.8, 
+                           label=f'Total Valid Pixels ({len(dates_valid)} days)',
+                           edgecolor='white', linewidth=0.5)
+                    
+                    total_pixel_plotted = True
+                    print(f"✅ Panel D: Total pixel bars for {len(dates_valid)} days")
         
         if total_pixel_plotted:
-            ax4.set_title('D) Total Valid Pixels and Data Availability (All Data Points)', 
+            ax4.set_title('D) Total Valid Pixels and Data Availability (Stacked Bars)', 
                          fontsize=16, fontweight='bold', pad=15)
             ax4.set_ylabel('Total Number of Pixels', fontsize=14, fontweight='bold')
             ax4.set_xlabel('Date', fontsize=14, fontweight='bold')
             ax4.legend(loc='upper left', frameon=True, fancybox=True, shadow=True, 
                       fontsize=11, ncol=2)
-            ax4.grid(True, alpha=0.4, linestyle=':', linewidth=0.8)
+            ax4.grid(True, alpha=0.4, linestyle=':', linewidth=0.8, axis='y')
             ax4.set_facecolor('#fafafa')
         else:
             ax4.text(0.5, 0.5, 'No total pixel data available for this year', 
