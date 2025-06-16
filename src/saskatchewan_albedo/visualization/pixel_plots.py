@@ -90,7 +90,7 @@ class PixelVisualizer:
         Create QA statistics visualizations by melt season
         
         Args:
-            qa_results (dict): Results from PixelCountAnalyzer.analyze_seasonal_qa_statistics()
+            qa_results (dict): Results from PixelCountAnalyzer.analyze_true_qa_statistics() or analyze_seasonal_qa_statistics()
             save_path (str, optional): Path to save the plot
             
         Returns:
@@ -104,22 +104,50 @@ class PixelVisualizer:
             print("❌ Pas de données QA pour créer les graphiques")
             return None
         
-        # Create figure with 4 subplots
-        fig, axes = plt.subplots(2, 2, figsize=(16, 12))
-        fig.suptitle('Statistiques de Qualité des Données par Saison de Fonte', 
-                     fontsize=16, fontweight='bold', y=0.98)
+        # Check if this is true QA data (0-3 scores) or seasonal QA data (by fraction)
+        has_qa_score_column = 'qa_score' in qa_stats.columns
         
-        # Plot 1: QA scores by month and fraction
-        self._plot_qa_scores(axes[0, 0], qa_stats)
-        
-        # Plot 2: High quality data ratios
-        self._plot_quality_ratios(axes[0, 1], qa_stats)
-        
-        # Plot 3: Pixel availability patterns
-        self._plot_pixel_availability(axes[1, 0], qa_stats)
-        
-        # Plot 4: QA distribution heatmap
-        self._plot_qa_heatmap(axes[1, 1], qa_stats)
+        if has_qa_score_column:
+            # This is true QA data (0-3 scores) - use the true_qa_plots logic
+            print("🔍 Utilisation des données QA vraies (scores 0-3)")
+            
+            # Create figure with 4 subplots optimized for QA scores
+            fig, axes = plt.subplots(2, 2, figsize=(16, 12))
+            fig.suptitle('Statistiques QA par Scores (0-3) - Saison de Fonte', 
+                         fontsize=16, fontweight='bold', y=0.98)
+            
+            # Plot 1: QA scores distribution by month
+            self._plot_qa_scores_distribution(axes[0, 0], qa_stats)
+            
+            # Plot 2: QA stacked chart
+            self._plot_qa_stacked_chart(axes[0, 1], qa_stats)
+            
+            # Plot 3: QA trends by month
+            self._plot_qa_trends_by_month(axes[1, 0], qa_stats)
+            
+            # Plot 4: QA quality ratios heatmap
+            self._plot_qa_quality_heatmap(axes[1, 1], qa_results)
+            
+        else:
+            # This is seasonal QA data (by fraction) - use the original logic
+            print("🔍 Utilisation des données QA saisonnières (par fraction)")
+            
+            # Create figure with 4 subplots
+            fig, axes = plt.subplots(2, 2, figsize=(16, 12))
+            fig.suptitle('Statistiques de Qualité des Données par Saison de Fonte', 
+                         fontsize=16, fontweight='bold', y=0.98)
+            
+            # Plot 1: QA scores by month and fraction
+            self._plot_qa_scores(axes[0, 0], qa_stats)
+            
+            # Plot 2: High quality data ratios
+            self._plot_quality_ratios(axes[0, 1], qa_stats)
+            
+            # Plot 3: Pixel availability patterns
+            self._plot_pixel_availability(axes[1, 0], qa_stats)
+            
+            # Plot 4: QA distribution heatmap
+            self._plot_qa_heatmap(axes[1, 1], qa_stats)
         
         plt.tight_layout()
         

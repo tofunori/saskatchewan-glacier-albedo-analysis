@@ -150,9 +150,9 @@ def run_complete_analysis():
                     str(output_path / 'true_qa_scores_analysis.png')
                 )
             
-            if qa_results:
+            if true_qa_results:
                 pixel_visualizer.create_qa_statistics_plots(
-                    qa_results,
+                    true_qa_results,
                     str(output_path / 'qa_statistics_by_season.png')
                 )
             
@@ -352,9 +352,9 @@ def run_pixels_only():
                 str(output_path / 'true_qa_scores_analysis.png')
             )
         
-        if qa_results:
+        if true_qa_results:
             pixel_visualizer.create_qa_statistics_plots(
-                qa_results,
+                true_qa_results,
                 str(output_path / 'qa_statistics_by_season.png')
             )
         
