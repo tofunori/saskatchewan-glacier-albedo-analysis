@@ -45,57 +45,47 @@ except ImportError as e:
     sys.exit(1)
 
 def show_menu():
-    """Affiche le menu d'options avec choix de datasets"""
+    """Affiche le menu principal organisé par produit MODIS"""
     print("\n" + "="*70)
     print("🚀 MENU D'ANALYSE - SASKATCHEWAN GLACIER ALBEDO")
     print("="*70)
     print()
-    print("📊 ANALYSES PAR DATASET:")
-    print("1️⃣  Analyse MCD43A3 (Albédo général MODIS)")
-    print("2️⃣  Analyse MOD10A1 (Albédo de neige Terra)")
+    print("📊 PRODUITS MODIS:")
+    print("1️⃣  MCD43A3 - Albédo général (MODIS Combined)")
+    print("2️⃣  MOD10A1 - Albédo de neige (Terra Snow Cover)")
     print()
-    print("🔄 ANALYSES COMPARATIVES:")
+    print("🔄 COMPARAISON:")
     print("3️⃣  Comparaison MCD43A3 vs MOD10A1")
-    print("4️⃣  Analyse de corrélation entre produits")
     print()
-    print("🛠️  OUTILS AVANCÉS:")
-    print("5️⃣  Analyse personnalisée (choix dataset)")
-    print("6️⃣  Visualisations comparatives")
-    print("7️⃣  Export des résultats")
-    print()
-    print("8️⃣  Quitter")
+    print("4️⃣  Quitter")
     print()
     print("-" * 70)
 
 def get_choice():
-    """Obtient le choix de l'utilisateur avec validation étendue"""
-    print("\n" + "="*70)
-    print("SÉLECTION DE L'ANALYSE")
-    print("="*70)
+    """Obtient le choix de l'utilisateur pour le menu principal"""
+    print("\n" + "="*50)
+    print("SÉLECTION DU PRODUIT")
+    print("="*50)
     print()
-    print("Tapez le numéro de votre choix puis appuyez sur Entrée:")
+    print("Choisissez le produit MODIS à analyser:")
     print("1 = MCD43A3 (Albédo général)")
-    print("2 = MOD10A1 (Albédo neige)")
-    print("3 = Comparaison complète")
-    print("4 = Corrélations")
-    print("5 = Analyse personnalisée")
-    print("6 = Visualisations")
-    print("7 = Exports")
-    print("8 = Quitter")
+    print("2 = MOD10A1 (Albédo de neige)")
+    print("3 = Comparaison des deux")
+    print("4 = Quitter")
     print()
     
     while True:
         try:
-            choice = input("➤ Votre choix (1-8): ").strip()
-            if choice in ['1', '2', '3', '4', '5', '6', '7', '8']:
+            choice = input("➤ Votre choix (1-4): ").strip()
+            if choice in ['1', '2', '3', '4']:
                 return int(choice)
             else:
-                print(f"❌ '{choice}' n'est pas valide. Tapez un chiffre de 1 à 8.")
+                print(f"❌ '{choice}' n'est pas valide. Tapez un chiffre de 1 à 4.")
         except KeyboardInterrupt:
             print("\n\n👋 Interruption. Au revoir!")
-            return 8
+            return 4
         except:
-            print("❌ Erreur de saisie. Tapez un chiffre de 1 à 8.")
+            print("❌ Erreur de saisie. Tapez un chiffre de 1 à 4.")
 
 def get_dataset_choice():
     """Permet à l'utilisateur de choisir un dataset spécifique"""
@@ -122,31 +112,80 @@ def get_dataset_choice():
         except:
             print("❌ Erreur de saisie. Tapez 1 ou 2.")
 
-def get_analysis_type():
-    """Permet à l'utilisateur de choisir le type d'analyse"""
-    print("\n" + "="*50)
-    print("TYPE D'ANALYSE")
-    print("="*50)
+def show_dataset_menu(dataset_name):
+    """Affiche le sous-menu pour un dataset spécifique"""
+    dataset_info = {
+        'MCD43A3': '🌍 MCD43A3 - Albédo général (MODIS Combined)',
+        'MOD10A1': '❄️ MOD10A1 - Albédo de neige (Terra Snow Cover)'
+    }
+    
+    print("\n" + "="*60)
+    print(f"ANALYSES POUR {dataset_info.get(dataset_name, dataset_name)}")
+    print("="*60)
     print()
-    print("1️⃣  Analyse complète")
-    print("2️⃣  Tendances seulement")
+    print("1️⃣  Analyse complète (toutes les étapes)")
+    print("2️⃣  Tendances statistiques seulement")
     print("3️⃣  Visualisations seulement")
-    print("4️⃣  Pixels/QA seulement")
-    print("5️⃣  Graphiques quotidiens")
+    print("4️⃣  Analyse pixels/QA seulement")
+    print("5️⃣  Graphiques quotidiens (daily_melt_season)")
+    print()
+    print("6️⃣  Retour au menu principal")
+    print()
+    print("-" * 60)
+
+def get_dataset_analysis_choice():
+    """Obtient le choix d'analyse pour un dataset"""
+    print("\n" + "="*40)
+    print("TYPE D'ANALYSE")
+    print("="*40)
     print()
     
     while True:
         try:
-            choice = input("➤ Type d'analyse (1-5): ").strip()
-            if choice in ['1', '2', '3', '4', '5']:
+            choice = input("➤ Votre choix (1-6): ").strip()
+            if choice in ['1', '2', '3', '4', '5', '6']:
                 return int(choice)
             else:
-                print(f"❌ '{choice}' n'est pas valide. Tapez un chiffre de 1 à 5.")
+                print(f"❌ '{choice}' n'est pas valide. Tapez un chiffre de 1 à 6.")
         except KeyboardInterrupt:
             print("\n\n👋 Interruption.")
-            return None
+            return 6
         except:
-            print("❌ Erreur de saisie. Tapez un chiffre de 1 à 5.")
+            print("❌ Erreur de saisie. Tapez un chiffre de 1 à 6.")
+
+def show_comparison_menu():
+    """Affiche le sous-menu pour la comparaison"""
+    print("\n" + "="*60)
+    print("🔄 COMPARAISON MCD43A3 vs MOD10A1")
+    print("="*60)
+    print()
+    print("1️⃣  Comparaison complète (corrélations + différences + tendances)")
+    print("2️⃣  Corrélations seulement")
+    print("3️⃣  Visualisations comparatives seulement")
+    print()
+    print("4️⃣  Retour au menu principal")
+    print()
+    print("-" * 60)
+
+def get_comparison_analysis_choice():
+    """Obtient le choix d'analyse pour la comparaison"""
+    print("\n" + "="*40)
+    print("TYPE DE COMPARAISON")
+    print("="*40)
+    print()
+    
+    while True:
+        try:
+            choice = input("➤ Votre choix (1-4): ").strip()
+            if choice in ['1', '2', '3', '4']:
+                return int(choice)
+            else:
+                print(f"❌ '{choice}' n'est pas valide. Tapez un chiffre de 1 à 4.")
+        except KeyboardInterrupt:
+            print("\n\n👋 Interruption.")
+            return 4
+        except:
+            print("❌ Erreur de saisie. Tapez un chiffre de 1 à 4.")
 
 def main():
     """Fonction principale avec support multi-datasets"""
@@ -187,60 +226,115 @@ def main():
         
         try:
             if choice == 1:
-                # Analyse MCD43A3
-                print("\n🔍 Analyse du dataset MCD43A3 (Albédo général)...")
-                run_dataset_analysis('MCD43A3')
+                # Sous-menu MCD43A3
+                _handle_dataset_menu('MCD43A3')
                 
             elif choice == 2:
-                # Analyse MOD10A1
-                print("\n❄️ Analyse du dataset MOD10A1 (Albédo de neige)...")
-                run_dataset_analysis('MOD10A1')
+                # Sous-menu MOD10A1
+                _handle_dataset_menu('MOD10A1')
                 
             elif choice == 3:
-                # Comparaison complète
-                print("\n🔄 Comparaison complète MCD43A3 vs MOD10A1...")
-                run_comparison_analysis()
+                # Sous-menu Comparaison
+                _handle_comparison_menu()
                 
             elif choice == 4:
-                # Analyse de corrélation
-                print("\n📊 Analyse de corrélation entre produits...")
-                run_correlation_analysis()
-                
-            elif choice == 5:
-                # Analyse personnalisée
-                print("\n⚙️ Analyse personnalisée...")
-                dataset = get_dataset_choice()
-                if dataset:
-                    analysis_type = get_analysis_type()
-                    if analysis_type:
-                        run_custom_analysis(dataset, analysis_type)
-                
-            elif choice == 6:
-                # Visualisations comparatives
-                print("\n📈 Génération des visualisations comparatives...")
-                run_comparative_visualizations()
-                
-            elif choice == 7:
-                # Export des résultats
-                print("\n💾 Export de tous les résultats...")
-                run_export_all()
-                
-            elif choice == 8:
                 print("\n👋 Au revoir!")
                 break
             
         except Exception as e:
             print(f"\n❌ Erreur lors de l'exécution: {e}")
             print("📝 Consultez les logs pour plus de détails.")
+
+def _handle_dataset_menu(dataset_name):
+    """Gère le sous-menu pour un dataset spécifique"""
+    from saskatchewan_albedo.scripts.analysis_functions import (
+        run_dataset_analysis, run_custom_analysis
+    )
+    
+    while True:
+        show_dataset_menu(dataset_name)
+        choice = get_dataset_analysis_choice()
         
-        print("\n" + "="*60)
+        if choice == 6:  # Retour au menu principal
+            break
+            
         try:
-            cont = input("➤ Continuer avec une autre analyse? (o/n): ").strip().lower()
+            if choice == 1:
+                # Analyse complète
+                print(f"\n🔍 Analyse complète du dataset {dataset_name}...")
+                run_dataset_analysis(dataset_name)
+                
+            elif choice == 2:
+                # Tendances seulement
+                print(f"\n📈 Analyse des tendances pour {dataset_name}...")
+                run_custom_analysis(dataset_name, 2)
+                
+            elif choice == 3:
+                # Visualisations seulement
+                print(f"\n🎨 Génération des visualisations pour {dataset_name}...")
+                run_custom_analysis(dataset_name, 3)
+                
+            elif choice == 4:
+                # Pixels/QA seulement
+                print(f"\n🔍 Analyse pixels/QA pour {dataset_name}...")
+                run_custom_analysis(dataset_name, 4)
+                
+            elif choice == 5:
+                # Graphiques quotidiens
+                print(f"\n📅 Graphiques quotidiens pour {dataset_name}...")
+                run_custom_analysis(dataset_name, 5)
+                
+        except Exception as e:
+            print(f"\n❌ Erreur lors de l'analyse {dataset_name}: {e}")
+        
+        print("\n" + "="*50)
+        try:
+            cont = input("➤ Autre analyse pour ce dataset? (o/n): ").strip().lower()
             if cont not in ['o', 'oui', 'y', 'yes']:
-                print("\n👋 Au revoir!")
                 break
         except KeyboardInterrupt:
-            print("\n\n👋 Interruption. Au revoir!")
+            break
+        except:
+            break
+
+def _handle_comparison_menu():
+    """Gère le sous-menu pour la comparaison"""
+    from saskatchewan_albedo.scripts.analysis_functions import (
+        run_comparison_analysis, run_correlation_analysis, run_comparative_visualizations
+    )
+    
+    while True:
+        show_comparison_menu()
+        choice = get_comparison_analysis_choice()
+        
+        if choice == 4:  # Retour au menu principal
+            break
+            
+        try:
+            if choice == 1:
+                # Comparaison complète
+                print("\n🔄 Comparaison complète MCD43A3 vs MOD10A1...")
+                run_comparison_analysis()
+                
+            elif choice == 2:
+                # Corrélations seulement
+                print("\n📊 Analyse de corrélation entre produits...")
+                run_correlation_analysis()
+                
+            elif choice == 3:
+                # Visualisations comparatives
+                print("\n📈 Génération des visualisations comparatives...")
+                run_comparative_visualizations()
+                
+        except Exception as e:
+            print(f"\n❌ Erreur lors de la comparaison: {e}")
+        
+        print("\n" + "="*50)
+        try:
+            cont = input("➤ Autre analyse comparative? (o/n): ").strip().lower()
+            if cont not in ['o', 'oui', 'y', 'yes']:
+                break
+        except KeyboardInterrupt:
             break
         except:
             break

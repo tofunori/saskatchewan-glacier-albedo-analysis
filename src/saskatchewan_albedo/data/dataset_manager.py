@@ -186,9 +186,21 @@ class DatasetManager:
                 closest_idx = (candidates['date'] - date1).abs().idxmin()
                 row2 = data2.loc[closest_idx]
                 
-                # Créer une ligne combinée
-                merged_row = self._merge_rows(row1, row2, 'mcd43a3', 'mod10a1')
-                merged_list.append(merged_row)
+                # Vérifier que au moins une fraction a des données valides dans les deux datasets
+                has_valid_data = False
+                for fraction in FRACTION_CLASSES:
+                    col1 = f'{fraction}_mean'
+                    col2 = f'{fraction}_mean'
+                    
+                    if (col1 in row1.index and col2 in row2.index and 
+                        pd.notna(row1[col1]) and pd.notna(row2[col2])):
+                        has_valid_data = True
+                        break
+                
+                # Ne créer la ligne combinée que si elle a des données valides
+                if has_valid_data:
+                    merged_row = self._merge_rows(row1, row2, 'mcd43a3', 'mod10a1')
+                    merged_list.append(merged_row)
         
         if merged_list:
             return pd.DataFrame(merged_list)
@@ -234,7 +246,25 @@ class DatasetManager:
             suffixes=('_mcd43a3', '_mod10a1')
         )
         
-        return merged
+        # Filtrer pour ne garder que les lignes où les deux datasets ont des données valides
+        # pour au moins une fraction
+        valid_rows_mask = pd.Series([False] * len(merged))
+        
+        for fraction in FRACTION_CLASSES:
+            mcd_col = f'mcd43a3_{fraction}_mean'
+            mod_col = f'mod10a1_{fraction}_mean'
+            
+            if mcd_col in merged.columns and mod_col in merged.columns:
+                # Vérifier que les deux valeurs sont valides (non-NaN)
+                fraction_valid = merged[mcd_col].notna() & merged[mod_col].notna()
+                valid_rows_mask = valid_rows_mask | fraction_valid
+        
+        # Ne garder que les lignes avec au moins une fraction valide dans les deux datasets
+        filtered_merged = merged[valid_rows_mask].copy()
+        
+        print(f"📊 Données filtrées: {len(merged)} → {len(filtered_merged)} lignes avec données valides dans les deux produits")
+        
+        return filtered_merged
     
     def _merge_rows(self, row1, row2, prefix1, prefix2):
         """

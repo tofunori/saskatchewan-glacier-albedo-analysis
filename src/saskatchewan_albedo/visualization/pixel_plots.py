@@ -390,13 +390,14 @@ class PixelVisualizer:
         plt.close()
         return save_path
     
-    def create_daily_melt_season_plots(self, pixel_analyzer, save_dir=None):
+    def create_daily_melt_season_plots(self, pixel_analyzer, save_dir=None, dataset_suffix=""):
         """
         Create daily QA and pixel count plots for each year's melt season
         
         Args:
             pixel_analyzer: PixelCountAnalyzer instance with loaded data
             save_dir (str, optional): Directory to save the plots
+            dataset_suffix (str, optional): Suffix to add to filenames for dataset identification
             
         Returns:
             list: Paths to saved plots for each year
@@ -427,14 +428,14 @@ class PixelVisualizer:
                 continue
             
             # Create plot for this year
-            plot_path = self._create_yearly_daily_plot(year, year_data, pixel_analyzer, save_dir)
+            plot_path = self._create_yearly_daily_plot(year, year_data, pixel_analyzer, save_dir, dataset_suffix)
             if plot_path:
                 saved_plots.append(plot_path)
         
         print(f"\n✅ {len(saved_plots)} graphiques annuels créés")
         return saved_plots
     
-    def _create_yearly_daily_plot(self, year, year_data, pixel_analyzer, save_dir):
+    def _create_yearly_daily_plot(self, year, year_data, pixel_analyzer, save_dir, dataset_suffix=""):
         """
         Create daily plot for a specific year's melt season
         
@@ -443,6 +444,7 @@ class PixelVisualizer:
             year_data (pd.DataFrame): Data for this year
             pixel_analyzer: PixelCountAnalyzer instance
             save_dir (str): Directory to save the plot
+            dataset_suffix (str): Suffix to add to filename
             
         Returns:
             str: Path to saved plot
@@ -587,7 +589,7 @@ class PixelVisualizer:
         os.makedirs(save_dir, exist_ok=True)
         
         # Save the plot
-        save_path = os.path.join(save_dir, f'daily_melt_season_{year}.png')
+        save_path = os.path.join(save_dir, f'daily_melt_season_{year}{dataset_suffix}.png')
         plt.savefig(save_path, dpi=300, bbox_inches='tight')
         print(f"✅ Graphique {year} sauvegardé: {save_path}")
         
