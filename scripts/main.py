@@ -135,7 +135,7 @@ def main():
         
         try:
             # Importer le module de visualisations si disponible
-            from chart_generator import ChartGenerator
+            from saskatchewan_albedo.visualization.charts import ChartGenerator
             
             chart_generator = ChartGenerator(data_handler)
             
