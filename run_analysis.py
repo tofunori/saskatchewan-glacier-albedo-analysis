@@ -22,27 +22,41 @@ def main():
     print("🚀 SASKATCHEWAN ALBEDO TREND ANALYSIS")
     print("="*50)
     
-    # Chemin vers vos données (modifiez selon votre fichier)
+    # MODIFIEZ ICI LE CHEMIN VERS VOTRE FICHIER CSV
+    # Option 1: Chemin direct (recommandé)
+    direct_csv_path = r"D:\Downloads\daily_albedo_mann_kendall_ready_2010_2024.csv"
+    
+    # Option 2: Liste de chemins possibles (si vous avez plusieurs fichiers)
     csv_files = [
-        "daily_albedo_by_fraction_optimized.csv",
-        "data.csv",
-        # Ajoutez d'autres noms possibles ici
+        direct_csv_path,  # Votre fichier principal
+        "daily_albedo_mann_kendall_ready_2010_2024.csv",  # Dans le répertoire courant
+        "daily_albedo_by_fraction_optimized.csv",  # Ancien nom
+        "data.csv",  # Nom générique
     ]
     
     csv_path = None
-    for filename in csv_files:
-        if os.path.exists(filename):
-            csv_path = filename
-            break
+    
+    # Essayer d'abord le chemin direct
+    if os.path.exists(direct_csv_path):
+        csv_path = direct_csv_path
+        print(f"✅ Fichier trouvé avec le chemin direct: {csv_path}")
+    else:
+        # Sinon, chercher dans la liste
+        for filename in csv_files:
+            if os.path.exists(filename):
+                csv_path = filename
+                print(f"✅ Fichier trouvé: {csv_path}")
+                break
     
     if csv_path is None:
         print("❌ Aucun fichier CSV trouvé!")
-        print("Fichiers recherchés:")
+        print("Chemins recherchés:")
         for f in csv_files:
             print(f"  - {f}")
-        print("\nVeuillez:")
-        print("1. Placer votre fichier CSV dans le répertoire courant")
-        print("2. Ou modifier la liste csv_files dans ce script")
+        print(f"\n💡 SOLUTION RAPIDE:")
+        print(f"Modifiez la ligne 'direct_csv_path' dans ce script avec le chemin complet:")
+        print(f'direct_csv_path = r"VOTRE_CHEMIN_COMPLET.csv"')
+        print(f"\nOu placez votre fichier dans le répertoire courant avec un des noms ci-dessus")
         return False
     
     print(f"✅ Fichier CSV trouvé: {csv_path}")
@@ -136,24 +150,88 @@ def run_quick_test():
         traceback.print_exc()
         return False
 
+def main_with_args():
+    """
+    Version qui accepte les arguments de ligne de commande
+    """
+    import argparse
+    
+    parser = argparse.ArgumentParser(description='Analyse des tendances d\'albédo du glacier Saskatchewan')
+    parser.add_argument('csv_path', nargs='?', help='Chemin vers le fichier CSV (optionnel)')
+    parser.add_argument('--output', '-o', default='analysis_output', help='Répertoire de sortie')
+    parser.add_argument('--variable', '-v', default='mean', choices=['mean', 'median'], 
+                       help='Variable à analyser')
+    
+    args = parser.parse_args()
+    
+    # Si un chemin est fourni en argument, l'utiliser
+    if args.csv_path:
+        if os.path.exists(args.csv_path):
+            print(f"✅ Utilisation du fichier spécifié: {args.csv_path}")
+            return run_analysis_with_path(args.csv_path, args.output, args.variable)
+        else:
+            print(f"❌ Fichier non trouvé: {args.csv_path}")
+            return False
+    else:
+        # Sinon, utiliser la fonction main() normale
+        return main()
+
+def run_analysis_with_path(csv_path, output_dir='analysis_output', variable='mean'):
+    """
+    Lance l'analyse avec un chemin spécifique
+    """
+    print("🚀 SASKATCHEWAN ALBEDO TREND ANALYSIS")
+    print("="*50)
+    print(f"📊 Fichier: {csv_path}")
+    print(f"📁 Sortie: {output_dir}")
+    print(f"🔍 Variable: {variable}")
+    
+    try:
+        from trend_analysis.main import run_complete_analysis
+        
+        results = run_complete_analysis(
+            csv_path=csv_path,
+            output_dir=output_dir,
+            variable=variable
+        )
+        
+        if results:
+            print("✅ Analyse complète réussie!")
+            return True
+        else:
+            print("❌ Échec de l'analyse complète")
+            return False
+            
+    except Exception as e:
+        print(f"❌ Erreur lors de l'analyse: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
 if __name__ == "__main__":
+    print("📋 MODES D'UTILISATION:")
+    print("1. Avec chemin en argument: python run_analysis.py 'D:\\Downloads\\votre_fichier.csv'")
+    print("2. Modification du script: Changez direct_csv_path dans le script")
+    print("3. Fichier dans le répertoire courant")
+    print()
+    
     # Test rapide d'abord
     if not run_quick_test():
         print("❌ Échec du test rapide - problème avec les modules")
         sys.exit(1)
     
-    # Analyse principale
-    success = main()
+    # Analyse principale avec gestion des arguments
+    success = main_with_args()
     
     if success:
         print("\n🎉 Analyse terminée avec succès!")
-        print("📁 Consultez les fichiers générés dans le répertoire courant")
+        print("📁 Consultez les fichiers générés dans le répertoire de sortie")
     else:
         print("\n❌ Échec de l'analyse")
-        print("💡 Suggestions:")
-        print("  - Vérifiez que toutes les dépendances sont installées:")
-        print("    pip install pandas numpy matplotlib seaborn scipy scikit-learn")
-        print("  - Vérifiez le format de votre fichier CSV")
-        print("  - Consultez les messages d'erreur ci-dessus")
+        print("💡 SOLUTIONS:")
+        print("  1. Vérifiez le chemin de votre fichier CSV")
+        print("  2. Essayez: python run_analysis.py 'D:\\Downloads\\daily_albedo_mann_kendall_ready_2010_2024.csv'")
+        print("  3. Ou modifiez direct_csv_path dans ce script")
+        print("  4. Installez les dépendances: pip install pandas numpy matplotlib seaborn scipy scikit-learn")
         
         sys.exit(1)
