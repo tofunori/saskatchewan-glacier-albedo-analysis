@@ -28,11 +28,43 @@ warnings.filterwarnings('ignore')
 
 # Ajouter le répertoire du script au path pour trouver les modules
 script_dir = Path(__file__).parent.absolute()
+
+# Pour VS Code/WSL, s'assurer qu'on trouve le bon répertoire
+# Si on est dans un répertoire VS Code, chercher le vrai répertoire du projet
+if 'Microsoft VS Code' in str(script_dir) or not (script_dir / 'config.py').exists():
+    # Essayer de trouver le bon répertoire
+    possible_dirs = [
+        Path('/home/tofunori/saskatchewan-glacier-albedo-analysis'),
+        Path(__file__).parent.absolute(),
+        Path.cwd(),
+    ]
+    
+    for dir_path in possible_dirs:
+        if (dir_path / 'config.py').exists() and (dir_path / 'data_handler.py').exists():
+            script_dir = dir_path
+            break
+    else:
+        print("❌ ERREUR: Impossible de trouver le répertoire du projet!")
+        print("🔍 Répertoires testés:")
+        for dir_path in possible_dirs:
+            print(f"   - {dir_path} (existe: {dir_path.exists()})")
+        sys.exit(1)
+
 sys.path.insert(0, str(script_dir))
 
 print(f"📂 Répertoire de travail actuel: {Path.cwd()}")
-print(f"📁 Répertoire du script: {script_dir}")
+print(f"📁 Répertoire du script détecté: {script_dir}")
 print(f"🔍 Recherche des modules dans: {script_dir}")
+
+# Vérifier que les modules essentiels sont trouvables
+required_files = ['config.py', 'data_handler.py', 'trend_calculator.py', 'monthly_visualizer.py', 'helpers.py']
+missing_files = [f for f in required_files if not (script_dir / f).exists()]
+if missing_files:
+    print(f"❌ ERREUR: Fichiers manquants: {missing_files}")
+    print(f"📁 Dans le répertoire: {script_dir}")
+    sys.exit(1)
+
+print(f"✅ Tous les fichiers requis trouvés dans: {script_dir}")
 
 # Variable globale pour le répertoire du script
 SCRIPT_DIR = script_dir
