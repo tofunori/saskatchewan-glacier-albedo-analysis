@@ -46,7 +46,9 @@ try:
     from saskatchewan_albedo.config import CSV_PATH, OUTPUT_DIR, ANALYSIS_VARIABLE, print_config_summary
     from saskatchewan_albedo.data.handler import AlbedoDataHandler
     from saskatchewan_albedo.analysis.trends import TrendCalculator
+    from saskatchewan_albedo.analysis.pixel_analysis import PixelCountAnalyzer
     from saskatchewan_albedo.visualization.monthly import MonthlyVisualizer
+    from saskatchewan_albedo.visualization.pixel_plots import PixelVisualizer
     from saskatchewan_albedo.utils.helpers import print_section_header, ensure_directory_exists, print_analysis_summary
     print("✅ Tous les modules importés avec succès")
 except ImportError as e:
@@ -156,8 +158,72 @@ def main():
         except ImportError:
             print("⚠️  Module de visualisations additionnelles non disponible")
         
-        # ÉTAPE 6: Exports des résultats
-        print_section_header("ÉTAPE 6: Export des résultats", level=1)
+        # ÉTAPE 6: Analyse des comptages de pixels
+        print_section_header("ÉTAPE 6: Analyse des comptages de pixels", level=1)
+        
+        try:
+            # Créer l'analyseur de pixels
+            pixel_analyzer = PixelCountAnalyzer(data_handler)
+            
+            # Analyser les comptages mensuels de pixels
+            monthly_pixel_results = pixel_analyzer.analyze_monthly_pixel_counts()
+            
+            # Analyser les statistiques QA par saison
+            qa_results = pixel_analyzer.analyze_seasonal_qa_statistics()
+            
+            # Analyser les tendances des pixels totaux
+            total_pixel_results = pixel_analyzer.analyze_total_pixel_trends()
+            
+            print("✅ Analyses de pixels terminées")
+            
+        except Exception as e:
+            print(f"⚠️  Erreur lors de l'analyse des pixels: {e}")
+            monthly_pixel_results = {}
+            qa_results = {}
+            total_pixel_results = {}
+        
+        # ÉTAPE 7: Visualisations des pixels et QA
+        print_section_header("ÉTAPE 7: Visualisations des pixels et QA", level=1)
+        
+        try:
+            # Créer le visualiseur de pixels
+            pixel_visualizer = PixelVisualizer(data_handler)
+            
+            # Graphiques de comptages de pixels mensuels
+            if monthly_pixel_results:
+                pixel_count_path = pixel_visualizer.create_monthly_pixel_count_plots(
+                    monthly_pixel_results,
+                    str(output_path / 'pixel_counts_by_month_fraction.png')
+                )
+            
+            # Graphiques de statistiques QA
+            if qa_results:
+                qa_plot_path = pixel_visualizer.create_qa_statistics_plots(
+                    qa_results,
+                    str(output_path / 'qa_statistics_by_season.png')
+                )
+            
+            # Heatmap de disponibilité des pixels
+            if monthly_pixel_results and qa_results:
+                heatmap_path = pixel_visualizer.create_pixel_availability_heatmap(
+                    monthly_pixel_results, qa_results,
+                    str(output_path / 'pixel_availability_heatmap.png')
+                )
+            
+            # Série temporelle des pixels totaux
+            if total_pixel_results:
+                timeseries_path = pixel_visualizer.create_total_pixels_timeseries(
+                    total_pixel_results,
+                    str(output_path / 'total_pixels_timeseries.png')
+                )
+            
+            print("✅ Visualisations de pixels créées")
+            
+        except Exception as e:
+            print(f"⚠️  Erreur lors des visualisations de pixels: {e}")
+        
+        # ÉTAPE 8: Exports des résultats
+        print_section_header("ÉTAPE 8: Export des résultats", level=1)
         
         try:
             # Export du tableau de résumé
@@ -177,6 +243,10 @@ def main():
             cleaned_data_path = data_handler.export_cleaned_data(
                 str(output_path / f'cleaned_data_{ANALYSIS_VARIABLE}.csv')
             )
+            
+            # Export des analyses de pixels
+            if 'pixel_analyzer' in locals():
+                pixel_exports = pixel_analyzer.export_pixel_analysis_results(str(output_path))
             
         except Exception as e:
             print(f"⚠️  Erreur lors des exports: {e}")
@@ -201,8 +271,14 @@ def main():
             ('Comparaison mensuelle', f'monthly_comparison_{ANALYSIS_VARIABLE}.png'),
             ('Aperçu des tendances', f'trend_overview_{ANALYSIS_VARIABLE}.png'),
             ('Patterns saisonniers', f'seasonal_patterns_{ANALYSIS_VARIABLE}.png'),
+            ('Comptages de pixels par mois/fraction', 'pixel_counts_by_month_fraction.png'),
+            ('Statistiques QA par saison', 'qa_statistics_by_season.png'),
+            ('Heatmap de disponibilité pixels', 'pixel_availability_heatmap.png'),
+            ('Série temporelle pixels totaux', 'total_pixels_timeseries.png'),
             ('Résumé des tendances', f'summary_trends_{ANALYSIS_VARIABLE}.csv'),
             ('Statistiques mensuelles', f'monthly_stats_{ANALYSIS_VARIABLE}.csv'),
+            ('Résumé comptages pixels', 'pixel_count_summary.csv'),
+            ('Statistiques QA résumé', 'qa_statistics_summary.csv'),
             ('Données nettoyées', f'cleaned_data_{ANALYSIS_VARIABLE}.csv')
         ]
         

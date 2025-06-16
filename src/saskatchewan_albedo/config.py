@@ -118,6 +118,32 @@ PLOT_STYLES = {
 }
 
 # ==========================================
+# CONFIGURATION POUR L'ANALYSE DES PIXELS
+# ==========================================
+
+# Seuils de qualité des données
+QA_THRESHOLDS = {
+    'high_quality': 80,      # Seuil pour haute qualité (%)
+    'medium_quality': 60,    # Seuil pour qualité moyenne (%)
+    'low_quality': 0         # En dessous = faible qualité
+}
+
+# Configuration des visualisations de pixels
+PIXEL_PLOT_CONFIG = {
+    'heatmap_colormap': 'RdYlGn',
+    'qa_colormap': 'RdYlGn',
+    'pixel_count_colors': ['#e41a1c', '#377eb8', '#4daf4a', '#984ea3', '#ff7f00'],
+    'availability_colormap': 'viridis'
+}
+
+# Styles spécifiques pour les graphiques de pixels
+PIXEL_PLOT_STYLES = {
+    'heatmap': {'annot': True, 'fmt': '.1f', 'cbar_kws': {'shrink': 0.8}},
+    'timeseries': {'linewidth': 1.5, 'alpha': 0.7},
+    'bar_charts': {'alpha': 0.8, 'edgecolor': 'black', 'linewidth': 0.5}
+}
+
+# ==========================================
 # FONCTIONS UTILITAIRES DE CONFIGURATION
 # ==========================================
 
