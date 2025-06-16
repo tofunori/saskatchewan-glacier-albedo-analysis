@@ -17,11 +17,43 @@ sns.set_palette("husl")
 # CONFIGURATION PRINCIPALE
 # ==========================================
 
-# Chemin vers votre fichier CSV (MODIFIEZ ICI)
-CSV_PATH = r"D:\Downloads\daily_albedo_mann_kendall_ready_2010_2024.csv"
+# Choix du dataset par défaut ('MCD43A3', 'MOD10A1', ou 'COMPARISON')
+DEFAULT_DATASET = "MCD43A3"
 
-# Chemin vers le fichier de distribution QA (0-3)
-QA_CSV_PATH = r"D:\Downloads\global_quality_distribution_daily_2010_2024 (1).csv"
+# Configuration pour MCD43A3 (Albédo général)
+MCD43A3_CONFIG = {
+    'csv_path': r"D:\UQTR\Maitrîse\Code\saskatchewan-glacier-albedo-analysis\data\csv\daily_albedo_mann_kendall_ready_2010_2024.csv",
+    'qa_csv_path': r"D:\UQTR\Maitrîse\Code\saskatchewan-glacier-albedo-analysis\data\csv\global_quality_distribution_daily_2010_2024.csv",
+    'name': 'MCD43A3',
+    'description': 'Albédo général (MODIS Combined)',
+    'quality_levels': ['quality_0_best', 'quality_1_good', 'quality_2_moderate', 'quality_3_poor'],
+    'temporal_resolution': '16-day composite',
+    'scaling_info': 'Scale factor: 0.001'
+}
+
+# Configuration pour MOD10A1 (Albédo de neige)
+MOD10A1_CONFIG = {
+    'csv_path': r"D:\UQTR\Maitrîse\Code\saskatchewan-glacier-albedo-analysis\data\csv\daily_snow_albedo_mann_kendall_mod10a1_2010_2024.csv",
+    'qa_csv_path': r"D:\UQTR\Maitrîse\Code\saskatchewan-glacier-albedo-analysis\data\csv\snow_quality_distribution_daily_mod10a1_2010_2024.csv",
+    'name': 'MOD10A1',
+    'description': 'Albédo de neige (Terra Snow Cover)',
+    'quality_levels': ['quality_0_best', 'quality_1_good', 'quality_2_ok', 'quality_other_night_ocean'],
+    'temporal_resolution': 'Daily',
+    'scaling_info': 'Percentage (1-100) to decimal (÷100)'
+}
+
+# Configuration pour les comparaisons
+COMPARISON_CONFIG = {
+    'output_suffix': '_comparison',
+    'correlation_threshold': 0.7,
+    'significance_level': 0.05,
+    'difference_threshold': 0.1,  # Seuil pour les différences significatives d'albédo
+    'sync_tolerance_days': 1,     # Tolérance pour synchroniser les dates
+}
+
+# Variables de compatibilité (pour maintenir le code existant)
+CSV_PATH = MCD43A3_CONFIG['csv_path']  # Par défaut
+QA_CSV_PATH = MCD43A3_CONFIG['qa_csv_path']  # Par défaut
 
 # Répertoire de sortie pour les résultats
 OUTPUT_DIR = "results"
@@ -186,16 +218,89 @@ def get_autocorr_status(autocorr_value):
     else:
         return "🟢 Faible"
 
-def print_config_summary():
+def get_dataset_config(dataset_name):
+    """
+    Retourne la configuration pour un dataset spécifique
+    
+    Args:
+        dataset_name (str): 'MCD43A3' ou 'MOD10A1'
+        
+    Returns:
+        dict: Configuration du dataset
+    """
+    if dataset_name == 'MCD43A3':
+        return MCD43A3_CONFIG
+    elif dataset_name == 'MOD10A1':
+        return MOD10A1_CONFIG
+    else:
+        raise ValueError(f"Dataset inconnu: {dataset_name}. Utilisez 'MCD43A3' ou 'MOD10A1'")
+
+def get_available_datasets():
+    """
+    Retourne la liste des datasets disponibles avec leurs informations
+    
+    Returns:
+        dict: Informations sur les datasets disponibles
+    """
+    import os
+    
+    datasets = {}
+    for name, config in [('MCD43A3', MCD43A3_CONFIG), ('MOD10A1', MOD10A1_CONFIG)]:
+        datasets[name] = {
+            'config': config,
+            'csv_exists': os.path.exists(config['csv_path']),
+            'qa_exists': os.path.exists(config['qa_csv_path']) if config['qa_csv_path'] else False
+        }
+    
+    return datasets
+
+def print_config_summary(dataset_name=None):
     """
     Affiche un résumé de la configuration
+    
+    Args:
+        dataset_name (str, optional): Dataset spécifique à afficher
     """
-    print("⚙️  CONFIGURATION DE L'ANALYSE")
+    if dataset_name:
+        config = get_dataset_config(dataset_name)
+        print(f"⚙️  CONFIGURATION - {config['name']}")
+        print("="*50)
+        print(f"📊 Dataset: {config['description']}")
+        print(f"📊 Fichier CSV: {config['csv_path']}")
+        print(f"📊 Fichier QA: {config['qa_csv_path']}")
+        print(f"⏱️  Résolution temporelle: {config['temporal_resolution']}")
+        print(f"📏 Échelle: {config['scaling_info']}")
+        print(f"🔍 Variable analysée: {ANALYSIS_VARIABLE}")
+        print(f"📊 Fractions: {len(FRACTION_CLASSES)} classes")
+        print("="*50)
+    else:
+        print("⚙️  CONFIGURATION GÉNÉRALE")
+        print("="*50)
+        print(f"📊 Dataset par défaut: {DEFAULT_DATASET}")
+        print(f"📁 Répertoire de sortie: {OUTPUT_DIR}")
+        print(f"🔍 Variable analysée: {ANALYSIS_VARIABLE}")
+        print(f"📊 Fractions: {len(FRACTION_CLASSES)} classes")
+        print(f"🔄 Bootstrap: {ANALYSIS_CONFIG['bootstrap_iterations']} itérations")
+        print(f"📈 Seuils significativité: {ANALYSIS_CONFIG['significance_levels']}")
+        
+        # Afficher la disponibilité des datasets
+        print(f"\n📊 DATASETS DISPONIBLES:")
+        datasets = get_available_datasets()
+        for name, info in datasets.items():
+            status = "✅" if info['csv_exists'] else "❌"
+            qa_status = "✅" if info['qa_exists'] else "❌"
+            print(f"  {status} {name}: {info['config']['description']}")
+            print(f"    QA: {qa_status}")
+        print("="*50)
+
+def print_comparison_info():
+    """
+    Affiche les informations sur les capacités de comparaison
+    """
+    print("🔄 CONFIGURATION COMPARAISON")
     print("="*50)
-    print(f"📊 Fichier CSV: {CSV_PATH}")
-    print(f"📁 Répertoire de sortie: {OUTPUT_DIR}")
-    print(f"🔍 Variable analysée: {ANALYSIS_VARIABLE}")
-    print(f"📊 Fractions: {len(FRACTION_CLASSES)} classes")
-    print(f"🔄 Bootstrap: {ANALYSIS_CONFIG['bootstrap_iterations']} itérations")
-    print(f"📈 Seuils significativité: {ANALYSIS_CONFIG['significance_levels']}")
+    print(f"🎯 Seuil de corrélation: {COMPARISON_CONFIG['correlation_threshold']}")
+    print(f"📊 Niveau de significativité: {COMPARISON_CONFIG['significance_level']}")
+    print(f"📏 Seuil différence albédo: {COMPARISON_CONFIG['difference_threshold']}")
+    print(f"⏱️  Tolérance synchronisation: {COMPARISON_CONFIG['sync_tolerance_days']} jour(s)")
     print("="*50)

@@ -45,78 +45,193 @@ except ImportError as e:
     sys.exit(1)
 
 def show_menu():
-    """Affiche le menu d'options"""
-    print("\n" + "="*60)
-    print("🚀 MENU D'ANALYSE - CHOISISSEZ UNE OPTION")
-    print("="*60)
+    """Affiche le menu d'options avec choix de datasets"""
+    print("\n" + "="*70)
+    print("🚀 MENU D'ANALYSE - SASKATCHEWAN GLACIER ALBEDO")
+    print("="*70)
     print()
-    print("1️⃣  Analyse complète (toutes les étapes)")
-    print("2️⃣  Analyses de tendances et statistiques")
-    print("3️⃣  Visualisations standards") 
-    print("4️⃣  Analyse des pixels et QA")
-    print("5️⃣  Graphiques quotidiens (pixels/QA + albédo)")
-    print("6️⃣  Quitter")
+    print("📊 ANALYSES PAR DATASET:")
+    print("1️⃣  Analyse MCD43A3 (Albédo général MODIS)")
+    print("2️⃣  Analyse MOD10A1 (Albédo de neige Terra)")
     print()
-    print("-" * 60)
+    print("🔄 ANALYSES COMPARATIVES:")
+    print("3️⃣  Comparaison MCD43A3 vs MOD10A1")
+    print("4️⃣  Analyse de corrélation entre produits")
+    print()
+    print("🛠️  OUTILS AVANCÉS:")
+    print("5️⃣  Analyse personnalisée (choix dataset)")
+    print("6️⃣  Visualisations comparatives")
+    print("7️⃣  Export des résultats")
+    print()
+    print("8️⃣  Quitter")
+    print()
+    print("-" * 70)
 
 def get_choice():
-    """Obtient le choix de l'utilisateur"""
-    print("\n" + "="*60)
+    """Obtient le choix de l'utilisateur avec validation étendue"""
+    print("\n" + "="*70)
     print("SÉLECTION DE L'ANALYSE")
-    print("="*60)
+    print("="*70)
     print()
     print("Tapez le numéro de votre choix puis appuyez sur Entrée:")
-    print("1 = Analyse complète")
-    print("2 = Tendances")
-    print("3 = Visualisations")
-    print("4 = Pixels/QA")
-    print("5 = Graphiques quotidiens")
-    print("6 = Quitter")
+    print("1 = MCD43A3 (Albédo général)")
+    print("2 = MOD10A1 (Albédo neige)")
+    print("3 = Comparaison complète")
+    print("4 = Corrélations")
+    print("5 = Analyse personnalisée")
+    print("6 = Visualisations")
+    print("7 = Exports")
+    print("8 = Quitter")
     print()
     
     while True:
         try:
-            choice = input("➤ Votre choix (1-6): ").strip()
-            if choice in ['1', '2', '3', '4', '5', '6']:
+            choice = input("➤ Votre choix (1-8): ").strip()
+            if choice in ['1', '2', '3', '4', '5', '6', '7', '8']:
                 return int(choice)
             else:
-                print(f"❌ '{choice}' n'est pas valide. Tapez un chiffre de 1 à 6.")
+                print(f"❌ '{choice}' n'est pas valide. Tapez un chiffre de 1 à 8.")
         except KeyboardInterrupt:
             print("\n\n👋 Interruption. Au revoir!")
-            return 6
+            return 8
         except:
-            print("❌ Erreur de saisie. Tapez un chiffre de 1 à 6.")
+            print("❌ Erreur de saisie. Tapez un chiffre de 1 à 8.")
+
+def get_dataset_choice():
+    """Permet à l'utilisateur de choisir un dataset spécifique"""
+    print("\n" + "="*50)
+    print("CHOIX DU DATASET")
+    print("="*50)
+    print()
+    print("1️⃣  MCD43A3 - Albédo général (MODIS Combined)")
+    print("2️⃣  MOD10A1 - Albédo de neige (Terra Snow Cover)")
+    print()
+    
+    while True:
+        try:
+            choice = input("➤ Choisissez le dataset (1-2): ").strip()
+            if choice == '1':
+                return 'MCD43A3'
+            elif choice == '2':
+                return 'MOD10A1'
+            else:
+                print(f"❌ '{choice}' n'est pas valide. Tapez 1 ou 2.")
+        except KeyboardInterrupt:
+            print("\n\n👋 Interruption.")
+            return None
+        except:
+            print("❌ Erreur de saisie. Tapez 1 ou 2.")
+
+def get_analysis_type():
+    """Permet à l'utilisateur de choisir le type d'analyse"""
+    print("\n" + "="*50)
+    print("TYPE D'ANALYSE")
+    print("="*50)
+    print()
+    print("1️⃣  Analyse complète")
+    print("2️⃣  Tendances seulement")
+    print("3️⃣  Visualisations seulement")
+    print("4️⃣  Pixels/QA seulement")
+    print("5️⃣  Graphiques quotidiens")
+    print()
+    
+    while True:
+        try:
+            choice = input("➤ Type d'analyse (1-5): ").strip()
+            if choice in ['1', '2', '3', '4', '5']:
+                return int(choice)
+            else:
+                print(f"❌ '{choice}' n'est pas valide. Tapez un chiffre de 1 à 5.")
+        except KeyboardInterrupt:
+            print("\n\n👋 Interruption.")
+            return None
+        except:
+            print("❌ Erreur de saisie. Tapez un chiffre de 1 à 5.")
 
 def main():
-    """Fonction principale simple pour VS Code"""
+    """Fonction principale avec support multi-datasets"""
     print("\n" + "="*70)
     print("🚀 SASKATCHEWAN GLACIER ALBEDO TREND ANALYSIS")
     print("="*70)
     print("📅 Session lancée le:", datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
     
+    # Afficher la configuration générale et vérifier les datasets
     print_config_summary()
     
-    if not check_config():
-        print("\n❌ Configuration invalide.")
+    # Importer les nouvelles fonctions
+    try:
+        from saskatchewan_albedo.scripts.analysis_functions import (
+            run_dataset_analysis, run_comparison_analysis, run_correlation_analysis,
+            run_custom_analysis, run_comparative_visualizations, run_export_all,
+            check_datasets_availability
+        )
+    except ImportError as e:
+        print(f"❌ Erreur d'import des nouvelles fonctions: {e}")
+        print("📝 Utilisation du mode de compatibilité...")
+        from saskatchewan_albedo.scripts.analysis_functions import (
+            run_complete_analysis, run_trends_only, run_visualizations_only,
+            run_pixels_only, run_daily_only
+        )
+        # Mode de compatibilité avec l'ancien menu
+        _run_legacy_mode()
+        return
+    
+    # Vérifier la disponibilité des datasets
+    if not check_datasets_availability():
+        print("\n❌ Aucun dataset valide trouvé.")
         return
     
     while True:
         show_menu()
         choice = get_choice()
         
-        if choice == 1:
-            run_complete_analysis()
-        elif choice == 2:
-            run_trends_only()
-        elif choice == 3:
-            run_visualizations_only()
-        elif choice == 4:
-            run_pixels_only()
-        elif choice == 5:
-            run_daily_only()
-        elif choice == 6:
-            print("\n👋 Au revoir!")
-            break
+        try:
+            if choice == 1:
+                # Analyse MCD43A3
+                print("\n🔍 Analyse du dataset MCD43A3 (Albédo général)...")
+                run_dataset_analysis('MCD43A3')
+                
+            elif choice == 2:
+                # Analyse MOD10A1
+                print("\n❄️ Analyse du dataset MOD10A1 (Albédo de neige)...")
+                run_dataset_analysis('MOD10A1')
+                
+            elif choice == 3:
+                # Comparaison complète
+                print("\n🔄 Comparaison complète MCD43A3 vs MOD10A1...")
+                run_comparison_analysis()
+                
+            elif choice == 4:
+                # Analyse de corrélation
+                print("\n📊 Analyse de corrélation entre produits...")
+                run_correlation_analysis()
+                
+            elif choice == 5:
+                # Analyse personnalisée
+                print("\n⚙️ Analyse personnalisée...")
+                dataset = get_dataset_choice()
+                if dataset:
+                    analysis_type = get_analysis_type()
+                    if analysis_type:
+                        run_custom_analysis(dataset, analysis_type)
+                
+            elif choice == 6:
+                # Visualisations comparatives
+                print("\n📈 Génération des visualisations comparatives...")
+                run_comparative_visualizations()
+                
+            elif choice == 7:
+                # Export des résultats
+                print("\n💾 Export de tous les résultats...")
+                run_export_all()
+                
+            elif choice == 8:
+                print("\n👋 Au revoir!")
+                break
+            
+        except Exception as e:
+            print(f"\n❌ Erreur lors de l'exécution: {e}")
+            print("📝 Consultez les logs pour plus de détails.")
         
         print("\n" + "="*60)
         try:
@@ -124,7 +239,52 @@ def main():
             if cont not in ['o', 'oui', 'y', 'yes']:
                 print("\n👋 Au revoir!")
                 break
+        except KeyboardInterrupt:
+            print("\n\n👋 Interruption. Au revoir!")
+            break
         except:
+            break
+
+def _run_legacy_mode():
+    """Mode de compatibilité avec l'ancien menu"""
+    print("\n⚠️ Mode de compatibilité activé - Menu simplifié")
+    
+    from saskatchewan_albedo.scripts.analysis_functions import (
+        run_complete_analysis, run_trends_only, run_visualizations_only,
+        run_pixels_only, run_daily_only
+    )
+    
+    while True:
+        print("\n" + "="*60)
+        print("🚀 MENU SIMPLIFIÉ")
+        print("="*60)
+        print("1️⃣  Analyse complète")
+        print("2️⃣  Tendances seulement")
+        print("3️⃣  Visualisations")
+        print("4️⃣  Pixels/QA")
+        print("5️⃣  Graphiques quotidiens")
+        print("6️⃣  Quitter")
+        
+        try:
+            choice = input("\n➤ Votre choix (1-6): ").strip()
+            
+            if choice == '1':
+                run_complete_analysis()
+            elif choice == '2':
+                run_trends_only()
+            elif choice == '3':
+                run_visualizations_only()
+            elif choice == '4':
+                run_pixels_only()
+            elif choice == '5':
+                run_daily_only()
+            elif choice == '6':
+                break
+            else:
+                print("❌ Choix invalide")
+                
+        except KeyboardInterrupt:
+            print("\n👋 Au revoir!")
             break
 
 if __name__ == "__main__":
