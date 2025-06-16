@@ -439,7 +439,7 @@ class PixelVisualizer:
                 for i, qa_col in enumerate(['quality_0_best', 'quality_1_good', 'quality_2_moderate', 'quality_3_poor']):
                     if qa_col in year_qa_data.columns:
                         qa_data = year_qa_data[qa_col].dropna()
-                        # Only plot if there are non-zero values
+                        # Only plot if there are non-zero values (these are absolute counts now)
                         if len(qa_data) > 0 and qa_data.max() > 0:
                             ax3.plot(year_qa_data['date'], year_qa_data[qa_col], 
                                     marker='s', markersize=3, linewidth=2, alpha=0.8,

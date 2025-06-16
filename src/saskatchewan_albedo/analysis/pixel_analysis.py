@@ -197,12 +197,12 @@ class PixelCountAnalyzer:
                         
                         if len(qa_values) > 0:
                             qa_stats = {
-                                'mean_percentage': qa_values.mean(),
-                                'median_percentage': qa_values.median(),
-                                'std_percentage': qa_values.std(),
-                                'min_percentage': qa_values.min(),
-                                'max_percentage': qa_values.max(),
-                                'total_pixels': qa_values.sum(),
+                                'mean_count': qa_values.mean(),
+                                'median_count': qa_values.median(),
+                                'std_count': qa_values.std(),
+                                'min_count': qa_values.min(),
+                                'max_count': qa_values.max(),
+                                'total_count': qa_values.sum(),
                                 'observations': len(qa_values)
                             }
                             
@@ -218,26 +218,34 @@ class PixelCountAnalyzer:
                             })
                             
                             print(f"  • {qa_label}: "
-                                  f"Moyenne={qa_stats['mean_percentage']:.1f}%, "
-                                  f"Total={qa_stats['total_pixels']:.0f} pixels, "
+                                  f"Moyenne={qa_stats['mean_count']:.1f} pixels, "
+                                  f"Total={qa_stats['total_count']:.0f} pixels, "
                                   f"Obs={qa_stats['observations']}")
                 
-                # Calculate quality ratios for this month
+                # Calculate quality counts for this month (absolute counts)
+                month_qa['quality_counts'] = {
+                    'quality_0_best': month_data['quality_0_best'].mean() if 'quality_0_best' in month_data.columns else 0,
+                    'quality_1_good': month_data['quality_1_good'].mean() if 'quality_1_good' in month_data.columns else 0,
+                    'quality_2_moderate': month_data['quality_2_moderate'].mean() if 'quality_2_moderate' in month_data.columns else 0,
+                    'quality_3_poor': month_data['quality_3_poor'].mean() if 'quality_3_poor' in month_data.columns else 0
+                }
+                
+                # Also calculate ratios for compatibility
                 total_pixels_month = month_data['total_pixels'].mean() if 'total_pixels' in month_data.columns else 0
                 
                 if total_pixels_month > 0:
                     month_qa['quality_ratios'] = {
-                        'best_ratio': month_data['quality_0_best'].mean() / total_pixels_month * 100 if 'quality_0_best' in month_data.columns else 0,
-                        'good_ratio': month_data['quality_1_good'].mean() / total_pixels_month * 100 if 'quality_1_good' in month_data.columns else 0,
-                        'moderate_ratio': month_data['quality_2_moderate'].mean() / total_pixels_month * 100 if 'quality_2_moderate' in month_data.columns else 0,
-                        'poor_ratio': month_data['quality_3_poor'].mean() / total_pixels_month * 100 if 'quality_3_poor' in month_data.columns else 0
+                        'best_ratio': month_qa['quality_counts']['quality_0_best'] / total_pixels_month * 100,
+                        'good_ratio': month_qa['quality_counts']['quality_1_good'] / total_pixels_month * 100,
+                        'moderate_ratio': month_qa['quality_counts']['quality_2_moderate'] / total_pixels_month * 100,
+                        'poor_ratio': month_qa['quality_counts']['quality_3_poor'] / total_pixels_month * 100
                     }
                     
-                    print(f"  📊 Ratios de qualité: "
-                          f"Meilleur={month_qa['quality_ratios']['best_ratio']:.1f}%, "
-                          f"Bon={month_qa['quality_ratios']['good_ratio']:.1f}%, "
-                          f"Modéré={month_qa['quality_ratios']['moderate_ratio']:.1f}%, "
-                          f"Mauvais={month_qa['quality_ratios']['poor_ratio']:.1f}%")
+                    print(f"  📊 Comptages absolus: "
+                          f"QA0={month_qa['quality_counts']['quality_0_best']:.1f}, "
+                          f"QA1={month_qa['quality_counts']['quality_1_good']:.1f}, "
+                          f"QA2={month_qa['quality_counts']['quality_2_moderate']:.1f}, "
+                          f"QA3={month_qa['quality_counts']['quality_3_poor']:.1f}")
             
             results['by_month'][month] = month_qa
         
@@ -265,11 +273,11 @@ class PixelCountAnalyzer:
             score_data = qa_df[qa_df['qa_score'] == qa_score]
             if not score_data.empty:
                 seasonal_summary[f'qa_{qa_score}'] = {
-                    'seasonal_mean_percentage': score_data['mean_percentage'].mean(),
-                    'seasonal_total_pixels': score_data['total_pixels'].sum(),
-                    'seasonal_variability': score_data['mean_percentage'].std(),
-                    'best_month': score_data.loc[score_data['mean_percentage'].idxmax(), 'month_name'] if len(score_data) > 0 else 'N/A',
-                    'worst_month': score_data.loc[score_data['mean_percentage'].idxmin(), 'month_name'] if len(score_data) > 0 else 'N/A'
+                    'seasonal_mean_count': score_data['mean_count'].mean(),
+                    'seasonal_total_count': score_data['total_count'].sum(),
+                    'seasonal_variability': score_data['mean_count'].std(),
+                    'best_month': score_data.loc[score_data['mean_count'].idxmax(), 'month_name'] if len(score_data) > 0 else 'N/A',
+                    'worst_month': score_data.loc[score_data['mean_count'].idxmin(), 'month_name'] if len(score_data) > 0 else 'N/A'
                 }
         
         results['seasonal_summary'] = seasonal_summary

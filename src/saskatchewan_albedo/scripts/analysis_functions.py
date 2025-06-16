@@ -382,6 +382,10 @@ def run_daily_only():
         # Graphiques quotidiens pixels/QA
         print_section_header("Graphiques quotidiens pixels/QA", level=2)
         pixel_analyzer = PixelCountAnalyzer(data_handler, qa_csv_path=QA_CSV_PATH)
+        
+        # Load QA data before creating visualizations
+        pixel_analyzer.load_qa_data()
+        
         pixel_visualizer = PixelVisualizer(data_handler)
         
         daily_plots = pixel_visualizer.create_daily_melt_season_plots(
