@@ -11,17 +11,10 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-# Gérer les imports relatifs et absolus
-try:
-    from .config import (FRACTION_CLASSES, CLASS_LABELS, MONTH_NAMES, FRACTION_COLORS,
-                        PLOT_STYLES, get_significance_marker)
-    from .utils import print_section_header, format_pvalue, validate_data
-    from .basic_trends import BasicTrendAnalyzer
-except ImportError:
-    from config import (FRACTION_CLASSES, CLASS_LABELS, MONTH_NAMES, FRACTION_COLORS,
-                       PLOT_STYLES, get_significance_marker)
-    from utils import print_section_header, format_pvalue, validate_data
-    from basic_trends import BasicTrendAnalyzer
+# Import from parent package
+from ..config import (FRACTION_CLASSES, CLASS_LABELS, MONTH_NAMES, FRACTION_COLORS,
+                      PLOT_STYLES, get_significance_marker)
+from ..utils.helpers import print_section_header, format_pvalue, validate_data
 
 class SeasonalAnalyzer:
     """

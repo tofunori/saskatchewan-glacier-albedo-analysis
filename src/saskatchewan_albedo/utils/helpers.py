@@ -361,6 +361,8 @@ def print_analysis_summary(results):
     Args:
         results (dict): Résultats des analyses
     """
+    from ..config import TREND_SYMBOLS, get_significance_marker
+    
     print_section_header("RÉSUMÉ DE L'ANALYSE", level=1)
     
     if 'basic_trends' in results:
@@ -379,7 +381,6 @@ def print_analysis_summary(results):
                     trend = result['mann_kendall']['trend']
                     p_val = result['mann_kendall']['p_value']
                     slope = result['sen_slope']['slope_per_decade']
-                    from config import TREND_SYMBOLS, get_significance_marker
                     symbol = TREND_SYMBOLS.get(trend, '❓')
                     sig = get_significance_marker(p_val)
                     print(f"  {symbol} {result['label']}: {trend} {sig} ({slope:.6f}/décennie)")

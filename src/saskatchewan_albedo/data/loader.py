@@ -10,13 +10,9 @@ import pandas as pd
 import numpy as np
 import os
 
-# Gérer les imports relatifs et absolus
-try:
-    from .config import FRACTION_CLASSES, CLASS_LABELS, ANALYSIS_CONFIG
-    from .utils import print_section_header, validate_data
-except ImportError:
-    from config import FRACTION_CLASSES, CLASS_LABELS, ANALYSIS_CONFIG
-    from utils import print_section_header, validate_data
+# Import from parent package
+from ..config import FRACTION_CLASSES, CLASS_LABELS, ANALYSIS_CONFIG
+from ..utils.helpers import print_section_header, validate_data
 
 class SaskatchewanDataLoader:
     """

@@ -12,15 +12,10 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from matplotlib.colors import TwoSlopeNorm
 
-# Gérer les imports relatifs et absolus
-try:
-    from .config import (FRACTION_CLASSES, CLASS_LABELS, FRACTION_COLORS, 
-                        get_significance_marker, TREND_SYMBOLS)
-    from .utils import print_section_header, format_pvalue
-except ImportError:
-    from config import (FRACTION_CLASSES, CLASS_LABELS, FRACTION_COLORS, 
-                       get_significance_marker, TREND_SYMBOLS)
-    from utils import print_section_header, format_pvalue
+# Import from parent package
+from ..config import (FRACTION_CLASSES, CLASS_LABELS, FRACTION_COLORS, 
+                      get_significance_marker, TREND_SYMBOLS)
+from ..utils.helpers import print_section_header, format_pvalue
 
 class SpatialAnalyzer:
     """

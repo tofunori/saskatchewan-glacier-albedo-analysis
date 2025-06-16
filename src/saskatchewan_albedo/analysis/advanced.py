@@ -10,17 +10,10 @@ import numpy as np
 import pandas as pd
 from sklearn.utils import resample
 
-# Gérer les imports relatifs et absolus
-try:
-    from .config import ANALYSIS_CONFIG, get_autocorr_status
-    from .utils import (prewhiten_series, calculate_autocorrelation, manual_mann_kendall,
-                       validate_data, print_section_header, format_pvalue)
-    from .basic_trends import BasicTrendAnalyzer
-except ImportError:
-    from config import ANALYSIS_CONFIG, get_autocorr_status
-    from utils import (prewhiten_series, calculate_autocorrelation, manual_mann_kendall,
-                      validate_data, print_section_header, format_pvalue)
-    from basic_trends import BasicTrendAnalyzer
+# Import from parent package
+from ..config import ANALYSIS_CONFIG, get_autocorr_status
+from ..utils.helpers import (prewhiten_series, calculate_autocorrelation, manual_mann_kendall,
+                             validate_data, print_section_header, format_pvalue)
 
 class AdvancedAnalyzer:
     """
