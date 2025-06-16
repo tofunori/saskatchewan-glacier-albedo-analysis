@@ -22,15 +22,33 @@ ANALYSES INCLUSES :
 import os
 import sys
 from datetime import datetime
+from pathlib import Path
 import warnings
 warnings.filterwarnings('ignore')
 
+# Ajouter le répertoire du script au path pour trouver les modules
+script_dir = Path(__file__).parent.absolute()
+sys.path.insert(0, str(script_dir))
+
+# Changer le répertoire de travail vers le répertoire du script
+os.chdir(script_dir)
+
+print(f"📂 Répertoire de travail: {Path.cwd()}")
+print(f"📁 Répertoire du script: {script_dir}")
+
 # Imports des modules locaux (tous dans le même dossier)
-from config import CSV_PATH, OUTPUT_DIR, ANALYSIS_VARIABLE, print_config_summary
-from data_handler import AlbedoDataHandler
-from trend_calculator import TrendCalculator
-from monthly_visualizer import MonthlyVisualizer
-from helpers import print_section_header, ensure_directory_exists, print_analysis_summary
+try:
+    from config import CSV_PATH, OUTPUT_DIR, ANALYSIS_VARIABLE, print_config_summary
+    from data_handler import AlbedoDataHandler
+    from trend_calculator import TrendCalculator
+    from monthly_visualizer import MonthlyVisualizer
+    from helpers import print_section_header, ensure_directory_exists, print_analysis_summary
+    print("✅ Tous les modules importés avec succès")
+except ImportError as e:
+    print(f"❌ Erreur d'import des modules: {e}")
+    print(f"📁 Vérifiez que tous les fichiers .py sont dans: {script_dir}")
+    print("📋 Fichiers requis: config.py, data_handler.py, trend_calculator.py, monthly_visualizer.py, helpers.py")
+    sys.exit(1)
 
 def main():
     """
