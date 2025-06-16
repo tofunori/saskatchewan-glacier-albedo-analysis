@@ -119,8 +119,8 @@ class PixelVisualizer:
             # Plot 1: QA scores distribution by month
             self._plot_qa_scores_distribution(axes[0, 0], qa_stats)
             
-            # Plot 2: QA stacked chart
-            self._plot_qa_stacked_chart(axes[0, 1], qa_stats)
+            # Plot 2: QA stacked bars
+            self._plot_qa_stacked_bars(axes[0, 1], qa_stats)
             
             # Plot 3: QA trends by month
             self._plot_qa_trends_by_month(axes[1, 0], qa_stats)
