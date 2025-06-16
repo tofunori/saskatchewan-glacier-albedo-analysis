@@ -485,16 +485,16 @@ class PixelVisualizer:
                     dates_valid = year_data.loc[valid_mask, 'date']
                     values_valid = year_data.loc[valid_mask, albedo_col]
                     
-                    # Plot ALL points with markers AND connecting lines
-                    ax1.plot(dates_valid, values_valid, 
-                            marker='o', markersize=6, linewidth=2.5, alpha=0.85,
-                            label=self.class_labels[fraction],
-                            color=modern_colors.get(fraction, '#7f8c8d'),
-                            markeredgecolor='white', markeredgewidth=0.8)
+                    # Plot ALL points as SCATTER ONLY - NO LINES!
+                    ax1.scatter(dates_valid, values_valid, 
+                               s=35, alpha=0.85, 
+                               label=f'{self.class_labels[fraction]} ({len(dates_valid)} pts)',
+                               color=modern_colors.get(fraction, '#7f8c8d'),
+                               edgecolors='white', linewidths=1.2)
                     albedo_plotted = True
         
         if albedo_plotted:
-            ax1.set_title('A) Daily Albedo Values by Ice Coverage Fraction', 
+            ax1.set_title('A) Daily Albedo Values by Ice Coverage Fraction (All Data Points)', 
                          fontsize=16, fontweight='bold', pad=15)
             ax1.set_ylabel('Albedo', fontsize=14, fontweight='bold')
             ax1.set_ylim(0, 1)
@@ -520,16 +520,16 @@ class PixelVisualizer:
                     dates_valid = year_data.loc[valid_mask, 'date']
                     values_valid = year_data.loc[valid_mask, pixel_col]
                     
-                    # Plot ALL points with markers AND connecting lines
-                    ax2.plot(dates_valid, values_valid, 
-                            marker='s', markersize=5, linewidth=2.5, alpha=0.85,
-                            label=self.class_labels[fraction],
-                            color=modern_colors.get(fraction, '#7f8c8d'),
-                            markeredgecolor='white', markeredgewidth=0.8)
+                    # Plot ALL points as SCATTER ONLY - NO LINES!
+                    ax2.scatter(dates_valid, values_valid, 
+                               s=30, alpha=0.85, marker='s',
+                               label=f'{self.class_labels[fraction]} ({len(dates_valid)} pts)',
+                               color=modern_colors.get(fraction, '#7f8c8d'),
+                               edgecolors='white', linewidths=1.2)
                     pixel_plotted = True
         
         if pixel_plotted:
-            ax2.set_title('B) Daily Pixel Counts by Ice Coverage Fraction', 
+            ax2.set_title('B) Daily Pixel Counts by Ice Coverage Fraction (All Data Points)', 
                          fontsize=16, fontweight='bold', pad=15)
             ax2.set_ylabel('Number of Pixels', fontsize=14, fontweight='bold')
             ax2.legend(loc='upper left', frameon=True, fancybox=True, shadow=True, 
@@ -567,14 +567,14 @@ class PixelVisualizer:
                             dates_valid = year_qa_data.loc[valid_mask, 'date']
                             values_valid = year_qa_data.loc[valid_mask, qa_col]
                             
-                            ax3.plot(dates_valid, values_valid, 
-                                    marker=qa_markers[i], markersize=6, linewidth=2.5, alpha=0.85,
-                                    label=qa_labels[i], color=qa_colors[i],
-                                    markeredgecolor='white', markeredgewidth=0.8)
+                            ax3.scatter(dates_valid, values_valid, 
+                                       s=35, alpha=0.85, marker=qa_markers[i],
+                                       label=f'{qa_labels[i]} ({len(dates_valid)} pts)', color=qa_colors[i],
+                                       edgecolors='white', linewidths=1.2)
                             qa_plotted = True
         
         if qa_plotted:
-            ax3.set_title('C) Daily Quality Assessment Distribution', 
+            ax3.set_title('C) Daily Quality Assessment Distribution (All Data Points)', 
                          fontsize=16, fontweight='bold', pad=15)
             ax3.set_ylabel('Number of Pixels', fontsize=14, fontweight='bold')
             ax3.legend(loc='upper left', frameon=True, fancybox=True, shadow=True, 
@@ -611,11 +611,11 @@ class PixelVisualizer:
                 dates_valid = year_data.loc[valid_mask, 'date']
                 values_valid = total_pixels.loc[valid_mask]
                 
-                # Main total pixels line
-                ax4.plot(dates_valid, values_valid, 
-                        marker='o', markersize=5, linewidth=3, alpha=0.9, 
-                        color='#2c3e50', label='Total Valid Pixels',
-                        markeredgecolor='white', markeredgewidth=1)
+                # Main total pixels POINTS ONLY - NO LINES!
+                ax4.scatter(dates_valid, values_valid, 
+                           s=40, alpha=0.9, 
+                           color='#2c3e50', label=f'Total Valid Pixels ({len(dates_valid)} pts)',
+                           edgecolors='white', linewidths=1.5)
                 
                 # Add monthly averages as horizontal reference lines
                 if len(values_valid) > 10:  # Only if enough data
@@ -633,7 +633,7 @@ class PixelVisualizer:
                 total_pixel_plotted = True
         
         if total_pixel_plotted:
-            ax4.set_title('D) Total Valid Pixels and Data Availability', 
+            ax4.set_title('D) Total Valid Pixels and Data Availability (All Data Points)', 
                          fontsize=16, fontweight='bold', pad=15)
             ax4.set_ylabel('Total Number of Pixels', fontsize=14, fontweight='bold')
             ax4.set_xlabel('Date', fontsize=14, fontweight='bold')
