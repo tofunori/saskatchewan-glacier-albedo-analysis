@@ -107,7 +107,7 @@ class ChartGenerator:
         plt.savefig(save_path, dpi=300, bbox_inches='tight')
         print(f"✅ Aperçu des tendances sauvegardé: {save_path}")
         
-        plt.show()
+        plt.close()
         
         return save_path
     
@@ -221,7 +221,7 @@ class ChartGenerator:
         plt.savefig(save_path, dpi=300, bbox_inches='tight')
         print(f"✅ Patterns saisonniers sauvegardés: {save_path}")
         
-        plt.show()
+        plt.close()
         
         return save_path
     
@@ -274,7 +274,7 @@ class ChartGenerator:
         plt.savefig(save_path, dpi=300, bbox_inches='tight')
         print(f"✅ Matrice de corrélation sauvegardée: {save_path}")
         
-        plt.show()
+        plt.close()
         
         return save_path
     
@@ -353,7 +353,7 @@ class ChartGenerator:
         plt.savefig(save_path, dpi=300, bbox_inches='tight')
         print(f"✅ Série temporelle sauvegardée: {save_path}")
         
-        plt.show()
+        plt.close()
         
         return save_path
     
@@ -409,7 +409,7 @@ class ChartGenerator:
         plt.savefig(save_path, dpi=300, bbox_inches='tight')
         print(f"✅ Dashboard sauvegardé: {save_path}")
         
-        plt.show()
+        plt.close()
         
         return save_path
     

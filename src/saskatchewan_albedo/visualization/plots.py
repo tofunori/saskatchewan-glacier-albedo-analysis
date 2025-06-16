@@ -106,7 +106,7 @@ class AlbedoVisualizer:
         plt.savefig(save_path, dpi=300, bbox_inches='tight')
         print(f"✓ Graphique sauvegardé: {save_path}")
         
-        plt.show()
+        plt.close()
         
         return save_path
     
@@ -184,7 +184,7 @@ class AlbedoVisualizer:
         plt.savefig(save_path, dpi=300, bbox_inches='tight')
         print(f"✓ Graphique sauvegardé: {save_path}")
         
-        plt.show()
+        plt.close()
         
         return save_path
     
@@ -236,7 +236,7 @@ class AlbedoVisualizer:
         plt.savefig(save_path, dpi=300, bbox_inches='tight')
         print(f"✓ Graphique sauvegardé: {save_path}")
         
-        plt.show()
+        plt.close()
         
         return save_path
     
@@ -348,7 +348,7 @@ class AlbedoVisualizer:
         plt.savefig(save_path, dpi=300, bbox_inches='tight')
         print(f"✓ Graphique sauvegardé: {save_path}")
         
-        plt.show()
+        plt.close()
         
         return save_path
     
@@ -403,7 +403,7 @@ class AlbedoVisualizer:
         plt.savefig(save_path, dpi=300, bbox_inches='tight')
         print(f"✓ Dashboard sauvegardé: {save_path}")
         
-        plt.show()
+        plt.close()
         
         return save_path
     

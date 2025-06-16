@@ -86,7 +86,7 @@ class MonthlyVisualizer:
         plt.savefig(save_path, dpi=300, bbox_inches='tight')
         print(f"✅ Graphiques mensuels sauvegardés: {save_path}")
         
-        plt.show()
+        plt.close()
         
         return save_path
     
@@ -343,7 +343,7 @@ class MonthlyVisualizer:
         plt.savefig(save_path, dpi=300, bbox_inches='tight')
         print(f"✅ Comparaison mensuelle sauvegardée: {save_path}")
         
-        plt.show()
+        plt.close()
         
         return save_path
     
