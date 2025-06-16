@@ -437,7 +437,7 @@ class PixelVisualizer:
     
     def _create_yearly_daily_plot(self, year, year_data, pixel_analyzer, save_dir, dataset_suffix=""):
         """
-        Create daily plot for a specific year's melt season
+        Create daily plot for a specific year's melt season with improved design
         
         Args:
             year (int): Year to plot
@@ -449,55 +449,107 @@ class PixelVisualizer:
         Returns:
             str: Path to saved plot
         """
-        # Create figure with 2x2 subplots: albedo, pixel counts, QA scores, and total pixels
-        fig, axes = plt.subplots(2, 2, figsize=(20, 16))
-        fig.suptitle(f'Daily Analysis for Melt Season {year}', 
-                     fontsize=18, fontweight='bold', y=0.95)
+        # Create figure with 4 vertically stacked subplots for better readability
+        fig, axes = plt.subplots(4, 1, figsize=(16, 20))
+        
+        # Enhanced title with dataset info
+        dataset_name = "MOD10A1" if "mod10a1" in dataset_suffix else "MCD43A3"
+        fig.suptitle(f'Daily Melt Season Analysis {year} - {dataset_name}\nSaskatchewan Glacier Albedo Monitoring', 
+                     fontsize=20, fontweight='bold', y=0.98)
+        
+        # Modern color palette - more distinct and professional
+        modern_colors = {
+            'border': '#e74c3c',      # Bright red
+            'mixed_low': '#f39c12',   # Orange
+            'mixed_high': '#2ecc71',  # Green  
+            'mostly_ice': '#3498db',  # Blue
+            'pure_ice': '#9b59b6'     # Purple
+        }
         
         # Sort data by date
         year_data = year_data.sort_values('date')
         dates = year_data['date']
         
-        # Plot A: Daily albedo values by fraction (top-left)
-        ax1 = axes[0, 0]
+        # =================================================================
+        # SUBPLOT A: Daily Albedo Values by Ice Coverage Fraction
+        # =================================================================
+        ax1 = axes[0]
+        
+        albedo_plotted = False
         for fraction in self.fraction_classes:
             albedo_col = f"{fraction}_mean"
             if albedo_col in year_data.columns:
-                albedo_data = year_data[albedo_col].dropna()
-                if len(albedo_data) > 0:
-                    ax1.plot(year_data['date'], year_data[albedo_col], 
-                            marker='o', markersize=4, linewidth=2, alpha=0.8,
+                # Get valid data points
+                valid_mask = year_data[albedo_col].notna()
+                if valid_mask.sum() > 0:
+                    dates_valid = year_data.loc[valid_mask, 'date']
+                    values_valid = year_data.loc[valid_mask, albedo_col]
+                    
+                    # Plot ALL points with markers AND connecting lines
+                    ax1.plot(dates_valid, values_valid, 
+                            marker='o', markersize=6, linewidth=2.5, alpha=0.85,
                             label=self.class_labels[fraction],
-                            color=self.academic_colors.get(fraction, 'gray'))
+                            color=modern_colors.get(fraction, '#7f8c8d'),
+                            markeredgecolor='white', markeredgewidth=0.8)
+                    albedo_plotted = True
         
-        ax1.set_title('A) Daily Albedo Values by Ice Coverage Fraction', fontweight='bold', pad=20)
-        ax1.set_xlabel('Date', fontsize=12)
-        ax1.set_ylabel('Albedo', fontsize=12)
-        ax1.set_ylim(0, 1)  # Albedo ranges from 0 to 1
-        ax1.legend(loc='upper right', frameon=True, fancybox=True, shadow=True, fontsize=10)
-        ax1.grid(True, alpha=0.3, linestyle='--')
+        if albedo_plotted:
+            ax1.set_title('A) Daily Albedo Values by Ice Coverage Fraction', 
+                         fontsize=16, fontweight='bold', pad=15)
+            ax1.set_ylabel('Albedo', fontsize=14, fontweight='bold')
+            ax1.set_ylim(0, 1)
+            ax1.legend(loc='upper left', frameon=True, fancybox=True, shadow=True, 
+                      fontsize=11, ncol=2)
+            ax1.grid(True, alpha=0.4, linestyle=':', linewidth=0.8)
+            ax1.set_facecolor('#fafafa')
+        else:
+            ax1.text(0.5, 0.5, 'No albedo data available for this year', 
+                    ha='center', va='center', transform=ax1.transAxes, fontsize=14)
         
-        # Plot B: Daily pixel counts by fraction (top-right)
-        ax2 = axes[0, 1]
+        # =================================================================
+        # SUBPLOT B: Daily Pixel Counts by Ice Coverage Fraction
+        # =================================================================
+        ax2 = axes[1]
+        
+        pixel_plotted = False
         for fraction in self.fraction_classes:
             pixel_col = f"{fraction}_pixel_count"
             if pixel_col in year_data.columns:
-                pixel_data = year_data[pixel_col].dropna()
-                if len(pixel_data) > 0:
-                    ax2.plot(year_data['date'], year_data[pixel_col], 
-                            marker='o', markersize=4, linewidth=2, alpha=0.8,
+                valid_mask = year_data[pixel_col].notna()
+                if valid_mask.sum() > 0:
+                    dates_valid = year_data.loc[valid_mask, 'date']
+                    values_valid = year_data.loc[valid_mask, pixel_col]
+                    
+                    # Plot ALL points with markers AND connecting lines
+                    ax2.plot(dates_valid, values_valid, 
+                            marker='s', markersize=5, linewidth=2.5, alpha=0.85,
                             label=self.class_labels[fraction],
-                            color=self.academic_colors.get(fraction, 'gray'))
+                            color=modern_colors.get(fraction, '#7f8c8d'),
+                            markeredgecolor='white', markeredgewidth=0.8)
+                    pixel_plotted = True
         
-        ax2.set_title('B) Daily Pixel Counts by Ice Coverage Fraction', fontweight='bold', pad=20)
-        ax2.set_xlabel('Date', fontsize=12)
-        ax2.set_ylabel('Number of Pixels', fontsize=12)
-        ax2.legend(loc='upper right', frameon=True, fancybox=True, shadow=True, fontsize=10)
-        ax2.grid(True, alpha=0.3, linestyle='--')
+        if pixel_plotted:
+            ax2.set_title('B) Daily Pixel Counts by Ice Coverage Fraction', 
+                         fontsize=16, fontweight='bold', pad=15)
+            ax2.set_ylabel('Number of Pixels', fontsize=14, fontweight='bold')
+            ax2.legend(loc='upper left', frameon=True, fancybox=True, shadow=True, 
+                      fontsize=11, ncol=2)
+            ax2.grid(True, alpha=0.4, linestyle=':', linewidth=0.8)
+            ax2.set_facecolor('#fafafa')
+        else:
+            ax2.text(0.5, 0.5, 'No pixel count data available for this year', 
+                    ha='center', va='center', transform=ax2.transAxes, fontsize=14)
         
-        # Plot C: Daily QA scores (absolute counts) (bottom-left)
-        ax3 = axes[1, 0]
+        # =================================================================
+        # SUBPLOT C: Daily Quality Assessment Distribution
+        # =================================================================
+        ax3 = axes[2]
         qa_plotted = False
+        
+        # Enhanced QA color scheme with better contrast
+        qa_colors = ['#27ae60', '#3498db', '#f39c12', '#e74c3c']  # Green, Blue, Orange, Red
+        qa_labels = ['QA 0 (Excellent)', 'QA 1 (Good)', 'QA 2 (Fair)', 'QA 3 (Poor)']
+        qa_markers = ['o', 's', '^', 'D']  # Different markers for each QA level
         
         # Try to plot QA data if available
         if pixel_analyzer.qa_data is not None:
@@ -508,97 +560,128 @@ class PixelVisualizer:
             if len(year_qa_data) > 0:
                 year_qa_data = year_qa_data.sort_values('date')
                 
-                # Plot QA scores 0-3 with absolute counts (academic colors)
-                qa_colors = ['#2ca02c', '#1f77b4', '#ff7f0e', '#d62728']  # Green, Blue, Orange, Red
-                qa_labels = ['QA 0 (Best)', 'QA 1 (Good)', 'QA 2 (Moderate)', 'QA 3 (Poor)']
-                
                 for i, qa_col in enumerate(['quality_0_best', 'quality_1_good', 'quality_2_moderate', 'quality_3_poor']):
                     if qa_col in year_qa_data.columns:
-                        qa_data = year_qa_data[qa_col].dropna()
-                        # Only plot if there are non-zero values (these are absolute counts now)
-                        if len(qa_data) > 0 and qa_data.max() > 0:
-                            ax3.plot(year_qa_data['date'], year_qa_data[qa_col], 
-                                    marker='s', markersize=4, linewidth=2, alpha=0.8,
-                                    label=qa_labels[i], color=qa_colors[i])
+                        valid_mask = year_qa_data[qa_col].notna() & (year_qa_data[qa_col] > 0)
+                        if valid_mask.sum() > 0:
+                            dates_valid = year_qa_data.loc[valid_mask, 'date']
+                            values_valid = year_qa_data.loc[valid_mask, qa_col]
+                            
+                            ax3.plot(dates_valid, values_valid, 
+                                    marker=qa_markers[i], markersize=6, linewidth=2.5, alpha=0.85,
+                                    label=qa_labels[i], color=qa_colors[i],
+                                    markeredgecolor='white', markeredgewidth=0.8)
                             qa_plotted = True
         
-        # If no QA data, plot data quality from main dataset
-        if not qa_plotted:
-            for fraction in self.fraction_classes:
-                qa_col = f"{fraction}_data_quality"
-                if qa_col in year_data.columns:
-                    qa_data = year_data[qa_col].dropna()
-                    if len(qa_data) > 0:
-                        ax3.plot(year_data['date'], year_data[qa_col], 
-                                marker='s', markersize=3, linewidth=1, alpha=0.7,
-                                label=f"{self.class_labels[fraction]} QA",
-                                color=FRACTION_COLORS.get(fraction, 'gray'))
-                        qa_plotted = True
-        
         if qa_plotted:
-            ax3.set_title('C) Daily QA Score Distribution (Absolute Counts)', fontweight='bold', pad=20)
-            ax3.set_xlabel('Date', fontsize=12)
-            ax3.set_ylabel('Number of Pixels', fontsize=12)
-            ax3.legend(loc='upper right', frameon=True, fancybox=True, shadow=True, fontsize=10)
-            ax3.grid(True, alpha=0.3, linestyle='--')
+            ax3.set_title('C) Daily Quality Assessment Distribution', 
+                         fontsize=16, fontweight='bold', pad=15)
+            ax3.set_ylabel('Number of Pixels', fontsize=14, fontweight='bold')
+            ax3.legend(loc='upper left', frameon=True, fancybox=True, shadow=True, 
+                      fontsize=11, ncol=2)
+            ax3.grid(True, alpha=0.4, linestyle=':', linewidth=0.8)
+            ax3.set_facecolor('#fafafa')
         else:
-            ax3.text(0.5, 0.5, 'Aucune donnée QA disponible pour cette année', 
-                    ha='center', va='center', transform=ax3.transAxes, fontsize=12)
-            ax3.set_title('C) Daily QA Score Distribution (Not Available)', fontweight='bold', pad=20)
+            ax3.text(0.5, 0.5, 'No quality assessment data available for this year', 
+                    ha='center', va='center', transform=ax3.transAxes, fontsize=14)
+            ax3.set_title('C) Daily Quality Assessment Distribution (Not Available)', 
+                         fontsize=16, fontweight='bold', pad=15)
         
-        # Plot D: Total valid pixels over time (bottom-right)
-        ax4 = axes[1, 1]
+        # =================================================================
+        # SUBPLOT D: Total Valid Pixels and Data Availability
+        # =================================================================
+        ax4 = axes[3]
+        
+        total_pixel_plotted = False
+        
+        # Calculate total valid pixels if not available
+        total_pixels = None
         if 'total_valid_pixels' in year_data.columns:
-            ax4.plot(year_data['date'], year_data['total_valid_pixels'], 
-                    marker='o', markersize=4, linewidth=2.5, alpha=0.8, 
-                    color='#1f77b4', label='Total Valid Pixels')
-            
-            # Add monthly averages with different colors and styles
-            monthly_avg = year_data.groupby(year_data['date'].dt.month)['total_valid_pixels'].mean()
-            month_colors = {6: '#ff7f0e', 7: '#2ca02c', 8: '#d62728', 9: '#9467bd'}
-            month_styles = {6: '--', 7: '-.', 8: ':', 9: '-'}
-            
-            for month, avg_pixels in monthly_avg.items():
-                month_data = year_data[year_data['date'].dt.month == month]
-                if len(month_data) > 0:
-                    ax4.axhline(y=avg_pixels, alpha=0.7, 
-                              linestyle=month_styles.get(month, '--'),
-                              color=month_colors.get(month, 'gray'),
-                              linewidth=2,
-                              label=f'Avg. {MONTH_NAMES[month]}: {avg_pixels:.0f}')
-            
-            ax4.set_title('D) Total Valid Pixels Over Time', fontweight='bold', pad=20)
-            ax4.set_xlabel('Date', fontsize=12)
-            ax4.set_ylabel('Total Number of Pixels', fontsize=12)
-            ax4.legend(loc='upper right', frameon=True, fancybox=True, shadow=True, fontsize=10)
-            ax4.grid(True, alpha=0.3, linestyle='--')
+            total_pixels = year_data['total_valid_pixels']
         else:
-            ax4.text(0.5, 0.5, 'Données de pixels totaux non disponibles', 
-                    ha='center', va='center', transform=ax4.transAxes, fontsize=12)
-            ax4.set_title('D) Total Valid Pixels Over Time (Not Available)', fontweight='bold', pad=20)
+            # Calculate from fraction pixel counts
+            pixel_cols = [f"{fraction}_pixel_count" for fraction in self.fraction_classes 
+                         if f"{fraction}_pixel_count" in year_data.columns]
+            if pixel_cols:
+                total_pixels = year_data[pixel_cols].sum(axis=1)
         
-        # Add summary statistics text box (repositioned for 2x2 layout)
+        if total_pixels is not None:
+            valid_mask = total_pixels.notna() & (total_pixels > 0)
+            if valid_mask.sum() > 0:
+                dates_valid = year_data.loc[valid_mask, 'date']
+                values_valid = total_pixels.loc[valid_mask]
+                
+                # Main total pixels line
+                ax4.plot(dates_valid, values_valid, 
+                        marker='o', markersize=5, linewidth=3, alpha=0.9, 
+                        color='#2c3e50', label='Total Valid Pixels',
+                        markeredgecolor='white', markeredgewidth=1)
+                
+                # Add monthly averages as horizontal reference lines
+                if len(values_valid) > 10:  # Only if enough data
+                    monthly_avg = year_data.groupby(year_data['date'].dt.month)[total_pixels.name if hasattr(total_pixels, 'name') else 'total_pixels'].mean()
+                    month_colors = ['#e67e22', '#27ae60', '#e74c3c', '#8e44ad']  # June, July, August, September
+                    month_names = ['June', 'July', 'August', 'September']
+                    
+                    for i, (month, avg_pixels) in enumerate(monthly_avg.items()):
+                        if not np.isnan(avg_pixels):
+                            ax4.axhline(y=avg_pixels, alpha=0.6, 
+                                      linestyle='--', linewidth=2.5,
+                                      color=month_colors[i % len(month_colors)],
+                                      label=f'{month_names[i % len(month_names)]}: {avg_pixels:.0f}')
+                
+                total_pixel_plotted = True
+        
+        if total_pixel_plotted:
+            ax4.set_title('D) Total Valid Pixels and Data Availability', 
+                         fontsize=16, fontweight='bold', pad=15)
+            ax4.set_ylabel('Total Number of Pixels', fontsize=14, fontweight='bold')
+            ax4.set_xlabel('Date', fontsize=14, fontweight='bold')
+            ax4.legend(loc='upper left', frameon=True, fancybox=True, shadow=True, 
+                      fontsize=11, ncol=2)
+            ax4.grid(True, alpha=0.4, linestyle=':', linewidth=0.8)
+            ax4.set_facecolor('#fafafa')
+        else:
+            ax4.text(0.5, 0.5, 'No total pixel data available for this year', 
+                    ha='center', va='center', transform=ax4.transAxes, fontsize=14)
+            ax4.set_title('D) Total Valid Pixels (Not Available)', 
+                         fontsize=16, fontweight='bold', pad=15)
+        
+        # =================================================================
+        # FINAL FORMATTING AND LAYOUT
+        # =================================================================
+        
+        # Add summary statistics text box
         stats_text = self._generate_year_summary_stats(year, year_data, pixel_analyzer)
-        fig.text(0.02, 0.01, stats_text, fontsize=9, 
-                bbox=dict(boxstyle='round', facecolor='#f0f0f0', alpha=0.9))
+        fig.text(0.02, 0.01, stats_text, fontsize=10, 
+                bbox=dict(boxstyle='round,pad=0.5', facecolor='white', 
+                         edgecolor='lightgray', alpha=0.95))
         
-        # Adjust layout with proper spacing for 2x2 grid
-        plt.tight_layout(rect=[0.0, 0.1, 1.0, 0.93])
+        # Adjust layout with proper spacing for vertical stack
+        plt.tight_layout(rect=[0.0, 0.08, 1.0, 0.96])
+        
+        # Apply consistent date formatting to all x-axes
+        import matplotlib.dates as mdates
+        for ax in axes:
+            ax.xaxis.set_major_formatter(mdates.DateFormatter('%m/%d'))
+            ax.xaxis.set_major_locator(mdates.MonthLocator())
+            ax.tick_params(axis='x', rotation=45, labelsize=12)
+            ax.tick_params(axis='y', labelsize=12)
         
         # Create directory if it doesn't exist
         os.makedirs(save_dir, exist_ok=True)
         
-        # Save the plot
+        # Save the plot with high quality
         save_path = os.path.join(save_dir, f'daily_melt_season_{year}{dataset_suffix}.png')
-        plt.savefig(save_path, dpi=300, bbox_inches='tight')
-        print(f"✅ Graphique {year} sauvegardé: {save_path}")
+        plt.savefig(save_path, dpi=300, bbox_inches='tight', facecolor='white', edgecolor='none')
+        print(f"✅ Enhanced daily plot for {year} saved: {save_path}")
         
         plt.close()
         return save_path
     
     def _generate_year_summary_stats(self, year, year_data, pixel_analyzer):
         """
-        Generate summary statistics text for a year
+        Generate enhanced summary statistics text for a year
         
         Args:
             year (int): Year
@@ -606,319 +689,49 @@ class PixelVisualizer:
             pixel_analyzer: PixelCountAnalyzer instance
             
         Returns:
-            str: Summary statistics text
+            str: Enhanced summary statistics text
         """
-        stats_lines = [f"📊 RÉSUMÉ {year}:"]
+        stats_lines = [f"📊 ANALYSIS SUMMARY {year}"]
         
         # Basic statistics
         total_days = len(year_data)
-        date_range = f"{year_data['date'].min().strftime('%Y-%m-%d')} à {year_data['date'].max().strftime('%Y-%m-%d')}"
-        stats_lines.append(f"• {total_days} jours de données ({date_range})")
+        date_range = f"{year_data['date'].min().strftime('%m/%d')} to {year_data['date'].max().strftime('%m/%d')}"
+        stats_lines.append(f"• {total_days} observation days ({date_range})")
+        
+        # Albedo statistics
+        albedo_cols = [f"{fraction}_mean" for fraction in self.fraction_classes 
+                      if f"{fraction}_mean" in year_data.columns]
+        if albedo_cols:
+            avg_albedo = year_data[albedo_cols].mean().mean()
+            max_albedo = year_data[albedo_cols].max().max()
+            min_albedo = year_data[albedo_cols].min().min()
+            stats_lines.append(f"• Albedo range: {min_albedo:.3f} - {max_albedo:.3f} (avg: {avg_albedo:.3f})")
         
         # Pixel count statistics
-        if 'total_valid_pixels' in year_data.columns:
-            total_pixels = year_data['total_valid_pixels']
+        pixel_cols = [f"{fraction}_pixel_count" for fraction in self.fraction_classes 
+                     if f"{fraction}_pixel_count" in year_data.columns]
+        if pixel_cols:
+            total_pixels = year_data[pixel_cols].sum(axis=1)
             avg_pixels = total_pixels.mean()
-            stats_lines.append(f"• Moyenne pixels/jour: {avg_pixels:.0f}")
-            stats_lines.append(f"• Range pixels: {total_pixels.min():.0f} - {total_pixels.max():.0f}")
+            max_pixels = total_pixels.max()
+            stats_lines.append(f"• Total pixels/day: {avg_pixels:.0f} avg, {max_pixels:.0f} max")
         
-        # Monthly breakdown
+        # Data availability by month
         monthly_counts = year_data['month'].value_counts().sort_index()
-        month_summary = ", ".join([f"{MONTH_NAMES[m]}({count}j)" for m, count in monthly_counts.items()])
-        stats_lines.append(f"• Répartition: {month_summary}")
+        month_names = {6: 'Jun', 7: 'Jul', 8: 'Aug', 9: 'Sep'}
+        month_summary = ", ".join([f"{month_names.get(m, str(m))}({count})" for m, count in monthly_counts.items()])
+        stats_lines.append(f"• Monthly distribution: {month_summary}")
+        
+        # Quality assessment summary if available
+        if pixel_analyzer.qa_data is not None:
+            year_qa = pixel_analyzer.qa_data[pixel_analyzer.qa_data['year'] == year]
+            if not year_qa.empty:
+                qa_cols = ['quality_0_best', 'quality_1_good', 'quality_2_moderate', 'quality_3_poor']
+                available_qa_cols = [col for col in qa_cols if col in year_qa.columns]
+                if available_qa_cols:
+                    qa_totals = year_qa[available_qa_cols].sum()
+                    best_qa_pct = (qa_totals.iloc[0] / qa_totals.sum()) * 100 if qa_totals.sum() > 0 else 0
+                    stats_lines.append(f"• Data quality: {best_qa_pct:.1f}% excellent quality")
         
         return "\n".join(stats_lines)
-    
-    def _plot_qa_scores_distribution(self, ax, qa_stats):
-        """Plot QA scores distribution by month"""
-        qa_colors = ['#2E8B57', '#4682B4', '#FF8C00', '#DC143C']  # Colors for QA 0,1,2,3
-        qa_labels = ['QA 0 (Meilleur)', 'QA 1 (Bon)', 'QA 2 (Modéré)', 'QA 3 (Mauvais)']
-        
-        for i, qa_score in enumerate(['0', '1', '2', '3']):
-            score_data = qa_stats[qa_stats['qa_score'] == qa_score]
-            if not score_data.empty:
-                ax.plot(score_data['year'], score_data['mean_count'], 
-                       marker='o', linewidth=2, markersize=6,
-                       label=qa_labels[i], color=qa_colors[i])
-        
-        ax.set_title('📊 Distribution des Comptages QA par Année', fontweight='bold')
-        ax.set_xlabel('Année')
-        ax.set_ylabel('Comptage Moyen (pixels)')
-        ax.set_xticks(range(2010, 2025, 2))  # Show every 2 years to avoid crowding
-        ax.legend()
-        ax.grid(True, alpha=0.3)
-    
-    def _plot_qa_stacked_bars(self, ax, qa_stats):
-        """Plot QA scores as stacked bars by year"""
-        years = sorted(qa_stats['year'].unique())
-        qa_colors = ['#2E8B57', '#4682B4', '#FF8C00', '#DC143C']
-        qa_labels = ['QA 0 (Meilleur)', 'QA 1 (Bon)', 'QA 2 (Modéré)', 'QA 3 (Mauvais)']
-        
-        # Prepare data for stacking
-        qa_data_by_year = {}
-        for year in years:
-            year_data = qa_stats[qa_stats['year'] == year]
-            qa_data_by_year[year] = {}
-            for qa_score in ['0', '1', '2', '3']:
-                score_data = year_data[year_data['qa_score'] == qa_score]
-                if not score_data.empty:
-                    qa_data_by_year[year][qa_score] = score_data['mean_count'].iloc[0]
-                else:
-                    qa_data_by_year[year][qa_score] = 0
-        
-        # Create stacked bar chart
-        bottom = np.zeros(len(years))
-        for i, qa_score in enumerate(['0', '1', '2', '3']):
-            values = [qa_data_by_year[year][qa_score] for year in years]
-            ax.bar(years, values, bottom=bottom, 
-                  label=qa_labels[i], color=qa_colors[i])
-            bottom += values
-        
-        ax.set_title('📊 Répartition des Scores QA par Année (Empilés)', fontweight='bold')
-        ax.set_xlabel('Année')
-        ax.set_ylabel('Comptages de Pixels')
-        ax.set_xticks(range(2010, 2025, 2))  # Show every 2 years
-        ax.legend()
-    
-    def _plot_qa_trends_by_month(self, ax, qa_stats):
-        """Plot QA trends by year with focus on best vs poor quality"""
-        best_data = qa_stats[qa_stats['qa_score'] == '0']
-        poor_data = qa_stats[qa_stats['qa_score'] == '3']
-        
-        if not best_data.empty:
-            ax.plot(best_data['year'], best_data['mean_count'], 
-                   marker='o', linewidth=3, markersize=8,
-                   label='QA 0 (Meilleur)', color='#2E8B57')
-        
-        if not poor_data.empty:
-            ax.plot(poor_data['year'], poor_data['mean_count'], 
-                   marker='s', linewidth=3, markersize=8,
-                   label='QA 3 (Mauvais)', color='#DC143C')
-        
-        ax.set_title('📈 Tendances QA: Meilleur vs Mauvais par Année', fontweight='bold')
-        ax.set_xlabel('Année')
-        ax.set_ylabel('Comptages (pixels)')
-        ax.set_xticks(range(2010, 2025, 2))  # Show every 2 years
-        ax.legend()
-        ax.grid(True, alpha=0.3)
-    
-    def _plot_qa_quality_heatmap(self, ax, true_qa_results):
-        """Plot QA quality counts as heatmap by year (absolute values)"""
-        if 'by_month' not in true_qa_results:
-            ax.text(0.5, 0.5, 'Pas de données QA\ndisponibles', 
-                   ha='center', va='center', transform=ax.transAxes)
-            return
-        
-        # Prepare heatmap data with absolute counts by year
-        heatmap_data = []
-        years = []
-        
-        for year, year_data in true_qa_results['by_month'].items():
-            if 'quality_counts' in year_data:
-                counts = year_data['quality_counts']
-                years.append(str(year))
-                heatmap_data.append([
-                    counts.get('quality_0_best', 0),
-                    counts.get('quality_1_good', 0), 
-                    counts.get('quality_2_moderate', 0),
-                    counts.get('quality_3_poor', 0)
-                ])
-        
-        if heatmap_data:
-            heatmap_array = np.array(heatmap_data)
-            
-            # Use a color map suitable for count data
-            im = ax.imshow(heatmap_array.T, cmap='Blues', aspect='auto')
-            
-            # Set labels
-            ax.set_xticks(range(len(years)))
-            ax.set_xticklabels(years, rotation=45)  # Rotate years for better readability
-            ax.set_yticks(range(4))
-            ax.set_yticklabels(['QA 0\n(Meilleur)', 'QA 1\n(Bon)', 'QA 2\n(Modéré)', 'QA 3\n(Mauvais)'])
-            
-            # Add text annotations with absolute counts
-            for i in range(len(years)):
-                for j in range(4):
-                    count_val = heatmap_array[i, j]
-                    if count_val > 0:
-                        text = ax.text(i, j, f'{count_val:.0f}',
-                                     ha="center", va="center", color="white" if count_val > heatmap_array.max()/2 else "black", 
-                                     fontweight='bold')
-            
-            # Add colorbar
-            cbar = plt.colorbar(im, ax=ax, shrink=0.8)
-            cbar.set_label('Comptages de Pixels')
-            
-            ax.set_title('🌡️ Heatmap des Comptages QA par Année', fontweight='bold')
-        else:
-            ax.text(0.5, 0.5, 'Pas de données\nde comptages QA', 
-                   ha='center', va='center', transform=ax.transAxes)
-    
-    def _plot_average_pixel_counts(self, ax, monthly_stats):
-        """Plot average pixel counts by month and fraction"""
-        for fraction in self.fraction_classes:
-            fraction_data = monthly_stats[monthly_stats['fraction'] == fraction]
-            if not fraction_data.empty:
-                ax.plot(fraction_data['month'], fraction_data['mean'], 
-                       marker='o', linewidth=2, markersize=6,
-                       label=self.class_labels[fraction],
-                       color=FRACTION_COLORS.get(fraction, 'gray'))
-        
-        ax.set_title('📊 Comptages Moyens de Pixels par Mois', fontweight='bold')
-        ax.set_xlabel('Mois')
-        ax.set_ylabel('Nombre Moyen de Pixels')
-        ax.set_xticks([6, 7, 8, 9])
-        ax.set_xticklabels(['Juin', 'Juillet', 'Août', 'Sept'])
-        ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
-        ax.grid(True, alpha=0.3)
-    
-    def _plot_total_pixel_counts(self, ax, monthly_stats):
-        """Plot total pixel counts as stacked bars"""
-        months = [6, 7, 8, 9]
-        month_names = ['Juin', 'Juillet', 'Août', 'Sept']
-        
-        # Prepare data for stacking
-        totals_by_month = {}
-        for month in months:
-            month_data = monthly_stats[monthly_stats['month'] == month]
-            totals_by_month[month] = {}
-            for fraction in self.fraction_classes:
-                frac_data = month_data[month_data['fraction'] == fraction]
-                if not frac_data.empty:
-                    totals_by_month[month][fraction] = frac_data['total'].iloc[0]
-                else:
-                    totals_by_month[month][fraction] = 0
-        
-        # Create stacked bar chart
-        bottom = np.zeros(len(months))
-        for fraction in self.fraction_classes:
-            values = [totals_by_month[month][fraction] for month in months]
-            ax.bar(month_names, values, bottom=bottom, 
-                  label=self.class_labels[fraction],
-                  color=FRACTION_COLORS.get(fraction, 'gray'))
-            bottom += values
-        
-        ax.set_title('📊 Comptages Totaux de Pixels (Empilés)', fontweight='bold')
-        ax.set_xlabel('Mois')
-        ax.set_ylabel('Nombre Total de Pixels')
-        ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
-    
-    def _plot_pixel_variability(self, ax, monthly_stats):
-        """Plot pixel count variability (standard deviation)"""
-        for fraction in self.fraction_classes:
-            fraction_data = monthly_stats[monthly_stats['fraction'] == fraction]
-            if not fraction_data.empty:
-                ax.plot(fraction_data['month'], fraction_data['std'], 
-                       marker='s', linewidth=2, markersize=6,
-                       label=self.class_labels[fraction],
-                       color=FRACTION_COLORS.get(fraction, 'gray'),
-                       linestyle='--')
-        
-        ax.set_title('📈 Variabilité des Comptages (Écart-type)', fontweight='bold')
-        ax.set_xlabel('Mois')
-        ax.set_ylabel('Écart-type des Pixels')
-        ax.set_xticks([6, 7, 8, 9])
-        ax.set_xticklabels(['Juin', 'Juillet', 'Août', 'Sept'])
-        ax.legend(fontsize=8)
-        ax.grid(True, alpha=0.3)
-    
-    def _plot_observation_counts(self, ax, monthly_stats):
-        """Plot number of observations per month"""
-        obs_data = monthly_stats.groupby(['month', 'month_name'])['observations'].first().reset_index()
-        
-        colors = plt.cm.viridis(np.linspace(0.2, 0.8, len(obs_data)))
-        bars = ax.bar(obs_data['month_name'], obs_data['observations'], color=colors)
-        
-        ax.set_title('📊 Nombre d\'Observations par Mois', fontweight='bold')
-        ax.set_xlabel('Mois')
-        ax.set_ylabel('Nombre d\'Observations')
-        
-        # Add values on bars
-        for bar in bars:
-            height = bar.get_height()
-            ax.text(bar.get_x() + bar.get_width()/2., height,
-                   f'{int(height)}', ha='center', va='bottom')
-    
-    def _plot_qa_scores(self, ax, qa_stats):
-        """Plot QA scores by month and fraction"""
-        for fraction in self.fraction_classes:
-            fraction_data = qa_stats[qa_stats['fraction'] == fraction]
-            if not fraction_data.empty:
-                ax.plot(fraction_data['month'], fraction_data['qa_mean'], 
-                       marker='o', linewidth=2, markersize=6,
-                       label=self.class_labels[fraction],
-                       color=FRACTION_COLORS.get(fraction, 'gray'))
-        
-        ax.set_title('📊 Scores de Qualité Moyens (%)', fontweight='bold')
-        ax.set_xlabel('Mois')
-        ax.set_ylabel('Score QA Moyen (%)')
-        ax.set_xticks([6, 7, 8, 9])
-        ax.set_xticklabels(['Juin', 'Juillet', 'Août', 'Sept'])
-        ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
-        ax.grid(True, alpha=0.3)
-        ax.set_ylim([0, 100])
-    
-    def _plot_quality_ratios(self, ax, qa_stats):
-        """Plot high quality data ratios"""
-        for fraction in self.fraction_classes:
-            fraction_data = qa_stats[qa_stats['fraction'] == fraction]
-            if not fraction_data.empty:
-                ax.plot(fraction_data['month'], fraction_data['high_quality_ratio'] * 100, 
-                       marker='o', linewidth=2, markersize=6,
-                       label=self.class_labels[fraction],
-                       color=FRACTION_COLORS.get(fraction, 'gray'))
-        
-        ax.set_title('📈 Proportion de Données Haute Qualité (%)', fontweight='bold')
-        ax.set_xlabel('Mois')
-        ax.set_ylabel('Haute Qualité (%)')
-        ax.set_xticks([6, 7, 8, 9])
-        ax.set_xticklabels(['Juin', 'Juillet', 'Août', 'Sept'])
-        ax.legend(fontsize=8)
-        ax.grid(True, alpha=0.3)
-        ax.set_ylim([0, 100])
-    
-    def _plot_pixel_availability(self, ax, qa_stats):
-        """Plot pixel availability patterns"""
-        for fraction in self.fraction_classes:
-            fraction_data = qa_stats[qa_stats['fraction'] == fraction]
-            if not fraction_data.empty:
-                ax.plot(fraction_data['month'], fraction_data['pixel_availability'] * 100, 
-                       marker='s', linewidth=2, markersize=6,
-                       label=self.class_labels[fraction],
-                       color=FRACTION_COLORS.get(fraction, 'gray'),
-                       linestyle='-.')
-        
-        ax.set_title('📊 Disponibilité des Pixels (%)', fontweight='bold')
-        ax.set_xlabel('Mois')
-        ax.set_ylabel('Disponibilité (%)')
-        ax.set_xticks([6, 7, 8, 9])
-        ax.set_xticklabels(['Juin', 'Juillet', 'Août', 'Sept'])
-        ax.legend(fontsize=8)
-        ax.grid(True, alpha=0.3)
-        ax.set_ylim([0, 100])
-    
-    def _plot_qa_heatmap(self, ax, qa_stats):
-        """Plot QA scores as heatmap"""
-        qa_matrix = qa_stats.pivot_table(
-            index='fraction_label',
-            columns='month_name',
-            values='qa_mean',
-            aggfunc='first'
-        )
-        
-        # Ensure correct month order
-        month_order = ['Juin', 'Juillet', 'Août', 'Septembre']
-        available_months = [m for m in month_order if m in qa_matrix.columns]
-        qa_matrix = qa_matrix.reindex(columns=available_months)
-        
-        im = sns.heatmap(qa_matrix, 
-                        annot=True, 
-                        fmt='.1f',
-                        cmap='RdYlGn',
-                        vmin=0, vmax=100,
-                        cbar_kws={'label': 'Score QA (%)'},
-                        ax=ax)
-        
-        ax.set_title('🌡️ Heatmap des Scores QA', fontweight='bold')
-        ax.set_xlabel('Mois')
-        ax.set_ylabel('')
+
