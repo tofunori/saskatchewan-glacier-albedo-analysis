@@ -156,16 +156,28 @@ class PixelVisualizer:
                         fontsize=16, fontweight='bold', pad=15)
             return
         
-        # Créer les subplots dans l'axe principal
-        from matplotlib.gridspec import GridSpecFromSubplotSpec
-        gs = GridSpecFromSubplotSpec(2, 1, ax, height_ratios=[1.5, 1], hspace=0.3)
+        # Créer deux sous-axes dans l'axe principal en utilisant subplot division
+        import matplotlib.pyplot as plt
+        from matplotlib.gridspec import GridSpec
         
-        # Section supérieure: Box plots
-        ax_box = ax.figure.add_subplot(gs[0])
+        # Diviser l'axe en deux sections verticales
+        ax.set_position([ax.get_position().x0, ax.get_position().y0, 
+                        ax.get_position().width, ax.get_position().height])
+        
+        # Calculer les positions pour les deux sous-graphiques
+        fig = ax.figure
+        pos = ax.get_position()
+        
+        # Section supérieure (60% de l'espace)
+        box_height = pos.height * 0.6
+        box_bottom = pos.y0 + pos.height * 0.4 + 0.02  # Petit espace entre les graphiques
+        ax_box = fig.add_axes([pos.x0, box_bottom, pos.width, box_height])
         ax_box.set_facecolor('#fafafa')
         
-        # Section inférieure: Barres empilées  
-        ax_bar = ax.figure.add_subplot(gs[1])
+        # Section inférieure (35% de l'espace)
+        bar_height = pos.height * 0.35
+        bar_bottom = pos.y0
+        ax_bar = fig.add_axes([pos.x0, bar_bottom, pos.width, bar_height])
         ax_bar.set_facecolor('#fafafa')
         
         # PARTIE 1: BOX PLOTS AVEC STATISTIQUES
@@ -267,10 +279,9 @@ class PixelVisualizer:
         # Masquer l'axe principal pour éviter les conflits
         ax.set_xticks([])
         ax.set_yticks([])
-        ax.spines['top'].set_visible(False)
-        ax.spines['right'].set_visible(False)
-        ax.spines['bottom'].set_visible(False)
-        ax.spines['left'].set_visible(False)
+        for spine in ax.spines.values():
+            spine.set_visible(False)
+        ax.set_facecolor('none')
         
         print(f"✅ Panel A: Analyse hybride avec {len(monthly_data)} mois de données")
         
