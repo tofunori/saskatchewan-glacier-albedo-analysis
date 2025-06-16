@@ -449,8 +449,8 @@ class PixelVisualizer:
         Returns:
             str: Path to saved plot
         """
-        # Create figure with 4 vertically stacked subplots for better readability
-        fig, axes = plt.subplots(4, 1, figsize=(16, 20))
+        # Create figure with 3 vertically stacked subplots for better readability
+        fig, axes = plt.subplots(3, 1, figsize=(16, 15))
         
         # Enhanced title with dataset info
         dataset_name = "MOD10A1" if "mod10a1" in dataset_suffix else "MCD43A3"
@@ -668,6 +668,7 @@ class PixelVisualizer:
             ax3.set_title('C) Daily Quality Assessment Distribution (Stacked Bars)', 
                          fontsize=16, fontweight='bold', pad=15)
             ax3.set_ylabel('Number of Pixels', fontsize=14, fontweight='bold')
+            ax3.set_xlabel('Date', fontsize=14, fontweight='bold')
             ax3.legend(loc='upper left', frameon=True, fancybox=True, shadow=True, 
                       fontsize=11, ncol=2)
             ax3.grid(True, alpha=0.4, linestyle=':', linewidth=0.8, axis='y')
@@ -677,90 +678,8 @@ class PixelVisualizer:
                     ha='center', va='center', transform=ax3.transAxes, fontsize=14)
             ax3.set_title('C) Daily Quality Assessment Distribution (Not Available)', 
                          fontsize=16, fontweight='bold', pad=15)
+            ax3.set_xlabel('Date', fontsize=14, fontweight='bold')
         
-        # =================================================================
-        # SUBPLOT D: Total Valid Pixels and Data Availability - STACKED BARS
-        # =================================================================
-        ax4 = axes[3]
-        
-        total_pixel_plotted = False
-        
-        # Check if we have fraction pixel count data for stacked bars
-        pixel_cols = [f"{fraction}_pixel_count" for fraction in self.fraction_classes 
-                     if f"{fraction}_pixel_count" in year_data.columns]
-        
-        if pixel_cols:
-            # Create stacked bars showing fraction composition
-            pixel_valid_dates = []
-            pixel_stacked_data = {fraction: [] for fraction in self.fraction_classes}
-            
-            for _, row in year_data.iterrows():
-                total_day_pixels = sum(row[f"{fraction}_pixel_count"] 
-                                     for fraction in self.fraction_classes 
-                                     if f"{fraction}_pixel_count" in year_data.columns 
-                                     and pd.notna(row[f"{fraction}_pixel_count"]))
-                
-                if total_day_pixels > 0:
-                    pixel_valid_dates.append(row['date'])
-                    for fraction in self.fraction_classes:
-                        col_name = f"{fraction}_pixel_count"
-                        if col_name in year_data.columns and pd.notna(row[col_name]):
-                            pixel_stacked_data[fraction].append(max(0, row[col_name]))
-                        else:
-                            pixel_stacked_data[fraction].append(0)
-            
-            if pixel_valid_dates:
-                # Create stacked bars for total pixel composition
-                width = pd.Timedelta(days=1)  # Bar width
-                bottom_values = np.zeros(len(pixel_valid_dates))
-                
-                for fraction in self.fraction_classes:
-                    values = pixel_stacked_data[fraction]
-                    if any(v > 0 for v in values):
-                        ax4.bar(pixel_valid_dates, values, width, bottom=bottom_values,
-                               label=f'{self.class_labels[fraction]}',
-                               color=modern_colors.get(fraction, '#7f8c8d'),
-                               alpha=0.8, edgecolor='white', linewidth=0.5)
-                        bottom_values += np.array(values)
-                
-                total_pixel_plotted = True
-                print(f"✅ Panel D: Stacked total pixel bars for {len(pixel_valid_dates)} days")
-        else:
-            # Fallback to total pixels if fraction data not available
-            total_pixels = None
-            if 'total_valid_pixels' in year_data.columns:
-                total_pixels = year_data['total_valid_pixels']
-            
-            if total_pixels is not None:
-                valid_mask = total_pixels.notna() & (total_pixels > 0)
-                if valid_mask.sum() > 0:
-                    dates_valid = year_data.loc[valid_mask, 'date']
-                    values_valid = total_pixels.loc[valid_mask]
-                    
-                    # Single-color bars for total pixels
-                    width = pd.Timedelta(days=1)
-                    ax4.bar(dates_valid, values_valid, width,
-                           color='#2c3e50', alpha=0.8, 
-                           label=f'Total Valid Pixels ({len(dates_valid)} days)',
-                           edgecolor='white', linewidth=0.5)
-                    
-                    total_pixel_plotted = True
-                    print(f"✅ Panel D: Total pixel bars for {len(dates_valid)} days")
-        
-        if total_pixel_plotted:
-            ax4.set_title('D) Total Valid Pixels and Data Availability (Stacked Bars)', 
-                         fontsize=16, fontweight='bold', pad=15)
-            ax4.set_ylabel('Total Number of Pixels', fontsize=14, fontweight='bold')
-            ax4.set_xlabel('Date', fontsize=14, fontweight='bold')
-            ax4.legend(loc='upper left', frameon=True, fancybox=True, shadow=True, 
-                      fontsize=11, ncol=2)
-            ax4.grid(True, alpha=0.4, linestyle=':', linewidth=0.8, axis='y')
-            ax4.set_facecolor('#fafafa')
-        else:
-            ax4.text(0.5, 0.5, 'No total pixel data available for this year', 
-                    ha='center', va='center', transform=ax4.transAxes, fontsize=14)
-            ax4.set_title('D) Total Valid Pixels (Not Available)', 
-                         fontsize=16, fontweight='bold', pad=15)
         
         # =================================================================
         # FINAL FORMATTING AND LAYOUT
