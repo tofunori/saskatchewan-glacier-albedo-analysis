@@ -710,13 +710,13 @@ class PixelVisualizer:
         # Adjust layout with proper spacing for vertical stack
         plt.tight_layout(rect=[0.0, 0.08, 1.0, 0.96])
         
-        # Apply consistent date formatting to all x-axes with more frequent dates
+        # Apply consistent date formatting to all x-axes with weekly intervals
         import matplotlib.dates as mdates
         for ax in axes:
-            # Plus de dates sur l'axe X - tous les 15 jours
+            # Dates par semaine (tous les 7 jours)
             ax.xaxis.set_major_formatter(mdates.DateFormatter('%m/%d'))
-            ax.xaxis.set_major_locator(mdates.DayLocator(interval=15))  # Tous les 15 jours
-            ax.xaxis.set_minor_locator(mdates.DayLocator(interval=7))   # Marques mineures tous les 7 jours
+            ax.xaxis.set_major_locator(mdates.WeekdayLocator(interval=1))  # Toutes les semaines
+            ax.xaxis.set_minor_locator(mdates.DayLocator(interval=3))      # Marques mineures tous les 3 jours
             ax.tick_params(axis='x', rotation=45, labelsize=11)
             ax.tick_params(axis='y', labelsize=12)
             # Améliorer l'espacement des étiquettes
