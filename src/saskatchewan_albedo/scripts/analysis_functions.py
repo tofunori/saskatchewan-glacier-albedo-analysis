@@ -466,7 +466,12 @@ def run_dataset_analysis(dataset_name):
         # Visualisations
         print_section_header("Visualisations standards", level=2)
         monthly_visualizer = MonthlyVisualizer(data_handler)
-        monthly_plots = monthly_visualizer.create_all_monthly_plots(str(output_path))
+        # Créer les graphiques mensuels avec le nom correct de la méthode
+        monthly_plot_path = monthly_visualizer.create_monthly_statistics_graphs(
+            ANALYSIS_VARIABLE, 
+            save_path=str(output_path / f'monthly_statistics_{ANALYSIS_VARIABLE}_{dataset_name.lower()}.png')
+        )
+        monthly_plots = [monthly_plot_path] if monthly_plot_path else []
         
         # Export avec suffixe dataset
         output_suffix = f"_{dataset_name.lower()}"
@@ -633,7 +638,12 @@ def _run_visualizations_for_dataset(dataset_name):
         data_handler.load_data()
         
         monthly_visualizer = MonthlyVisualizer(data_handler)
-        plots = monthly_visualizer.create_all_monthly_plots(str(output_path))
+        # Créer les graphiques mensuels
+        monthly_plot_path = monthly_visualizer.create_monthly_statistics_graphs(
+            ANALYSIS_VARIABLE,
+            save_path=str(output_path / f'monthly_statistics_{ANALYSIS_VARIABLE}_{dataset_name.lower()}.png')
+        )
+        plots = [monthly_plot_path] if monthly_plot_path else []
         
         print(f"✅ {len(plots)} visualisations créées pour {dataset_name}")
         return True
