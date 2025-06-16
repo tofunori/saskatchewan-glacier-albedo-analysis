@@ -131,30 +131,43 @@ def show_dataset_menu(dataset_name):
     print("3️⃣  Visualisations seulement")
     print("4️⃣  Analyse pixels/QA seulement")
     print("5️⃣  Graphiques quotidiens (daily_melt_season)")
-    print()
-    print("6️⃣  Retour au menu principal")
+    
+    # Option spéciale pour MOD10A1 seulement
+    if dataset_name == 'MOD10A1':
+        print("6️⃣  Comparaison entre fractions MOD10A1 🆕")
+        print()
+        print("7️⃣  Retour au menu principal")
+    else:
+        print()
+        print("6️⃣  Retour au menu principal")
+    
     print()
     print("-" * 60)
 
-def get_dataset_analysis_choice():
+def get_dataset_analysis_choice(dataset_name=None):
     """Obtient le choix d'analyse pour un dataset"""
     print("\n" + "="*40)
     print("TYPE D'ANALYSE")
     print("="*40)
     print()
     
+    # Déterminer le nombre maximum d'options selon le dataset
+    max_choice = 7 if dataset_name == 'MOD10A1' else 6
+    max_choice_str = f"1-{max_choice}"
+    valid_choices = [str(i) for i in range(1, max_choice + 1)]
+    
     while True:
         try:
-            choice = input("➤ Votre choix (1-6): ").strip()
-            if choice in ['1', '2', '3', '4', '5', '6']:
+            choice = input(f"➤ Votre choix ({max_choice_str}): ").strip()
+            if choice in valid_choices:
                 return int(choice)
             else:
-                print(f"❌ '{choice}' n'est pas valide. Tapez un chiffre de 1 à 6.")
+                print(f"❌ '{choice}' n'est pas valide. Tapez un chiffre de {max_choice_str}.")
         except KeyboardInterrupt:
             print("\n\n👋 Interruption.")
-            return 6
+            return max_choice  # Retour au menu principal
         except:
-            print("❌ Erreur de saisie. Tapez un chiffre de 1 à 6.")
+            print(f"❌ Erreur de saisie. Tapez un chiffre de {max_choice_str}.")
 
 def show_comparison_menu():
     """Affiche le sous-menu pour la comparaison"""
@@ -289,9 +302,10 @@ def _handle_dataset_menu(dataset_name):
     
     while True:
         show_dataset_menu(dataset_name)
-        choice = get_dataset_analysis_choice()
+        choice = get_dataset_analysis_choice(dataset_name)
         
-        if choice == 6:  # Retour au menu principal
+        # Gérer le retour au menu principal selon le dataset
+        if (dataset_name == 'MOD10A1' and choice == 7) or (dataset_name != 'MOD10A1' and choice == 6):
             break
             
         try:
@@ -319,6 +333,12 @@ def _handle_dataset_menu(dataset_name):
                 # Graphiques quotidiens
                 print(f"\n📅 Graphiques quotidiens pour {dataset_name}...")
                 run_custom_analysis(dataset_name, 5)
+                
+            elif choice == 6 and dataset_name == 'MOD10A1':
+                # Comparaison entre fractions MOD10A1 (option spéciale)
+                print(f"\n🔍 Comparaison entre fractions MOD10A1...")
+                from saskatchewan_albedo.scripts.analysis_functions import run_mod10a1_fraction_comparison
+                run_mod10a1_fraction_comparison()
                 
         except Exception as e:
             print(f"\n❌ Erreur lors de l'analyse {dataset_name}: {e}")

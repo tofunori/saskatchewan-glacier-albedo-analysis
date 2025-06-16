@@ -822,3 +822,166 @@ def run_export_all():
     except Exception as e:
         print(f"\n❌ ERREUR EXPORTS: {e}")
         return False
+
+def run_mod10a1_fraction_comparison():
+    """Exécute la comparaison des fractions MOD10A1"""
+    try:
+        from saskatchewan_albedo.config import get_dataset_config, FRACTION_CLASSES, CLASS_LABELS
+        
+        print_section_header("COMPARAISON DES FRACTIONS MOD10A1", level=1)
+        
+        # Créer le dossier de sortie spécifique
+        output_path = PROJECT_DIR / OUTPUT_DIR / "mod10a1" / "fraction_comparison"
+        ensure_directory_exists(str(output_path))
+        print(f"📁 Dossier de sortie: {output_path}")
+        
+        # Charger les données MOD10A1
+        config = get_dataset_config('MOD10A1')
+        data_handler = AlbedoDataHandler(config['csv_path'])
+        data_handler.load_data()
+        
+        print(f"✅ Données MOD10A1 chargées: {len(data_handler.data)} observations")
+        print(f"📅 Période: {data_handler.data['date'].min()} à {data_handler.data['date'].max()}")
+        
+        # Sélection interactive des fractions
+        selected_fractions = _select_fractions_for_comparison()
+        
+        # Créer le visualiseur
+        pixel_visualizer = PixelVisualizer(data_handler)
+        
+        # Filtrer les données pour les fractions sélectionnées si nécessaire
+        if selected_fractions != 'all':
+            print(f"🎯 Fractions sélectionnées: {[CLASS_LABELS[f] for f in selected_fractions]}")
+            # Modifier temporairement les fractions du visualiseur
+            original_fractions = pixel_visualizer.fraction_classes.copy()
+            pixel_visualizer.fraction_classes = selected_fractions
+        else:
+            print(f"🎯 Toutes les fractions sélectionnées: {[CLASS_LABELS[f] for f in FRACTION_CLASSES]}")
+        
+        # Générer les comparaisons
+        print_section_header("Génération des graphiques de comparaison", level=2)
+        plots = pixel_visualizer.plot_mod10a1_fraction_comparison(save_dir=str(output_path))
+        
+        # Restaurer les fractions originales si modifiées
+        if selected_fractions != 'all':
+            pixel_visualizer.fraction_classes = original_fractions
+        
+        # Résumé des résultats
+        print(f"\n✅ COMPARAISON DES FRACTIONS MOD10A1 TERMINÉE !")
+        print(f"   📊 {len(plots)} graphiques générés")
+        print(f"   📁 Résultats sauvegardés dans: {output_path}")
+        
+        # Lister les fichiers créés
+        for plot_path in plots:
+            filename = os.path.basename(plot_path)
+            print(f"  ✓ {filename}")
+        
+        return True
+        
+    except Exception as e:
+        print(f"\n❌ ERREUR COMPARAISON FRACTIONS MOD10A1: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+def _select_fractions_for_comparison():
+    """Permet à l'utilisateur de sélectionner les fractions à comparer"""
+    from saskatchewan_albedo.config import FRACTION_CLASSES, CLASS_LABELS
+    
+    print_section_header("SÉLECTION DES FRACTIONS À COMPARER", level=3)
+    print("Choisissez les fractions à inclure dans la comparaison:")
+    print()
+    
+    # Afficher toutes les fractions disponibles
+    for i, fraction in enumerate(FRACTION_CLASSES, 1):
+        print(f"{i}️⃣  {CLASS_LABELS[fraction]}")
+    
+    print(f"{len(FRACTION_CLASSES) + 1}️⃣  Toutes les fractions (recommandé)")
+    print()
+    print("-" * 60)
+    
+    while True:
+        try:
+            choice = input(f"➤ Votre choix (1-{len(FRACTION_CLASSES) + 1}): ").strip()
+            
+            if choice == str(len(FRACTION_CLASSES) + 1):
+                # Toutes les fractions
+                return 'all'
+            
+            choice_num = int(choice)
+            if 1 <= choice_num <= len(FRACTION_CLASSES):
+                # Une seule fraction sélectionnée - demander si l'utilisateur veut en ajouter d'autres
+                selected = [FRACTION_CLASSES[choice_num - 1]]
+                print(f"✅ Fraction sélectionnée: {CLASS_LABELS[selected[0]]}")
+                
+                # Demander si l'utilisateur veut ajouter d'autres fractions
+                print("\nVoulez-vous ajouter d'autres fractions? (o/n)")
+                add_more = input("➤ ").strip().lower()
+                
+                if add_more in ['o', 'oui', 'y', 'yes']:
+                    return _select_multiple_fractions(selected)
+                else:
+                    return selected
+            else:
+                print(f"❌ '{choice}' n'est pas valide. Tapez un chiffre de 1 à {len(FRACTION_CLASSES) + 1}.")
+                
+        except KeyboardInterrupt:
+            print("\n\n👋 Interruption.")
+            return 'all'  # Valeur par défaut
+        except ValueError:
+            print(f"❌ Erreur de saisie. Tapez un chiffre de 1 à {len(FRACTION_CLASSES) + 1}.")
+        except:
+            print(f"❌ Erreur de saisie. Tapez un chiffre de 1 à {len(FRACTION_CLASSES) + 1}.")
+
+def _select_multiple_fractions(already_selected):
+    """Permet la sélection de fractions multiples"""
+    from saskatchewan_albedo.config import FRACTION_CLASSES, CLASS_LABELS
+    
+    available = [f for f in FRACTION_CLASSES if f not in already_selected]
+    
+    print(f"\nFractions déjà sélectionnées: {[CLASS_LABELS[f] for f in already_selected]}")
+    print("Fractions disponibles:")
+    print()
+    
+    for i, fraction in enumerate(available, 1):
+        print(f"{i}️⃣  {CLASS_LABELS[fraction]}")
+    
+    print(f"{len(available) + 1}️⃣  Terminer la sélection")
+    print()
+    
+    while True:
+        try:
+            choice = input(f"➤ Ajouter une fraction (1-{len(available) + 1}): ").strip()
+            
+            if choice == str(len(available) + 1):
+                # Terminer
+                return already_selected
+            
+            choice_num = int(choice)
+            if 1 <= choice_num <= len(available):
+                new_fraction = available[choice_num - 1]
+                already_selected.append(new_fraction)
+                available.remove(new_fraction)
+                
+                print(f"✅ Ajouté: {CLASS_LABELS[new_fraction]}")
+                print(f"📋 Sélection actuelle: {[CLASS_LABELS[f] for f in already_selected]}")
+                
+                if not available:
+                    print("✅ Toutes les fractions ont été sélectionnées!")
+                    return already_selected
+                    
+                # Demander si l'utilisateur veut continuer
+                print("\nAjouter une autre fraction? (o/n)")
+                cont = input("➤ ").strip().lower()
+                if cont not in ['o', 'oui', 'y', 'yes']:
+                    return already_selected
+            else:
+                print(f"❌ '{choice}' n'est pas valide. Tapez un chiffre de 1 à {len(available) + 1}.")
+                
+        except KeyboardInterrupt:
+            print("\n\n👋 Interruption.")
+            return already_selected
+        except ValueError:
+            print(f"❌ Erreur de saisie. Tapez un chiffre de 1 à {len(available) + 1}.")
+        except:
+            print(f"❌ Erreur de saisie. Tapez un chiffre de 1 à {len(available) + 1}.")
