@@ -25,14 +25,14 @@ sys.path.insert(0, str(src_dir))
 PROJECT_DIR = project_dir
 
 # Imports
-from saskatchewan_albedo.config import (CSV_PATH, QA_CSV_PATH, OUTPUT_DIR, ANALYSIS_VARIABLE, 
-                                       FRACTION_CLASSES, CLASS_LABELS, FRACTION_COLORS)
+from saskatchewan_albedo.config import CSV_PATH, QA_CSV_PATH, OUTPUT_DIR, ANALYSIS_VARIABLE
 from saskatchewan_albedo.data.handler import AlbedoDataHandler
 from saskatchewan_albedo.analysis.trends import TrendCalculator
 from saskatchewan_albedo.analysis.pixel_analysis import PixelCountAnalyzer
 from saskatchewan_albedo.visualization.monthly import MonthlyVisualizer
 from saskatchewan_albedo.visualization.pixel_plots import PixelVisualizer
 from saskatchewan_albedo.visualization.charts import ChartGenerator
+from saskatchewan_albedo.visualization.daily_plots import create_daily_albedo_plots
 from saskatchewan_albedo.utils.helpers import print_section_header, ensure_directory_exists, print_analysis_summary
 
 def check_config():
@@ -53,86 +53,6 @@ def check_config():
     
     return True
 
-def create_daily_albedo_plots(data_handler, output_dir):
-    """
-    Crée des graphiques d'albédo quotidiens pour chaque année
-    """
-    import matplotlib.pyplot as plt
-    import pandas as pd
-    
-    print_section_header("Création des graphiques d'albédo quotidiens", level=2)
-    
-    saved_plots = []
-    data = data_handler.data
-    years = sorted(data['year'].unique())
-    
-    print(f"📅 Années disponibles: {years}")
-    
-    for year in years:
-        print(f"\n🎯 Création du graphique d'albédo pour {year}")
-        
-        # Filtrer les données pour cette année (saison de fonte)
-        year_data = data[
-            (data['year'] == year) & 
-            (data['month'].isin([6, 7, 8, 9]))
-        ].copy()
-        
-        if len(year_data) == 0:
-            print(f"⚠️ Pas de données pour {year}")
-            continue
-        
-        # Trier par date
-        year_data = year_data.sort_values('date')
-        
-        # Créer le graphique
-        fig, ax = plt.subplots(figsize=(14, 8))
-        fig.suptitle(f'Albédo Quotidien - Saison de Fonte {year}', 
-                     fontsize=16, fontweight='bold')
-        
-        # Tracer l'albédo pour chaque fraction
-        for fraction in FRACTION_CLASSES:
-            col_mean = f"{fraction}_{ANALYSIS_VARIABLE}"
-            if col_mean in year_data.columns:
-                albedo_data = year_data[col_mean].dropna()
-                if len(albedo_data) > 0:
-                    # Plot only non-null values
-                    valid_data = year_data[year_data[col_mean].notna()]
-                    ax.plot(valid_data['date'], valid_data[col_mean], 
-                           marker='o', markersize=3, linewidth=1.5, alpha=0.8,
-                           label=CLASS_LABELS[fraction],
-                           color=FRACTION_COLORS.get(fraction, 'gray'))
-        
-        # Configuration du graphique
-        ax.set_xlabel('Date')
-        ax.set_ylabel(f'Albédo ({ANALYSIS_VARIABLE.capitalize()})')
-        ax.set_ylim([0, 1])
-        ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
-        ax.grid(True, alpha=0.3)
-        
-        # Ajouter des lignes verticales pour séparer les mois
-        for month in [7, 8, 9]:
-            month_start = year_data[year_data['month'] == month]['date'].min()
-            if not pd.isna(month_start):
-                ax.axvline(x=month_start, color='gray', linestyle='--', alpha=0.5)
-        
-        # Statistiques
-        stats_text = f"Période: {year_data['date'].min().strftime('%Y-%m-%d')} à {year_data['date'].max().strftime('%Y-%m-%d')}\n"
-        stats_text += f"Observations: {len(year_data)} jours"
-        ax.text(0.02, 0.98, stats_text, transform=ax.transAxes, 
-                verticalalignment='top', fontsize=10,
-                bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
-        
-        plt.tight_layout()
-        
-        # Sauvegarder
-        save_path = os.path.join(output_dir, f'daily_albedo_melt_season_{year}.png')
-        plt.savefig(save_path, dpi=300, bbox_inches='tight')
-        plt.close()  # Close figure to free memory
-        
-        print(f"✅ Graphique d'albédo {year} sauvegardé: {save_path}")
-        saved_plots.append(save_path)
-    
-    return saved_plots
 
 def run_complete_analysis():
     """Exécute l'analyse complète (comme main_backup.py)"""
