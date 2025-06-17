@@ -516,7 +516,7 @@ class ComparisonAnalyzer:
 
 class DatasetComparator:
     """
-    Simple dataset comparator for Streamlit interface
+    Simple dataset comparator for data analysis
     """
     
     def __init__(self, dataset1, dataset2):

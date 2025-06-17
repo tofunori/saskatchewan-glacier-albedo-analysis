@@ -438,7 +438,7 @@ class SeasonalAnalyzer:
         data = self.data[['month', col_name]].dropna()
         monthly_stats = data.groupby('month')[col_name].agg(['mean', 'std', 'count']).reset_index()
         
-        # Convert to dictionary format expected by Streamlit
+        # Convert to dictionary format
         result = {
             'mean': monthly_stats['mean'].tolist(),
             'std': monthly_stats['std'].tolist(),

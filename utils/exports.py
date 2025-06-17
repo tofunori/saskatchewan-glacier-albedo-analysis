@@ -34,7 +34,7 @@ def export_results(data, output_path):
 
 class ExportManager:
     """
-    Export manager for Streamlit interface
+    Export manager for data output
     """
     
     def __init__(self):
