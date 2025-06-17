@@ -18,6 +18,9 @@ openpyxl>=3.0.10
 # Plotting and visualization
 plotly>=5.0.0
 
+# Dashboard framework
+shiny>=1.0.0
+
 # Optional: Data processing (install separately if needed)
 # modis-tools>=1.0.0
 # jupyter>=1.0.0
