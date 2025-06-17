@@ -6,6 +6,11 @@
 // Description : Analyse l'évolution de l'albédo selon différents seuils de fraction
 // de couverture des pixels MODIS, permettant de distinguer les pixels "purs glacier"
 // des pixels mixtes en bordure.
+//
+// NOUVEAU : Options de projection et visualisation MODIS
+// • Basculement entre Web Mercator et projection sinusoïdale MODIS (SR-ORG:6974)
+// • Affichage optionnel de la grille des pixels MODIS
+// • Option pour conserver la résolution native MODIS (500m)
 
 // ┌────────────────────────────────────────────────────────────────────────────────────────┐
 // │ SECTION 1 : CONFIGURATION ET INITIALISATION                                            │
@@ -332,43 +337,70 @@ var updateVisualization = function() {
     Map.remove(layers.get(layers.length() - 1));
   }
   
+  // Vérifier si on utilise la résolution native
+  var useNativeRes = nativeResCheckbox.getValue();
+  var nativeProjection = example_image.projection();
+  
+  // Créer la grille de pixels MODIS
+  var modisGrid = example_albedo.select(0).zeroCrossing()
+    .updateMask(glacier_mask);
+  
+  if (useNativeRes) {
+    // Reprojeter en résolution native pour préserver les pixels MODIS
+    modisGrid = modisGrid.reproject(nativeProjection);
+  }
+  
+  // Fonction pour appliquer la reprojection si nécessaire
+  var processImageForDisplay = function(image) {
+    if (useNativeRes) {
+      return image.reproject(nativeProjection);
+    }
+    return image;
+  };
+  
   // Définir toutes les nouvelles couches avec leurs données
   var newLayers = [
     {
       name: '1. Fraction de couverture - ' + dateString,
-      image: example_fraction.updateMask(example_fraction.gt(0)),
+      image: processImageForDisplay(example_fraction.updateMask(example_fraction.gt(0))),
       vis: {min: 0, max: 1, palette: ['red', 'orange', 'yellow', 'lightblue', 'blue']},
       defaultVisible: true
     },
     {
       name: '2. Albédo 0-25% (bordure)',
-      image: example_albedo.updateMask(example_masks.border),
+      image: processImageForDisplay(example_albedo.updateMask(example_masks.border)),
       vis: {min: 0.3, max: 0.9, palette: ['darkblue', 'blue', 'cyan', 'yellow', 'orange', 'red']},
       defaultVisible: false
     },
     {
       name: '3. Albédo 25-50% (mixte bas)',
-      image: example_albedo.updateMask(example_masks.mixed_low),
+      image: processImageForDisplay(example_albedo.updateMask(example_masks.mixed_low)),
       vis: {min: 0.3, max: 0.9, palette: ['darkblue', 'blue', 'cyan', 'yellow', 'orange', 'red']},
       defaultVisible: false
     },
     {
       name: '4. Albédo 50-75% (mixte haut)',
-      image: example_albedo.updateMask(example_masks.mixed_high),
+      image: processImageForDisplay(example_albedo.updateMask(example_masks.mixed_high)),
       vis: {min: 0.3, max: 0.9, palette: ['darkblue', 'blue', 'cyan', 'yellow', 'orange', 'red']},
       defaultVisible: true
     },
     {
       name: '5. Albédo 75-90% (majoritaire)',
-      image: example_albedo.updateMask(example_masks.mostly_ice),
+      image: processImageForDisplay(example_albedo.updateMask(example_masks.mostly_ice)),
       vis: {min: 0.3, max: 0.9, palette: ['darkblue', 'blue', 'cyan', 'yellow', 'orange', 'red']},
       defaultVisible: true
     },
     {
       name: '6. Albédo 90-100% (pur)',
-      image: example_albedo.updateMask(example_masks.pure_ice),
+      image: processImageForDisplay(example_albedo.updateMask(example_masks.pure_ice)),
       vis: {min: 0.3, max: 0.9, palette: ['darkblue', 'blue', 'cyan', 'yellow', 'orange', 'red']},
       defaultVisible: true
+    },
+    {
+      name: '7. Grille pixels MODIS - ' + dateString,
+      image: modisGrid,
+      vis: {palette: ['000000'], opacity: 0.6},
+      defaultVisible: gridCheckbox.getValue()
     }
   ];
   
@@ -398,12 +430,75 @@ var updateButton = ui.Button({
   style: {width: '200px'}
 });
 
+// Créer les contrôles de projection
+var projectionLabel = ui.Label('Options de projection:', {fontWeight: 'bold'});
+
+// Variable globale pour stocker l'état de la projection
+var isModisProjection = false;
+
+// Bouton de basculement de projection
+var projectionButton = ui.Button({
+  label: 'Basculer en projection MODIS',
+  onClick: function() {
+    isModisProjection = !isModisProjection;
+    
+    if (isModisProjection) {
+      // Passer en projection sinusoïdale MODIS
+      Map.setOptions({
+        mapTypeId: 'ROADMAP',
+        projection: 'SR-ORG:6974'  // Projection sinusoïdale MODIS
+      });
+      projectionButton.setLabel('Basculer en Web Mercator');
+    } else {
+      // Revenir en Web Mercator
+      Map.setOptions({
+        mapTypeId: 'ROADMAP',
+        projection: 'EPSG:3857'  // Web Mercator par défaut
+      });
+      projectionButton.setLabel('Basculer en projection MODIS');
+    }
+    
+    // Recentrer après changement de projection
+    Map.centerObject(glacier_geometry, 12);
+  },
+  style: {width: '200px', margin: '5px 0'}
+});
+
+// Checkbox pour afficher la grille MODIS
+var gridCheckbox = ui.Checkbox({
+  label: 'Afficher grille pixels MODIS',
+  value: false,
+  onChange: function(checked) {
+    // Trouver et mettre à jour la visibilité de la couche grille
+    var layers = Map.layers();
+    for (var i = 0; i < layers.length(); i++) {
+      var layer = layers.get(i);
+      if (layer.getName() && layer.getName().indexOf('Grille pixels MODIS') !== -1) {
+        layer.setShown(checked);
+        break;
+      }
+    }
+  }
+});
+
+// Checkbox pour afficher en résolution native
+var nativeResCheckbox = ui.Checkbox({
+  label: 'Conserver résolution native',
+  value: false,
+  style: {margin: '5px 0'}
+});
+
 // Ajouter les widgets au panneau
 var panel = ui.Panel([
   dateLabel,
   dateSlider,
   selectedDateLabel,
-  updateButton
+  updateButton,
+  ui.Label('─────────────────', {margin: '10px 0', color: 'gray'}), // Séparateur
+  projectionLabel,
+  projectionButton,
+  gridCheckbox,
+  nativeResCheckbox
 ], ui.Panel.Layout.flow('vertical'), {
   width: '350px',
   position: 'top-left'
@@ -430,6 +525,10 @@ var example_albedo = example_image.select('Albedo_WSA_shortwave')
 // Centrer la carte
 Map.centerObject(glacier_geometry, 12);
 
+// Créer la grille de pixels MODIS pour l'affichage initial
+var initial_modis_grid = example_albedo.select(0).zeroCrossing()
+  .updateMask(glacier_mask);
+
 // Ajouter les couches
 Map.addLayer(glacier_mask.selfMask(), {palette: ['lightgray'], opacity: 0.3}, '0. Masque glacier');
 Map.addLayer(example_fraction.updateMask(example_fraction.gt(0)), 
@@ -445,6 +544,9 @@ Map.addLayer(example_albedo.updateMask(example_masks.mixed_low), albedoVis, '3. 
 Map.addLayer(example_albedo.updateMask(example_masks.mixed_high), albedoVis, '4. Albédo 50-75% (mixte haut)');
 Map.addLayer(example_albedo.updateMask(example_masks.mostly_ice), albedoVis, '5. Albédo 75-90% (majoritaire)');
 Map.addLayer(example_albedo.updateMask(example_masks.pure_ice), albedoVis, '6. Albédo 90-100% (pur)');
+
+// Ajouter la grille pixels MODIS (initialement masquée)
+Map.addLayer(initial_modis_grid, {palette: ['000000'], opacity: 0.6}, '7. Grille pixels MODIS - 2020-07-15', false);
 
 // ┌────────────────────────────────────────────────────────────────────────────────────────┐
 // │ SECTION 8 : EXPORTS                                                                   │
