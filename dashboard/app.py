@@ -27,15 +27,17 @@ def transform_elevation_data(df):
     elevation_zones = ['above_median', 'at_median', 'below_median']
     fraction_classes = ['mostly_ice', 'pure_ice']
     
+    print(f"Transforming elevation data: {len(df)} rows")
+    
     for _, row in df.iterrows():
         base_info = {
             'date': row['date'],
-            'year': row['year'],
-            'doy': row['doy'],
-            'season': row['season'],
-            'glacier_median_elevation': row['glacier_median_elevation'],
-            'above_median_threshold': row['above_median_threshold'],
-            'below_median_threshold': row['below_median_threshold'],
+            'year': row.get('year', 0),
+            'doy': row.get('doy', 0),
+            'season': row.get('season', 'unknown'),
+            'glacier_median_elevation': row.get('glacier_median_elevation', 2626.75),
+            'above_median_threshold': row.get('above_median_threshold', 2726.75),
+            'below_median_threshold': row.get('below_median_threshold', 2526.75),
             'dataset': 'MOD10A1_Elevation'
         }
         
@@ -45,7 +47,7 @@ def transform_elevation_data(df):
                 col_prefix = f"{fraction}_{zone}"
                 mean_col = f"{col_prefix}_mean"
                 
-                if pd.notna(row.get(mean_col)):
+                if mean_col in df.columns and pd.notna(row.get(mean_col)):
                     elevation_row = base_info.copy()
                     elevation_row.update({
                         'elevation_zone': zone,
@@ -61,7 +63,9 @@ def transform_elevation_data(df):
                     })
                     elevation_data.append(elevation_row)
     
-    return pd.DataFrame(elevation_data)
+    result_df = pd.DataFrame(elevation_data)
+    print(f"Transformed to {len(result_df)} rows with columns: {result_df.columns.tolist()}")
+    return result_df
 
 def load_dashboard_data(dataset_type='MCD43A3'):
     """Load data with proper error handling for dashboard use"""
@@ -385,17 +389,21 @@ def server(input, output, session):
             
             # Create different plot types
             if dataset_type == 'MOD10A1_Elevation':
+                # Get elevation-specific inputs
+                elevation_zone = input.elevation_zone() if hasattr(input, 'elevation_zone') else "all"
+                elevation_fraction = input.elevation_fraction() if hasattr(input, 'elevation_fraction') else "pure_ice"
+                
                 # Elevation-specific plots
                 if plot_type == "elevation_comparison":
-                    fig = create_elevation_comparison_plot(df)
+                    fig = create_elevation_comparison_plot(df, elevation_fraction)
                 elif plot_type == "elevation_trends":
                     fig = create_elevation_trends_plot(df)
                 elif plot_type == "transient_snowline":
                     fig = create_transient_snowline_plot(df)
                 elif plot_type == "scatter":
-                    fig = create_elevation_scatter_plot(df)
+                    fig = create_elevation_scatter_plot(df, elevation_zone, elevation_fraction)
                 else:  # line plot
-                    fig = create_elevation_line_plot(df)
+                    fig = create_elevation_line_plot(df, elevation_zone, elevation_fraction)
             else:
                 # Standard plots
                 if plot_type == "stacked_bar":
@@ -525,12 +533,9 @@ def create_stacked_bar_plot(df, time_aggregation):
     
     return fig
 
-def create_elevation_line_plot(df):
+def create_elevation_line_plot(df, elevation_zone="all", elevation_fraction="pure_ice"):
     """Create line plot for elevation data"""
     try:
-        # Get current selections
-        elevation_zone = input.elevation_zone()
-        elevation_fraction = input.elevation_fraction()
         
         # Filter data based on selections
         plot_data = df.copy()
@@ -570,10 +575,9 @@ def create_elevation_line_plot(df):
         print(f"Error in create_elevation_line_plot: {e}")
         return None
 
-def create_elevation_comparison_plot(df):
+def create_elevation_comparison_plot(df, elevation_fraction="pure_ice"):
     """Create comparison plot showing all elevation zones"""
     try:
-        elevation_fraction = input.elevation_fraction()
         
         # Filter by fraction if specified
         plot_data = df.copy()
@@ -729,11 +733,9 @@ def create_transient_snowline_plot(df):
         print(f"Error in create_transient_snowline_plot: {e}")
         return None
 
-def create_elevation_scatter_plot(df):
+def create_elevation_scatter_plot(df, elevation_zone="all", elevation_fraction="pure_ice"):
     """Create scatter plot for elevation data"""
     try:
-        elevation_zone = input.elevation_zone()
-        elevation_fraction = input.elevation_fraction()
         
         # Filter data
         plot_data = df.copy()
