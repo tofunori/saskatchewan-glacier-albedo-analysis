@@ -25,7 +25,8 @@
       "Bash(true)",
       "Bash(git restore:*)",
       "Bash(git ls-tree:*)",
-      "Bash(timeout:*)"
+      "Bash(timeout:*)",
+      "Bash(pip install:*)"
     ],
     "deny": []
   }

@@ -131,11 +131,12 @@ def show_dataset_menu(dataset_name):
     print("4️⃣  Analyse pixels/QA seulement")
     print("5️⃣  Graphiques quotidiens (daily_melt_season)")
     
-    # Option spéciale pour MOD10A1 seulement
+    # Options spéciales pour MOD10A1 seulement
     if dataset_name == 'MOD10A1':
         print("6️⃣  Comparaison entre fractions MOD10A1 🆕")
+        print("7️⃣  Analyse fraction × élévation (Williamson & Menounos 2021) 🆕")
         print()
-        print("7️⃣  Retour au menu principal")
+        print("8️⃣  Retour au menu principal")
     else:
         print()
         print("6️⃣  Retour au menu principal")
@@ -151,7 +152,7 @@ def get_dataset_analysis_choice(dataset_name=None):
     print()
     
     # Déterminer le nombre maximum d'options selon le dataset
-    max_choice = 7 if dataset_name == 'MOD10A1' else 6
+    max_choice = 8 if dataset_name == 'MOD10A1' else 6
     max_choice_str = f"1-{max_choice}"
     valid_choices = [str(i) for i in range(1, max_choice + 1)]
     
@@ -304,7 +305,7 @@ def _handle_dataset_menu(dataset_name):
         choice = get_dataset_analysis_choice(dataset_name)
         
         # Gérer le retour au menu principal selon le dataset
-        if (dataset_name == 'MOD10A1' and choice == 7) or (dataset_name != 'MOD10A1' and choice == 6):
+        if (dataset_name == 'MOD10A1' and choice == 8) or (dataset_name != 'MOD10A1' and choice == 6):
             break
             
         try:
@@ -338,6 +339,12 @@ def _handle_dataset_menu(dataset_name):
                 print(f"\n🔍 Comparaison entre fractions MOD10A1...")
                 from scripts.analysis_functions import run_mod10a1_fraction_comparison
                 run_mod10a1_fraction_comparison()
+                
+            elif choice == 7 and dataset_name == 'MOD10A1':
+                # Analyse fraction × élévation (Williamson & Menounos 2021)
+                print(f"\n🏔️ Analyse fraction × élévation (Williamson & Menounos 2021)...")
+                from scripts.analysis_functions import run_elevation_analysis_menu
+                run_elevation_analysis_menu()
                 
         except Exception as e:
             print(f"\n❌ Erreur lors de l'analyse {dataset_name}: {e}")

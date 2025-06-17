@@ -44,6 +44,19 @@ MOD10A1_CONFIG = {
     'scaling_info': 'Percentage (1-100) to decimal (÷100)'
 }
 
+# Configuration pour l'analyse fraction × élévation (Williamson & Menounos 2021)
+ELEVATION_CONFIG = {
+    'csv_path': "data/csv/daily_snow_albedo_fraction_elevation_williamson_method_2010_2024.csv",
+    'name': 'MOD10A1_Elevation',
+    'description': 'Albédo par fraction × élévation (Williamson & Menounos 2021)',
+    'elevation_zones': ['above_median', 'at_median', 'below_median'],
+    'fraction_classes': ['mostly_ice', 'pure_ice'],
+    'combinations': 6,  # 2 fractions × 3 elevation zones
+    'methodology': 'Williamson_Menounos_2021_adapted_with_fractions',
+    'output_dir': 'results/elevation_analysis',
+    'reference_paper': 'Williamson, S.N. & Menounos, B. (2021). Remote Sensing of Environment 267'
+}
+
 # Configuration pour les comparaisons
 COMPARISON_CONFIG = {
     'output_suffix': '_comparison',

@@ -26,7 +26,7 @@ PROJECT_DIR = project_dir
 
 # Imports
 import numpy as np
-from config import CSV_PATH, QA_CSV_PATH, OUTPUT_DIR, ANALYSIS_VARIABLE, FRACTION_CLASSES
+from config import CSV_PATH, QA_CSV_PATH, OUTPUT_DIR, ANALYSIS_VARIABLE, FRACTION_CLASSES, ELEVATION_CONFIG
 from data.handler import AlbedoDataHandler
 from analysis.trends import TrendCalculator
 from analysis.pixel_analysis import PixelCountAnalyzer
@@ -985,3 +985,275 @@ def _select_multiple_fractions(already_selected):
             print(f"❌ Erreur de saisie. Tapez un chiffre de 1 à {len(available) + 1}.")
         except:
             print(f"❌ Erreur de saisie. Tapez un chiffre de 1 à {len(available) + 1}.")
+
+# ==========================================
+# ANALYSE FRACTION × ÉLÉVATION
+# ==========================================
+
+def run_elevation_analysis_menu():
+    """
+    Menu interactif pour l'analyse fraction × élévation 
+    Méthodologie Williamson & Menounos (2021)
+    """
+    print("\n" + "="*70)
+    print("🏔️ ANALYSE FRACTION × ÉLÉVATION - WILLIAMSON & MENOUNOS (2021)")
+    print("="*70)
+    print()
+    print("📊 Méthodologie: Albédo par zones d'élévation (±100m médiane glacier)")
+    print("🧊 Fractions: mostly_ice (75-90%), pure_ice (90-100%)")  
+    print("🎯 Objectif: Tester hypothèse ligne de neige transitoire")
+    print()
+    print("1️⃣  Analyse complète (tendances + visualisations + rapports)")
+    print("2️⃣  Analyse tendances seulement")
+    print("3️⃣  Visualisations seulement")
+    print("4️⃣  Comparaison avec Williamson & Menounos (2021)")
+    print("5️⃣  Rapport synthèse seulement")
+    print()
+    print("6️⃣  Retour au menu MOD10A1")
+    print()
+    print("-" * 70)
+    
+    while True:
+        try:
+            choice = input("➤ Votre choix (1-6): ").strip()
+            
+            if choice == '1':
+                # Analyse complète
+                print("\n🔍 Lancement analyse complète fraction × élévation...")
+                run_complete_elevation_analysis()
+                
+            elif choice == '2':
+                # Tendances seulement
+                print("\n📈 Analyse des tendances par élévation...")
+                run_elevation_trends_only()
+                
+            elif choice == '3':
+                # Visualisations seulement
+                print("\n🎨 Génération des visualisations élévation...")
+                run_elevation_visualizations_only()
+                
+            elif choice == '4':
+                # Comparaison Williamson & Menounos
+                print("\n📚 Comparaison avec Williamson & Menounos (2021)...")
+                run_williamson_menounos_comparison()
+                
+            elif choice == '5':
+                # Rapport synthèse
+                print("\n📋 Génération rapport de synthèse...")
+                run_elevation_summary_report()
+                
+            elif choice == '6':
+                # Retour
+                print("🔙 Retour au menu MOD10A1")
+                break
+                
+            else:
+                print("❌ Choix invalide. Tapez un chiffre de 1 à 6.")
+                continue
+            
+            # Proposer autre analyse
+            print("\n" + "="*50)
+            cont = input("➤ Autre analyse d'élévation? (o/n): ").strip().lower()
+            if cont not in ['o', 'oui', 'y', 'yes']:
+                break
+                
+        except KeyboardInterrupt:
+            print("\n👋 Retour au menu MOD10A1")
+            break
+        except Exception as e:
+            print(f"❌ Erreur: {e}")
+
+def run_complete_elevation_analysis():
+    """Lance l'analyse complète fraction × élévation"""
+    try:
+        print_section_header("ANALYSE COMPLÈTE FRACTION × ÉLÉVATION")
+        
+        # Vérifier que le fichier existe
+        csv_path = Path(ELEVATION_CONFIG['csv_path'])
+        if not csv_path.exists():
+            print(f"❌ Fichier de données non trouvé: {csv_path}")
+            print("📝 Assurez-vous d'avoir exporté les données depuis Google Earth Engine")
+            return False
+        
+        # Importer et lancer l'analyse
+        from analysis.elevation_analysis import run_elevation_analysis
+        from visualization.elevation_plots import create_elevation_visualizations
+        
+        print("🔄 Chargement et analyse des données...")
+        analyzer = run_elevation_analysis(
+            csv_path=str(csv_path),
+            output_dir=ELEVATION_CONFIG['output_dir']
+        )
+        
+        print("\n🎨 Génération des visualisations...")
+        plotter = create_elevation_visualizations(analyzer)
+        
+        print("\n📊 RÉSULTATS ANALYSE ÉLÉVATION:")
+        print(f"✅ Données analysées: {len(analyzer.annual_data)} années")
+        print(f"✅ Combinaisons valides: {len(analyzer.valid_combinations)}")
+        print(f"✅ Tendances calculées: {len(analyzer.trends)}")
+        
+        # Résumé hypothèse ligne de neige transitoire
+        if analyzer.elevation_analysis and 'transient_snowline' in analyzer.elevation_analysis:
+            transient = analyzer.elevation_analysis['transient_snowline']
+            print(f"🎯 Hypothèse ligne de neige transitoire: {transient['hypothesis_supported']}")
+            print(f"📍 Zone déclin maximal: {transient['strongest_decline_zone']}")
+        else:
+            print("⚠️ Analyse d'élévation non disponible")
+        
+        print(f"\n📁 Résultats sauvegardés dans: {analyzer.output_dir}")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Erreur lors de l'analyse complète: {e}")
+        return False
+
+def run_elevation_trends_only():
+    """Lance seulement l'analyse des tendances"""
+    try:
+        print_section_header("ANALYSE TENDANCES PAR ÉLÉVATION")
+        
+        csv_path = Path(ELEVATION_CONFIG['csv_path'])
+        if not csv_path.exists():
+            print(f"❌ Fichier de données non trouvé: {csv_path}")
+            return False
+        
+        from analysis.elevation_analysis import ElevationAnalyzer
+        
+        analyzer = ElevationAnalyzer(str(csv_path), ELEVATION_CONFIG['output_dir'])
+        analyzer.load_data()
+        analyzer.calculate_trends()
+        analyzer.analyze_elevation_dependency()
+        
+        # Créer seulement les rapports (pas de visualisations)
+        trends_df, zone_summary_df = analyzer.create_summary_report()
+        wm_df = analyzer.export_williamson_menounos_format()
+        
+        print(f"\n📊 RÉSULTATS TENDANCES:")
+        print(f"✅ Tendances calculées: {len(analyzer.trends)}")
+        
+        # Afficher résumé par zone
+        for zone, analysis in analyzer.elevation_analysis['zone_analysis'].items():
+            print(f"📈 {zone}: {analysis['mean_sens_slope']:.4f}/an "
+                  f"({analysis['percent_significant']:.1f}% significatif)")
+        
+        print(f"\n📁 Rapports sauvegardés dans: {analyzer.output_dir}")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Erreur lors de l'analyse des tendances: {e}")
+        return False
+
+def run_elevation_visualizations_only():
+    """Lance seulement la génération de visualisations"""
+    try:
+        print_section_header("VISUALISATIONS ÉLÉVATION")
+        
+        # D'abord charger les données
+        csv_path = Path(ELEVATION_CONFIG['csv_path'])
+        if not csv_path.exists():
+            print(f"❌ Fichier de données non trouvé: {csv_path}")
+            return False
+        
+        from analysis.elevation_analysis import ElevationAnalyzer
+        from visualization.elevation_plots import create_elevation_visualizations
+        
+        print("🔄 Chargement des données pour visualisation...")
+        analyzer = ElevationAnalyzer(str(csv_path), ELEVATION_CONFIG['output_dir'])
+        analyzer.load_data()
+        analyzer.calculate_trends()
+        analyzer.analyze_elevation_dependency()
+        
+        print("🎨 Génération des visualisations...")
+        plotter = create_elevation_visualizations(analyzer)
+        
+        print(f"\n📊 VISUALISATIONS CRÉÉES:")
+        print(f"📁 Répertoire: {plotter.output_dir}")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Erreur lors de la génération des visualisations: {e}")
+        return False
+
+def run_williamson_menounos_comparison():
+    """Compare les résultats avec Williamson & Menounos (2021)"""
+    try:
+        print_section_header("COMPARAISON WILLIAMSON & MENOUNOS (2021)")
+        
+        csv_path = Path(ELEVATION_CONFIG['csv_path'])
+        if not csv_path.exists():
+            print(f"❌ Fichier de données non trouvé: {csv_path}")
+            return False
+        
+        from analysis.elevation_analysis import ElevationAnalyzer
+        
+        analyzer = ElevationAnalyzer(str(csv_path), ELEVATION_CONFIG['output_dir'])
+        analyzer.load_data()
+        analyzer.calculate_trends()
+        analyzer.analyze_elevation_dependency()
+        
+        # Export au format Williamson & Menounos
+        wm_df = analyzer.export_williamson_menounos_format()
+        
+        print(f"\n📚 COMPARAISON AVEC WILLIAMSON & MENOUNOS (2021):")
+        print(f"📄 Référence: {ELEVATION_CONFIG['reference_paper']}")
+        print(f"🎯 Méthodologie: {ELEVATION_CONFIG['methodology']}")
+        
+        # Résultats principaux
+        transient = analyzer.elevation_analysis['transient_snowline']
+        print(f"\n🏔️ SASKATCHEWAN GLACIER:")
+        print(f"• Zone déclin maximal: {transient['strongest_decline_zone']}")
+        print(f"• Hypothèse supportée: {transient['hypothesis_supported']}")
+        
+        zone_slopes = transient['zone_slopes']
+        for zone, slope in zone_slopes.items():
+            print(f"• {zone}: {slope:.4f} albédo/an")
+        
+        print(f"\n📊 COMPARAISON AVEC 17 RÉGIONS W&M:")
+        print("• Saskatchewan glacier suit-il le pattern typique?")
+        if transient['hypothesis_supported']:
+            print("✅ OUI - Déclin maximal près de l'élévation médiane")
+            print("  → Confirme l'hypothèse de ligne de neige transitoire")
+        else:
+            print("❌ NON - Pattern différent des autres régions glaciaires")
+            print("  → Saskatchewan présente un comportement atypique")
+        
+        print(f"\n📁 Export format W&M: {analyzer.output_dir}/saskatchewan_williamson_menounos_format.csv")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Erreur lors de la comparaison: {e}")
+        return False
+
+def run_elevation_summary_report():
+    """Génère seulement le rapport de synthèse"""
+    try:
+        print_section_header("RAPPORT SYNTHÈSE ÉLÉVATION")
+        
+        csv_path = Path(ELEVATION_CONFIG['csv_path'])
+        if not csv_path.exists():
+            print(f"❌ Fichier de données non trouvé: {csv_path}")
+            return False
+        
+        from analysis.elevation_analysis import ElevationAnalyzer
+        
+        analyzer = ElevationAnalyzer(str(csv_path), ELEVATION_CONFIG['output_dir'])
+        analyzer.load_data()
+        analyzer.calculate_trends()
+        analyzer.analyze_elevation_dependency()
+        
+        # Créer les rapports
+        trends_df, zone_summary_df = analyzer.create_summary_report()
+        wm_df = analyzer.export_williamson_menounos_format()
+        
+        print(f"\n📋 RAPPORT DE SYNTHÈSE GÉNÉRÉ:")
+        print(f"• elevation_trends_detailed.csv - Tendances par combinaison")
+        print(f"• elevation_zones_summary.csv - Résumé par zone")
+        print(f"• saskatchewan_williamson_menounos_format.csv - Format W&M")
+        
+        print(f"\n📁 Rapports dans: {analyzer.output_dir}")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Erreur lors du rapport: {e}")
+        return False
