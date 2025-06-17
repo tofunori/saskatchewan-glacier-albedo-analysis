@@ -261,28 +261,51 @@ def server(input, output, session):
         """Process data based on time aggregation"""
         try:
             df = current_data()
+            dataset_type = input.dataset_type()
             time_agg = input.time_aggregation()
             
             if df.empty or time_agg == "daily":
                 return df
             
-            # Aggregate data for stacked bar charts
-            fraction_cols = [f"{fc}_mean" for fc in FRACTION_CLASSES 
-                           if f"{fc}_mean" in df.columns]
-            
-            if time_agg == "monthly":
-                agg_data = df.groupby('year_month')[fraction_cols].mean().reset_index()
-                agg_data['date'] = pd.to_datetime(agg_data['year_month'])
-            elif time_agg == "seasonal":
-                agg_data = df.groupby(['year', 'season'])[fraction_cols].mean().reset_index()
-                agg_data['date'] = pd.to_datetime(agg_data['year'].astype(str) + '-07-01')
-            elif time_agg == "yearly":
-                agg_data = df.groupby('year')[fraction_cols].mean().reset_index()
-                agg_data['date'] = pd.to_datetime(agg_data['year'].astype(str) + '-07-01')
+            # Handle elevation data differently
+            if dataset_type == 'MOD10A1_Elevation':
+                # For elevation data, we have albedo_mean instead of individual fraction columns
+                if 'elevation_zone' in df.columns and 'fraction_class' in df.columns:
+                    group_cols = ['elevation_zone', 'fraction_class']
+                    
+                    if time_agg == "monthly":
+                        agg_data = df.groupby(group_cols + ['year_month'])['albedo_mean'].mean().reset_index()
+                        agg_data['date'] = pd.to_datetime(agg_data['year_month'])
+                    elif time_agg == "seasonal":
+                        agg_data = df.groupby(group_cols + ['year', 'season'])['albedo_mean'].mean().reset_index()
+                        agg_data['date'] = pd.to_datetime(agg_data['year'].astype(str) + '-07-01')
+                    elif time_agg == "yearly":
+                        agg_data = df.groupby(group_cols + ['year'])['albedo_mean'].mean().reset_index()
+                        agg_data['date'] = pd.to_datetime(agg_data['year'].astype(str) + '-07-01')
+                    else:
+                        return df
+                    
+                    return agg_data
+                else:
+                    return df
             else:
-                return df
-            
-            return agg_data
+                # Original logic for MCD43A3/MOD10A1 data
+                fraction_cols = [f"{fc}_mean" for fc in FRACTION_CLASSES 
+                               if f"{fc}_mean" in df.columns]
+                
+                if time_agg == "monthly":
+                    agg_data = df.groupby('year_month')[fraction_cols].mean().reset_index()
+                    agg_data['date'] = pd.to_datetime(agg_data['year_month'])
+                elif time_agg == "seasonal":
+                    agg_data = df.groupby(['year', 'season'])[fraction_cols].mean().reset_index()
+                    agg_data['date'] = pd.to_datetime(agg_data['year'].astype(str) + '-07-01')
+                elif time_agg == "yearly":
+                    agg_data = df.groupby('year')[fraction_cols].mean().reset_index()
+                    agg_data['date'] = pd.to_datetime(agg_data['year'].astype(str) + '-07-01')
+                else:
+                    return df
+                
+                return agg_data
             
         except Exception as e:
             print(f"Error in processed_data: {e}")
@@ -395,6 +418,8 @@ def server(input, output, session):
                 fraction = "pure_ice"  # Default fallback
             
             print(f"Creating plot: dataset={dataset_type}, plot_type={plot_type}, fraction={fraction}")
+            print(f"DataFrame columns: {df.columns.tolist()}")
+            print(f"DataFrame shape: {df.shape}")
             
             if df.empty:
                 return ui.p("No data available for visualization")

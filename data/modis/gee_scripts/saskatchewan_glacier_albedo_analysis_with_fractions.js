@@ -11,6 +11,8 @@
 // • Mode natif MODIS pour afficher les données dans leur résolution d'origine
 // • Affichage optionnel de la grille des pixels MODIS (500m)
 // • Préservation de la structure spatiale originale des données MODIS
+// • Les pixels apparaissent en losange (projection sinusoïdale sur Web Mercator)
+// • Option pour masquer le fond de carte et voir les pixels purs
 
 // ┌────────────────────────────────────────────────────────────────────────────────────────┐
 // │ SECTION 1 : CONFIGURATION ET INITIALISATION                                            │
@@ -483,19 +485,35 @@ var projectionButton = ui.Button({
       projectionButton.setLabel('Désactiver mode natif MODIS');
       nativeResCheckbox.setValue(true); // Forcer résolution native
       gridCheckbox.setValue(true); // Activer la grille pour voir les pixels
+      
+      // Changer le fond de carte pour mieux voir les pixels MODIS
+      Map.setOptions('SATELLITE');
+      
       print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       print('🔬 MODE NATIF MODIS ACTIVÉ');
-      print('• Reprojection forcée en résolution native 500m exacte');
+      print('• Données en projection sinusoïdale MODIS native (500m)');
       print('• Grille vectorielle des pixels MODIS activée');
-      print('• Zoom recommandé: 13+ pour mieux voir la structure spatiale');
-      print('• Les pixels peuvent paraître plus angulaires/moins lissés');
-      print('• Cliquez sur "Mettre à jour la carte" pour appliquer');
+      print('• Fond de carte satellite pour meilleur contraste');
+      print('');
+      print('💡 POURQUOI LES PIXELS SONT EN LOSANGE ?');
+      print('• Les pixels MODIS sont des carrés parfaits en proj. sinusoïdale');
+      print('• Affichés sur Web Mercator → apparaissent comme losanges');
+      print('• C\'est la VRAIE forme spatiale des données MODIS !');
+      print('• Option: Cochez "Masquer fond de carte" pour pixels purs');
+      print('');
+      print('• Zoom 13+ recommandé • Clic "Mettre à jour la carte"');
       print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     } else {
       projectionButton.setLabel('Activer mode natif MODIS');
       nativeResCheckbox.setValue(false);
       gridCheckbox.setValue(false);
-      print('📍 Mode natif MODIS désactivé - Retour à l\'affichage Web Mercator standard');
+      
+      // Remettre le fond de carte par défaut
+      Map.setOptions('ROADMAP');
+      
+      print('📍 Mode natif MODIS désactivé');
+      print('• Retour à l\'affichage Web Mercator standard');
+      print('• Fond de carte routier rétabli');
     }
     
     // Mettre à jour la visualisation
@@ -528,6 +546,25 @@ var nativeResCheckbox = ui.Checkbox({
   style: {margin: '5px 0'}
 });
 
+// Checkbox pour masquer le fond de carte
+var hideBasemapCheckbox = ui.Checkbox({
+  label: 'Masquer fond de carte (pixels purs)',
+  value: false,
+  onChange: function(checked) {
+    if (checked) {
+      Map.setOptions('HYBRID');
+      Map.setOptions({styles: [{stylers: [{visibility: 'off'}]}]}); // Masquer tout
+    } else {
+      if (isModisProjection) {
+        Map.setOptions('SATELLITE');
+      } else {
+        Map.setOptions('ROADMAP');
+      }
+    }
+  },
+  style: {margin: '5px 0'}
+});
+
 // Ajouter les widgets au panneau
 var panel = ui.Panel([
   dateLabel,
@@ -538,7 +575,8 @@ var panel = ui.Panel([
   projectionLabel,
   projectionButton,
   gridCheckbox,
-  nativeResCheckbox
+  nativeResCheckbox,
+  hideBasemapCheckbox
 ], ui.Panel.Layout.flow('vertical'), {
   width: '350px',
   position: 'top-left'
