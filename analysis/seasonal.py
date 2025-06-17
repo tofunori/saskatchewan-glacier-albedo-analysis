@@ -415,3 +415,63 @@ class SeasonalAnalyzer:
             
             if significant_count == 0:
                 print(f"  ➡️  Aucune tendance significative détectée")
+    
+    def calculate_monthly_statistics(self, fraction, variable='mean'):
+        """
+        Calculate monthly statistics for a specific fraction
+        
+        Args:
+            fraction (str): Fraction class name
+            variable (str): Variable to analyze ('mean' or 'median')
+            
+        Returns:
+            dict: Monthly statistics (mean, std, count for each month)
+        """
+        if self.data is None:
+            return None
+        
+        col_name = f"{fraction}_{variable}"
+        if col_name not in self.data.columns:
+            return None
+        
+        # Filter data and group by month
+        data = self.data[['month', col_name]].dropna()
+        monthly_stats = data.groupby('month')[col_name].agg(['mean', 'std', 'count']).reset_index()
+        
+        # Convert to dictionary format expected by Streamlit
+        result = {
+            'mean': monthly_stats['mean'].tolist(),
+            'std': monthly_stats['std'].tolist(),
+            'count': monthly_stats['count'].tolist(),
+            'months': monthly_stats['month'].tolist()
+        }
+        
+        return result
+    
+    def calculate_seasonal_statistics(self, fraction, variable='mean'):
+        """
+        Calculate comprehensive seasonal statistics for a fraction
+        
+        Args:
+            fraction (str): Fraction class name
+            variable (str): Variable to analyze
+            
+        Returns:
+            dict: Comprehensive seasonal statistics
+        """
+        monthly_stats = self.calculate_monthly_statistics(fraction, variable)
+        
+        if monthly_stats is None:
+            return None
+        
+        # Calculate seasonal patterns
+        monthly_means = monthly_stats['mean']
+        
+        result = {
+            'monthly_means': {i+1: val for i, val in enumerate(monthly_means) if i < 12},
+            'seasonal_amplitude': max(monthly_means) - min(monthly_means) if monthly_means else 0,
+            'peak_month': monthly_stats['months'][monthly_means.index(max(monthly_means))] if monthly_means else None,
+            'low_month': monthly_stats['months'][monthly_means.index(min(monthly_means))] if monthly_means else None
+        }
+        
+        return result

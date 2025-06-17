@@ -20,12 +20,22 @@ pip install -e .
 ```
 
 ### Running the Analysis
+
+#### Command Line Interface (CLI)
 ```bash
 # Main interactive interface (from project root)
 python scripts/main.py
 
 # Or as module
 python -m saskatchewan_albedo.scripts.main
+```
+
+#### Streamlit Web Interface
+```bash
+# Launch interactive web application
+streamlit run streamlit_app.py
+
+# Access at http://localhost:8501
 ```
 
 ### Development Commands
@@ -39,7 +49,9 @@ python -m saskatchewan_albedo.scripts.main
 ### Package Structure
 The code is organized directly at the project root with these key components:
 
-1. **Entry Point**: `scripts/main.py` - Interactive menu system
+1. **Entry Points**: 
+   - `scripts/main.py` - Command-line interactive menu system
+   - `streamlit_app.py` - Web interface entry point
 2. **Configuration**: `config.py` - All settings, paths, and parameters
 3. **Data Pipeline**:
    - `data/handler.py` - AlbedoDataHandler for CSV loading
@@ -53,6 +65,9 @@ The code is organized directly at the project root with these key components:
    - `visualization/charts.py` - Main chart generation
    - `visualization/daily_plots.py` - Daily melt season plots
    - `visualization/comparison_plots.py` - Comparison visualizations
+6. **Web Interface**:
+   - `pages/` - Streamlit multi-page application
+   - `streamlit_utils/` - Web-specific utilities and components
 
 ### Data Flow
 1. Google Earth Engine scripts export MODIS data to CSV

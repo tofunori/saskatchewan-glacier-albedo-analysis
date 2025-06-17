@@ -15,7 +15,8 @@ pymannkendall>=1.4.3
 # File I/O
 openpyxl>=3.0.10
 
-# Optional: Advanced visualization
+# Interactive web interface
+streamlit>=1.28.0
 plotly>=5.0.0
 
 # Optional: Data processing (install separately if needed)

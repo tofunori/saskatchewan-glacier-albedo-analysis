@@ -276,3 +276,47 @@ class SaskatchewanDataLoader:
         
         self.data.to_csv(output_path, index=False)
         print(f"✓ Données nettoyées exportées: {output_path}")
+
+
+class ElevationDataLoader:
+    """
+    Loader for elevation-dependent albedo data following Williamson & Menounos (2021) methodology
+    """
+    
+    def __init__(self):
+        """Initialize the elevation data loader"""
+        from config import ELEVATION_CONFIG
+        self.config = ELEVATION_CONFIG
+        self.data = None
+    
+    def load_elevation_data(self):
+        """
+        Load elevation-dependent albedo data
+        
+        Returns:
+            pd.DataFrame: Loaded elevation data or None if failed
+        """
+        try:
+            csv_path = self.config['csv_path']
+            
+            if not os.path.exists(csv_path):
+                print(f"❌ Elevation data file not found: {csv_path}")
+                return None
+            
+            # Load the data
+            data = pd.read_csv(csv_path)
+            
+            # Add datetime columns
+            if 'date' in data.columns:
+                data['date'] = pd.to_datetime(data['date'])
+                data['year'] = data['date'].dt.year
+                data['month'] = data['date'].dt.month
+                data['doy'] = data['date'].dt.dayofyear
+            
+            self.data = data
+            print(f"✅ Elevation data loaded: {len(data)} observations")
+            return data
+            
+        except Exception as e:
+            print(f"❌ Error loading elevation data: {str(e)}")
+            return None

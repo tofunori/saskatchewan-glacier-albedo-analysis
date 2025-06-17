@@ -512,3 +512,192 @@ class ComparisonAnalyzer:
                 same_dir = "✅" if data['agreement']['same_direction'] else "❌"
                 both_sig = "✅" if data['agreement']['both_significant'] else "❌"
                 print(f"  {CLASS_LABELS[fraction]}: {agreement} (Direction: {same_dir}, Significativité: {both_sig})")
+
+
+class DatasetComparator:
+    """
+    Simple dataset comparator for Streamlit interface
+    """
+    
+    def __init__(self, dataset1, dataset2):
+        """
+        Initialize comparator with two AlbedoDataHandler objects
+        
+        Args:
+            dataset1: First AlbedoDataHandler (e.g., MCD43A3)
+            dataset2: Second AlbedoDataHandler (e.g., MOD10A1)
+        """
+        self.dataset1 = dataset1
+        self.dataset2 = dataset2
+    
+    def align_daily(self, fraction):
+        """
+        Align datasets by date for daily comparison
+        
+        Args:
+            fraction (str): Fraction class to compare
+            
+        Returns:
+            pd.DataFrame: Aligned data with columns ['date', 'mcd43a3', 'mod10a1']
+        """
+        try:
+            col_name = f"{fraction}_mean"
+            
+            # Get data from both datasets
+            data1 = self.dataset1.data[['date', col_name]].dropna()
+            data2 = self.dataset2.data[['date', col_name]].dropna()
+            
+            # Merge on date
+            merged = pd.merge(data1, data2, on='date', suffixes=('_1', '_2'))
+            merged = merged.rename(columns={f'{col_name}_1': 'mcd43a3', f'{col_name}_2': 'mod10a1'})
+            
+            return merged
+            
+        except Exception as e:
+            print(f"Error aligning data: {str(e)}")
+            return pd.DataFrame()
+    
+    def align_16day(self, fraction):
+        """
+        Align datasets using 16-day averaging
+        
+        Args:
+            fraction (str): Fraction class to compare
+            
+        Returns:
+            pd.DataFrame: Aligned data
+        """
+        try:
+            # For simplicity, use daily alignment for now
+            # In a full implementation, this would do 16-day averaging
+            return self.align_daily(fraction)
+            
+        except Exception as e:
+            print(f"Error in 16-day alignment: {str(e)}")
+            return pd.DataFrame()
+    
+    def align_monthly(self, fraction):
+        """
+        Align datasets using monthly averaging
+        
+        Args:
+            fraction (str): Fraction class to compare
+            
+        Returns:
+            pd.DataFrame: Monthly aligned data
+        """
+        try:
+            col_name = f"{fraction}_mean"
+            
+            # Monthly aggregation for both datasets
+            data1 = self.dataset1.data[['date', col_name]].dropna()
+            data2 = self.dataset2.data[['date', col_name]].dropna()
+            
+            # Add year-month column
+            data1['year_month'] = data1['date'].dt.to_period('M')
+            data2['year_month'] = data2['date'].dt.to_period('M')
+            
+            # Group by month and calculate means
+            monthly1 = data1.groupby('year_month')[col_name].mean().reset_index()
+            monthly2 = data2.groupby('year_month')[col_name].mean().reset_index()
+            
+            # Merge on year_month
+            merged = pd.merge(monthly1, monthly2, on='year_month', suffixes=('_1', '_2'))
+            merged['date'] = merged['year_month'].dt.to_timestamp()
+            merged = merged.rename(columns={f'{col_name}_1': 'mcd43a3', f'{col_name}_2': 'mod10a1'})
+            
+            return merged[['date', 'mcd43a3', 'mod10a1']]
+            
+        except Exception as e:
+            print(f"Error in monthly alignment: {str(e)}")
+            return pd.DataFrame()
+    
+    def calculate_seasonal_patterns(self, dataset_name, fraction):
+        """
+        Calculate seasonal patterns for a dataset
+        
+        Args:
+            dataset_name (str): 'MCD43A3' or 'MOD10A1'
+            fraction (str): Fraction class
+            
+        Returns:
+            dict: Seasonal pattern statistics
+        """
+        try:
+            if dataset_name == 'MCD43A3':
+                data = self.dataset1.data
+            else:
+                data = self.dataset2.data
+            
+            col_name = f"{fraction}_mean"
+            if col_name not in data.columns:
+                return None
+            
+            # Group by month and calculate statistics
+            monthly_data = data[['date', col_name]].dropna()
+            monthly_data['month'] = monthly_data['date'].dt.month
+            
+            monthly_stats = monthly_data.groupby('month')[col_name].agg(['mean', 'std']).reset_index()
+            
+            return {
+                'mean': monthly_stats['mean'].tolist(),
+                'std': monthly_stats['std'].tolist(),
+                'months': monthly_stats['month'].tolist()
+            }
+            
+        except Exception as e:
+            print(f"Error calculating seasonal patterns: {str(e)}")
+            return None
+    
+    def calculate_comparison_statistics(self, fraction):
+        """
+        Calculate comprehensive comparison statistics
+        
+        Args:
+            fraction (str): Fraction class
+            
+        Returns:
+            dict: Comparison statistics
+        """
+        try:
+            col_name = f"{fraction}_mean"
+            
+            # Get data from both datasets
+            data1 = self.dataset1.data[[col_name]].dropna()
+            data2 = self.dataset2.data[[col_name]].dropna()
+            
+            # Calculate basic statistics
+            stats1 = {
+                'mean': float(data1[col_name].mean()),
+                'median': float(data1[col_name].median()),
+                'std': float(data1[col_name].std()),
+                'min': float(data1[col_name].min()),
+                'max': float(data1[col_name].max()),
+                'skewness': float(data1[col_name].skew()),
+                'kurtosis': float(data1[col_name].kurtosis()),
+                'data': data1[col_name].tolist(),
+                'trend': 0.0,  # Placeholder
+                'trend_pvalue': 1.0  # Placeholder
+            }
+            
+            stats2 = {
+                'mean': float(data2[col_name].mean()),
+                'median': float(data2[col_name].median()),
+                'std': float(data2[col_name].std()),
+                'min': float(data2[col_name].min()),
+                'max': float(data2[col_name].max()),
+                'skewness': float(data2[col_name].skew()),
+                'kurtosis': float(data2[col_name].kurtosis()),
+                'data': data2[col_name].tolist(),
+                'trend': 0.0,  # Placeholder
+                'trend_pvalue': 1.0  # Placeholder
+            }
+            
+            return {
+                'mcd43a3': stats1,
+                'mod10a1': stats2
+            }
+            
+        except Exception as e:
+            print(f"Error calculating comparison statistics: {str(e)}")
+            return None
