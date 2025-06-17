@@ -380,18 +380,37 @@ def server(input, output, session):
         """Render the main visualization based on plot type"""
         try:
             df = processed_data()
-            plot_type = input.plot_type()
-            fraction = input.fraction_class()
             dataset_type = input.dataset_type()
+            
+            # Handle plot_type safely
+            try:
+                plot_type = input.plot_type()
+            except:
+                plot_type = "line"  # Default fallback
+            
+            # Handle fraction_class safely
+            try:
+                fraction = input.fraction_class()
+            except:
+                fraction = "pure_ice"  # Default fallback
+            
+            print(f"Creating plot: dataset={dataset_type}, plot_type={plot_type}, fraction={fraction}")
             
             if df.empty:
                 return ui.p("No data available for visualization")
             
             # Create different plot types
             if dataset_type == 'MOD10A1_Elevation':
-                # Get elevation-specific inputs
-                elevation_zone = input.elevation_zone() if hasattr(input, 'elevation_zone') else "all"
-                elevation_fraction = input.elevation_fraction() if hasattr(input, 'elevation_fraction') else "pure_ice"
+                # Get elevation-specific inputs safely
+                try:
+                    elevation_zone = input.elevation_zone()
+                except:
+                    elevation_zone = "all"
+                
+                try:
+                    elevation_fraction = input.elevation_fraction()
+                except:
+                    elevation_fraction = "pure_ice"
                 
                 # Elevation-specific plots
                 if plot_type == "elevation_comparison":
@@ -420,6 +439,8 @@ def server(input, output, session):
             
         except Exception as e:
             print(f"Error in main_plot: {e}")
+            import traceback
+            traceback.print_exc()
             return ui.p(f"Error creating plot: {str(e)}")
 
 def create_line_plot(df, fraction, dataset_type):
@@ -549,12 +570,19 @@ def create_elevation_line_plot(df, elevation_zone="all", elevation_fraction="pur
         if plot_data.empty:
             return None
         
+        # Determine color column
+        color_col = None
+        if elevation_zone == "all" and 'elevation_zone' in plot_data.columns:
+            color_col = 'elevation_zone'
+        elif 'fraction_class' in plot_data.columns:
+            color_col = 'fraction_class'
+        
         # Create the plot
         fig = px.line(
             plot_data,
             x='date',
             y='albedo_mean',
-            color='elevation_zone' if elevation_zone == "all" else 'fraction_class',
+            color=color_col,
             title=f"Elevation Analysis - Albedo Trends by {elevation_zone.replace('_', ' ').title() if elevation_zone != 'all' else 'All Zones'}",
             labels={
                 'date': 'Date',
@@ -573,6 +601,8 @@ def create_elevation_line_plot(df, elevation_zone="all", elevation_fraction="pur
         
     except Exception as e:
         print(f"Error in create_elevation_line_plot: {e}")
+        import traceback
+        traceback.print_exc()
         return None
 
 def create_elevation_comparison_plot(df, elevation_fraction="pure_ice"):
@@ -749,11 +779,18 @@ def create_elevation_scatter_plot(df, elevation_zone="all", elevation_fraction="
         if plot_data.empty:
             return None
         
+        # Determine color column
+        color_col = None
+        if elevation_zone == "all" and 'elevation_zone' in plot_data.columns:
+            color_col = 'elevation_zone'
+        elif 'fraction_class' in plot_data.columns:
+            color_col = 'fraction_class'
+        
         fig = px.scatter(
             plot_data,
             x='date',
             y='albedo_mean',
-            color='elevation_zone' if elevation_zone == "all" else 'fraction_class',
+            color=color_col,
             title=f"Elevation Scatter Plot - Daily Observations",
             labels={
                 'date': 'Date',
@@ -771,6 +808,8 @@ def create_elevation_scatter_plot(df, elevation_zone="all", elevation_fraction="
         
     except Exception as e:
         print(f"Error in create_elevation_scatter_plot: {e}")
+        import traceback
+        traceback.print_exc()
         return None
 
     @render.table
