@@ -25,11 +25,10 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-# Ajouter le répertoire src au path
+# Ajouter le répertoire du projet au path
 script_dir = Path(__file__).parent.absolute()
 project_dir = script_dir.parent
-src_dir = project_dir / 'src'
-sys.path.insert(0, str(src_dir))
+sys.path.insert(0, str(project_dir))
 
 # Changer vers le répertoire du projet pour que les chemins relatifs fonctionnent
 os.chdir(project_dir)
@@ -39,9 +38,9 @@ print(f"📁 Répertoire du projet: {project_dir}")
 
 # Import de la configuration et des fonctions d'analyse
 try:
-    from saskatchewan_albedo.config import print_config_summary
-    from saskatchewan_albedo.scripts.analysis_functions import (check_config, run_complete_analysis, run_trends_only, 
-                                                               run_visualizations_only, run_pixels_only, run_daily_only)
+    from config import print_config_summary
+    from scripts.analysis_functions import (check_config, run_complete_analysis, run_trends_only, 
+                                           run_visualizations_only, run_pixels_only, run_daily_only)
     print("✅ Modules importés avec succès")
 except ImportError as e:
     print(f"❌ Erreur d'import: {e}")
@@ -206,7 +205,7 @@ def get_comparison_analysis_choice():
 
 def _get_fraction_choice():
     """Permet à l'utilisateur de choisir la fraction à analyser"""
-    from saskatchewan_albedo.config import FRACTION_CLASSES, CLASS_LABELS
+    from config import FRACTION_CLASSES, CLASS_LABELS
     
     print("\n" + "="*50)
     print("🔍 CHOIX DE LA FRACTION À ANALYSER")
@@ -248,7 +247,7 @@ def main():
     
     # Importer les nouvelles fonctions
     try:
-        from saskatchewan_albedo.scripts.analysis_functions import (
+        from scripts.analysis_functions import (
             run_dataset_analysis, run_comparison_analysis, run_correlation_analysis,
             run_custom_analysis, run_comparative_visualizations, run_export_all,
             check_datasets_availability
@@ -256,7 +255,7 @@ def main():
     except ImportError as e:
         print(f"❌ Erreur d'import des nouvelles fonctions: {e}")
         print("📝 Utilisation du mode de compatibilité...")
-        from saskatchewan_albedo.scripts.analysis_functions import (
+        from scripts.analysis_functions import (
             run_complete_analysis, run_trends_only, run_visualizations_only,
             run_pixels_only, run_daily_only
         )
@@ -296,7 +295,7 @@ def main():
 
 def _handle_dataset_menu(dataset_name):
     """Gère le sous-menu pour un dataset spécifique"""
-    from saskatchewan_albedo.scripts.analysis_functions import (
+    from scripts.analysis_functions import (
         run_dataset_analysis, run_custom_analysis
     )
     
@@ -337,7 +336,7 @@ def _handle_dataset_menu(dataset_name):
             elif choice == 6 and dataset_name == 'MOD10A1':
                 # Comparaison entre fractions MOD10A1 (option spéciale)
                 print(f"\n🔍 Comparaison entre fractions MOD10A1...")
-                from saskatchewan_albedo.scripts.analysis_functions import run_mod10a1_fraction_comparison
+                from scripts.analysis_functions import run_mod10a1_fraction_comparison
                 run_mod10a1_fraction_comparison()
                 
         except Exception as e:
@@ -355,7 +354,7 @@ def _handle_dataset_menu(dataset_name):
 
 def _handle_comparison_menu():
     """Gère le sous-menu pour la comparaison"""
-    from saskatchewan_albedo.scripts.analysis_functions import (
+    from scripts.analysis_functions import (
         run_comparison_analysis, run_correlation_analysis, run_comparative_visualizations
     )
     
@@ -387,7 +386,7 @@ def _handle_comparison_menu():
                 print("\n📅 Graphiques quotidiens par saison de fonte...")
                 # Demander la fraction à analyser
                 fraction_choice = _get_fraction_choice()
-                from saskatchewan_albedo.scripts.analysis_functions import run_daily_melt_season_comparison
+                from scripts.analysis_functions import run_daily_melt_season_comparison
                 run_daily_melt_season_comparison(fraction_choice)
                 
         except Exception as e:
@@ -407,7 +406,7 @@ def _run_legacy_mode():
     """Mode de compatibilité avec l'ancien menu"""
     print("\n⚠️ Mode de compatibilité activé - Menu simplifié")
     
-    from saskatchewan_albedo.scripts.analysis_functions import (
+    from scripts.analysis_functions import (
         run_complete_analysis, run_trends_only, run_visualizations_only,
         run_pixels_only, run_daily_only
     )

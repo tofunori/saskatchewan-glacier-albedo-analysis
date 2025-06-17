@@ -18,8 +18,7 @@ setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/tofunori/saskatchewan-glacier-albedo-analysis",
-    package_dir={"": "src"},
-    packages=find_packages(where="src"),
+    packages=find_packages(),
     classifiers=[
         "Development Status :: 4 - Beta",
         "Intended Audience :: Science/Research",
@@ -61,11 +60,11 @@ setup(
     },
     entry_points={
         "console_scripts": [
-            "saskatchewan-albedo=saskatchewan_albedo.cli:main",
+            "saskatchewan-albedo=scripts.main:main",
         ],
     },
     include_package_data=True,
     package_data={
-        "saskatchewan_albedo": ["data/*.json", "config/*.yaml"],
+        "": ["data/*.json", "config/*.yaml"],
     },
 )

@@ -20,7 +20,12 @@
       "Bash(sed:*)",
       "WebFetch(domain:developers.google.com)",
       "WebFetch(domain:nsidc.org)",
-      "Bash(git pull:*)"
+      "Bash(git pull:*)",
+      "Bash(md5sum:*)",
+      "Bash(true)",
+      "Bash(git restore:*)",
+      "Bash(git ls-tree:*)",
+      "Bash(timeout:*)"
     ],
     "deny": []
   }
