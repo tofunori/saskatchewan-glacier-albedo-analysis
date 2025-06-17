@@ -344,33 +344,28 @@ var updateVisualization = function() {
   // Créer la grille de pixels MODIS avec contours plus visibles
   var modisGrid;
   if (useNativeRes) {
-    // Créer une grille claire des pixels MODIS 500m
-    var pixelCenters = example_albedo.select(0)
-      .reproject(nativeProjection)
-      .reduceResolution({
-        reducer: ee.Reducer.mean(),
-        maxPixels: 1
-      })
+    // Méthode simplifiée pour créer les contours de pixels MODIS
+    var pixelBoundaries = example_albedo.select(0)
       .reproject({
         crs: nativeProjection,
         scale: 500
-      });
-    
-    // Créer les contours des pixels
-    modisGrid = pixelCenters.mask()
+      })
+      .mask()
       .reduceToVectors({
         geometry: glacier_geometry,
         scale: 500,
         maxPixels: 1e6,
         bestEffort: true
-      })
-      .style({
-        color: '000000',
-        width: 2,
-        fillColor: '00000000'  // Transparent fill
       });
+    
+    // Styler les contours pour qu'ils soient visibles
+    modisGrid = pixelBoundaries.style({
+      color: '000000',
+      width: 2,
+      fillColor: '00000000'  // Fond transparent
+    });
   } else {
-    // Grille standard pour mode normal
+    // Grille standard pour mode normal (contours de pixels fins)
     modisGrid = example_albedo.select(0).zeroCrossing()
       .updateMask(glacier_mask);
   }
@@ -378,20 +373,11 @@ var updateVisualization = function() {
   // Fonction pour appliquer la visualisation native MODIS
   var processImageForDisplay = function(image) {
     if (useNativeRes) {
-      // Créer une version "pixelisée" qui force l'affichage par blocs
-      var pixelized = image
-        .reproject(nativeProjection)
-        // Réduire puis ré-expandre pour créer des blocs visibles
-        .reduceResolution({
-          reducer: ee.Reducer.mean(),
-          maxPixels: 1
-        })
-        .reproject({
-          crs: nativeProjection,
-          scale: 500  // Forcer la résolution 500m
-        });
-      
-      return pixelized;
+      // Approche simple : forcer la reprojection exacte à 500m
+      return image.reproject({
+        crs: nativeProjection,
+        scale: 500
+      });
     }
     return image;
   };
@@ -493,10 +479,11 @@ var projectionButton = ui.Button({
       gridCheckbox.setValue(true); // Activer la grille pour voir les pixels
       print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       print('🔬 MODE NATIF MODIS ACTIVÉ');
-      print('• Données affichées en résolution native 500m');
-      print('• Grille des pixels MODIS activée automatiquement');
-      print('• Zoom recommandé: 13-15 pour voir les pixels individuels');
-      print('• Cliquez sur "Mettre à jour la carte" pour appliquer les changements');
+      print('• Reprojection forcée en résolution native 500m exacte');
+      print('• Grille vectorielle des pixels MODIS activée');
+      print('• Zoom recommandé: 13+ pour mieux voir la structure spatiale');
+      print('• Les pixels peuvent paraître plus angulaires/moins lissés');
+      print('• Cliquez sur "Mettre à jour la carte" pour appliquer');
       print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     } else {
       projectionButton.setLabel('Activer mode natif MODIS');
