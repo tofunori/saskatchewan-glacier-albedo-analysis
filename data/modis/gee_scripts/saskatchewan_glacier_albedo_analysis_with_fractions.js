@@ -341,19 +341,57 @@ var updateVisualization = function() {
   var useNativeRes = nativeResCheckbox.getValue();
   var nativeProjection = example_image.projection();
   
-  // Créer la grille de pixels MODIS
-  var modisGrid = example_albedo.select(0).zeroCrossing()
-    .updateMask(glacier_mask);
-  
+  // Créer la grille de pixels MODIS avec contours plus visibles
+  var modisGrid;
   if (useNativeRes) {
-    // Reprojeter en résolution native pour préserver les pixels MODIS
-    modisGrid = modisGrid.reproject(nativeProjection);
+    // Créer une grille claire des pixels MODIS 500m
+    var pixelCenters = example_albedo.select(0)
+      .reproject(nativeProjection)
+      .reduceResolution({
+        reducer: ee.Reducer.mean(),
+        maxPixels: 1
+      })
+      .reproject({
+        crs: nativeProjection,
+        scale: 500
+      });
+    
+    // Créer les contours des pixels
+    modisGrid = pixelCenters.mask()
+      .reduceToVectors({
+        geometry: glacier_geometry,
+        scale: 500,
+        maxPixels: 1e6,
+        bestEffort: true
+      })
+      .style({
+        color: '000000',
+        width: 2,
+        fillColor: '00000000'  // Transparent fill
+      });
+  } else {
+    // Grille standard pour mode normal
+    modisGrid = example_albedo.select(0).zeroCrossing()
+      .updateMask(glacier_mask);
   }
   
-  // Fonction pour appliquer la reprojection si nécessaire
+  // Fonction pour appliquer la visualisation native MODIS
   var processImageForDisplay = function(image) {
     if (useNativeRes) {
-      return image.reproject(nativeProjection);
+      // Créer une version "pixelisée" qui force l'affichage par blocs
+      var pixelized = image
+        .reproject(nativeProjection)
+        // Réduire puis ré-expandre pour créer des blocs visibles
+        .reduceResolution({
+          reducer: ee.Reducer.mean(),
+          maxPixels: 1
+        })
+        .reproject({
+          crs: nativeProjection,
+          scale: 500  // Forcer la résolution 500m
+        });
+      
+      return pixelized;
     }
     return image;
   };
@@ -399,8 +437,9 @@ var updateVisualization = function() {
     {
       name: '7. Grille pixels MODIS - ' + dateString,
       image: modisGrid,
-      vis: {palette: ['000000'], opacity: 0.6},
-      defaultVisible: gridCheckbox.getValue()
+      vis: useNativeRes ? {} : {palette: ['000000'], opacity: 0.6},
+      defaultVisible: gridCheckbox.getValue(),
+      isVector: useNativeRes
     }
   ];
   
@@ -419,7 +458,13 @@ var updateVisualization = function() {
     });
     
     // Ajouter la couche avec l'état de visibilité préservé
-    Map.addLayer(layerDef.image, layerDef.vis, layerDef.name, wasVisible);
+    if (layerDef.isVector) {
+      // Pour les couches vectorielles (contours de pixels)
+      Map.addLayer(layerDef.image, layerDef.vis, layerDef.name, wasVisible);
+    } else {
+      // Pour les couches raster normales
+      Map.addLayer(layerDef.image, layerDef.vis, layerDef.name, wasVisible);
+    }
   });
 };
 
@@ -445,12 +490,19 @@ var projectionButton = ui.Button({
     if (isModisProjection) {
       projectionButton.setLabel('Désactiver mode natif MODIS');
       nativeResCheckbox.setValue(true); // Forcer résolution native
-      print('Mode natif MODIS activé - Les données sont affichées dans leur projection d\'origine');
-      print('Zoom recommandé: 13-15 pour voir les pixels individuels');
+      gridCheckbox.setValue(true); // Activer la grille pour voir les pixels
+      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      print('🔬 MODE NATIF MODIS ACTIVÉ');
+      print('• Données affichées en résolution native 500m');
+      print('• Grille des pixels MODIS activée automatiquement');
+      print('• Zoom recommandé: 13-15 pour voir les pixels individuels');
+      print('• Cliquez sur "Mettre à jour la carte" pour appliquer les changements');
+      print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     } else {
       projectionButton.setLabel('Activer mode natif MODIS');
       nativeResCheckbox.setValue(false);
-      print('Mode natif MODIS désactivé - Affichage en Web Mercator standard');
+      gridCheckbox.setValue(false);
+      print('📍 Mode natif MODIS désactivé - Retour à l\'affichage Web Mercator standard');
     }
     
     // Mettre à jour la visualisation
