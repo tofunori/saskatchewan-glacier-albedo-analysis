@@ -13,6 +13,7 @@ from plotly.subplots import make_subplots
 import numpy as np
 from pathlib import Path
 import sys
+from scipy import stats
 
 # Add project root to path
 project_root = Path(__file__).parent.parent
@@ -143,19 +144,28 @@ with main_container:
     if st.session_state.elevation_data_loaded and hasattr(st.session_state, 'elevation_data'):
         data = st.session_state.elevation_data
         
-        # Initialize analyzer
-        analyzer = ElevationAnalyzer(data)
+        # Initialize analyzer with CSV path instead of DataFrame
+        from config import ELEVATION_CONFIG
+        analyzer = ElevationAnalyzer(ELEVATION_CONFIG['csv_path'])
+        
+        # Load data into analyzer
+        try:
+            analyzer.load_data()
+            st.success("✅ Elevation analyzer loaded successfully!")
+        except Exception as e:
+            st.error(f"❌ Error loading elevation analyzer: {str(e)}")
+            st.stop()
         
         # Data overview
         st.header("📊 Data Overview")
         
         col1, col2, col3, col4 = st.columns(4)
         with col1:
-            st.metric("Total Records", f"{len(data):,}")
+            st.metric("Total Records", f"{len(analyzer.data):,}")
         with col2:
-            st.metric("Elevation Bands", len(bands))
+            st.metric("Elevation Zones", len(analyzer.elevation_zones))
         with col3:
-            st.metric("Date Range", f"{data['date'].min().date()} to {data['date'].max().date()}")
+            st.metric("Date Range", f"{analyzer.data['date'].min().date()} to {analyzer.data['date'].max().date()}")
         with col4:
             st.metric("Selected Fraction", CLASS_LABELS[selected_fraction])
         
@@ -163,22 +173,21 @@ with main_container:
         if analysis_type == 'Time Series':
             st.header("📈 Elevation Time Series Analysis")
             
-            # Aggregate data based on selection
-            if aggregation == 'Daily':
-                plot_data = data
-                date_col = 'date'
-            elif aggregation == 'Weekly':
-                data['week'] = data['date'].dt.to_period('W')
-                plot_data = data.groupby(['week'] + [f'band_{b}' for b in bands]).mean().reset_index()
+            # Use analyzer's data for plotting
+            plot_data = analyzer.data.copy()
+            date_col = 'date'
+            
+            # Apply temporal aggregation if needed
+            if aggregation == 'Weekly':
+                plot_data['week'] = plot_data['date'].dt.to_period('W')
+                plot_data = plot_data.groupby('week').mean().reset_index()
                 plot_data['date'] = plot_data['week'].dt.to_timestamp()
-                date_col = 'date'
             elif aggregation == 'Monthly':
-                data['month'] = data['date'].dt.to_period('M')
-                plot_data = data.groupby(['month'] + [f'band_{b}' for b in bands]).mean().reset_index()
+                plot_data['month'] = plot_data['date'].dt.to_period('M')
+                plot_data = plot_data.groupby('month').mean().reset_index()
                 plot_data['date'] = plot_data['month'].dt.to_timestamp()
-                date_col = 'date'
-            else:  # Annual
-                plot_data = data.groupby(['year'] + [f'band_{b}' for b in bands]).mean().reset_index()
+            elif aggregation == 'Annual':
+                plot_data = plot_data.groupby('year').mean().reset_index()
                 date_col = 'year'
             
             # Create time series plot
@@ -187,28 +196,33 @@ with main_container:
             for zone in selected_zones:
                 zone_col = f"{selected_fraction}_{zone}_mean"
                 if zone_col in plot_data.columns:
-                    y_data = plot_data[zone_col]
+                    y_data = plot_data[zone_col].dropna()
+                    x_data = plot_data.loc[y_data.index, date_col]
                     
-                    if normalize_albedo:
-                        y_data = (y_data - y_data.min()) / (y_data.max() - y_data.min())
+                    if normalize_albedo and len(y_data) > 0:
+                        y_min, y_max = y_data.min(), y_data.max()
+                        if y_max > y_min:
+                            y_data = (y_data - y_min) / (y_max - y_min)
                     
                     # Add main trace
                     fig.add_trace(go.Scatter(
-                        x=plot_data[date_col],
+                        x=x_data,
                         y=y_data,
-                        mode='lines',
+                        mode='lines+markers',
                         name=zone.replace('_', ' ').title(),
-                        line=dict(width=2)
+                        line=dict(width=2),
+                        marker=dict(size=4)
                     ))
                     
                     # Add uncertainty band if requested
-                    if show_uncertainty and f"{selected_fraction}_{zone}_std" in plot_data.columns:
-                        std_col = f"{selected_fraction}_{zone}_std"
-                        upper = y_data + plot_data[std_col]
-                        lower = y_data - plot_data[std_col]
+                    if show_uncertainty and f"{selected_fraction}_{zone}_stddev" in plot_data.columns:
+                        std_col = f"{selected_fraction}_{zone}_stddev"
+                        std_data = plot_data.loc[y_data.index, std_col].fillna(0)
+                        upper = y_data + std_data
+                        lower = y_data - std_data
                         
                         fig.add_trace(go.Scatter(
-                            x=plot_data[date_col],
+                            x=x_data,
                             y=upper,
                             mode='lines',
                             line=dict(width=0),
@@ -217,14 +231,15 @@ with main_container:
                         ))
                         
                         fig.add_trace(go.Scatter(
-                            x=plot_data[date_col],
+                            x=x_data,
                             y=lower,
                             mode='lines',
                             line=dict(width=0),
                             fill='tonexty',
                             fillcolor='rgba(128,128,128,0.2)',
                             showlegend=False,
-                            hoverinfo='skip'
+                            hoverinfo='skip',
+                            name=f'{zone} ±σ'
                         ))
             
             fig.update_layout(
@@ -245,36 +260,39 @@ with main_container:
             gradient_data = []
             for zone in elevation_zones:
                 zone_col = f"{selected_fraction}_{zone}_mean"
-                if zone_col in data.columns:
-                    mean_albedo = data[zone_col].mean()
-                    std_albedo = data[zone_col].std()
-                    gradient_data.append({
-                        'Elevation Zone': zone.replace('_', ' ').title(),
-                        'Zone Code': zone,
-                        'Mean Albedo': mean_albedo,
-                        'Std Dev': std_albedo
-                    })
+                if zone_col in analyzer.data.columns:
+                    zone_data = analyzer.data[zone_col].dropna()
+                    if len(zone_data) > 0:
+                        mean_albedo = zone_data.mean()
+                        std_albedo = zone_data.std()
+                        gradient_data.append({
+                            'Elevation Zone': zone.replace('_', ' ').title(),
+                            'Zone Code': zone,
+                            'Mean Albedo': mean_albedo,
+                            'Std Dev': std_albedo,
+                            'Data Points': len(zone_data)
+                        })
             
             if gradient_data:
                 gradient_df = pd.DataFrame(gradient_data)
                 
                 fig_gradient = go.Figure()
-                fig_gradient.add_trace(go.Scatter(
-                    x=gradient_df['Mean Elevation (m)'],
+                fig_gradient.add_trace(go.Bar(
+                    x=gradient_df['Elevation Zone'],
                     y=gradient_df['Mean Albedo'],
-                    mode='lines+markers',
                     error_y=dict(
                         type='data',
                         array=gradient_df['Std Dev'],
                         visible=show_uncertainty
                     ),
-                    marker=dict(size=10),
-                    line=dict(width=2)
+                    marker=dict(color=['red', 'orange', 'green']),
+                    text=[f"{val:.3f}" for val in gradient_df['Mean Albedo']],
+                    textposition='auto'
                 ))
                 
                 fig_gradient.update_layout(
-                    title="Mean Albedo vs Elevation",
-                    xaxis_title="Elevation (m)",
+                    title="Mean Albedo by Elevation Zone",
+                    xaxis_title="Elevation Zone",
                     yaxis_title="Mean Albedo",
                     height=400,
                     template="plotly_white"
@@ -285,87 +303,84 @@ with main_container:
         elif analysis_type == 'Seasonal':
             st.header("🌡️ Seasonal Patterns by Elevation")
             
-            # Calculate monthly means by elevation
-            data['month'] = data['date'].dt.month
+            # Calculate monthly patterns for each elevation zone
+            fig_seasonal = go.Figure()
             
-            # Create subplot for each elevation band
-            n_bands = len(selected_bands)
-            fig = make_subplots(
-                rows=(n_bands + 1) // 2,
-                cols=2,
-                subplot_titles=[ELEVATION_CONFIG['bands'][b]['name'] for b in selected_bands],
-                vertical_spacing=0.1
-            )
-            
-            for idx, band in enumerate(selected_bands):
-                row = idx // 2 + 1
-                col = idx % 2 + 1
-                
-                band_col = f"{selected_fraction}_band_{band}_mean"
-                if band_col in data.columns:
-                    monthly_data = data.groupby('month')[band_col].agg(['mean', 'std']).reset_index()
+            for zone in selected_zones:
+                zone_col = f"{selected_fraction}_{zone}_mean"
+                if zone_col in analyzer.data.columns:
+                    # Group by month and calculate statistics
+                    monthly_data = analyzer.data[['date', zone_col]].dropna()
+                    monthly_data['month'] = monthly_data['date'].dt.month
+                    monthly_stats = monthly_data.groupby('month')[zone_col].agg(['mean', 'std']).reset_index()
                     
-                    fig.add_trace(
-                        go.Scatter(
-                            x=monthly_data['month'],
-                            y=monthly_data['mean'],
-                            mode='lines+markers',
-                            name=ELEVATION_CONFIG['bands'][band]['name'],
-                            error_y=dict(
-                                type='data',
-                                array=monthly_data['std'],
-                                visible=show_uncertainty
-                            ),
-                            showlegend=False
+                    fig_seasonal.add_trace(go.Scatter(
+                        x=monthly_stats['month'],
+                        y=monthly_stats['mean'],
+                        mode='lines+markers',
+                        name=zone.replace('_', ' ').title(),
+                        error_y=dict(
+                            type='data',
+                            array=monthly_stats['std'],
+                            visible=show_uncertainty
                         ),
-                        row=row, col=col
-                    )
-                    
-                    fig.update_xaxes(
-                        tickmode='array',
-                        tickvals=list(range(1, 13)),
-                        ticktext=['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'],
-                        row=row, col=col
-                    )
+                        marker=dict(size=8),
+                        line=dict(width=2)
+                    ))
             
-            fig.update_layout(
-                height=400 * ((n_bands + 1) // 2),
-                title=f"Seasonal Patterns by Elevation - {CLASS_LABELS[selected_fraction]}",
+            fig_seasonal.update_layout(
+                title=f"Seasonal Patterns by Elevation Zone - {CLASS_LABELS[selected_fraction]}",
+                xaxis_title="Month",
+                yaxis_title="Average Albedo",
+                xaxis=dict(
+                    tickmode='array',
+                    tickvals=list(range(1, 13)),
+                    ticktext=['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
+                             'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+                ),
+                height=400,
                 template="plotly_white"
             )
             
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig_seasonal, use_container_width=True)
             
             # Seasonal amplitude analysis
             st.subheader("📊 Seasonal Amplitude by Elevation")
             
             amplitude_data = []
-            for band in bands:
-                band_col = f"{selected_fraction}_band_{band}_mean"
-                if band_col in data.columns:
-                    monthly_means = data.groupby('month')[band_col].mean()
-                    amplitude = monthly_means.max() - monthly_means.min()
-                    amplitude_data.append({
-                        'Elevation Band': ELEVATION_CONFIG['bands'][band]['name'],
-                        'Mean Elevation (m)': np.mean(ELEVATION_CONFIG['bands'][band]['range']),
-                        'Seasonal Amplitude': amplitude,
-                        'Summer Mean': monthly_means[6:9].mean(),  # Jun-Aug
-                        'Winter Mean': monthly_means[[12, 1, 2]].mean()  # Dec-Feb
-                    })
+            for zone in selected_zones:
+                zone_col = f"{selected_fraction}_{zone}_mean"
+                if zone_col in analyzer.data.columns:
+                    # Filter for melt season months (6-9)
+                    seasonal_data = analyzer.data[analyzer.data['month'].between(6, 9)]
+                    monthly_means = seasonal_data.groupby('month')[zone_col].mean()
+                    
+                    if len(monthly_means) > 1:
+                        amplitude = monthly_means.max() - monthly_means.min()
+                        summer_mean = monthly_means.mean()  # Overall mean for melt season
+                        
+                        amplitude_data.append({
+                            'Elevation Zone': zone.replace('_', ' ').title(),
+                            'Seasonal Amplitude': amplitude,
+                            'Summer Mean': summer_mean,
+                            'Data Points': len(seasonal_data[zone_col].dropna())
+                        })
             
             if amplitude_data:
                 amplitude_df = pd.DataFrame(amplitude_data)
                 
                 fig_amp = go.Figure()
                 fig_amp.add_trace(go.Bar(
-                    x=amplitude_df['Elevation Band'],
+                    x=amplitude_df['Elevation Zone'],
                     y=amplitude_df['Seasonal Amplitude'],
-                    marker_color='lightblue'
+                    marker_color='lightblue',
+                    text=[f"{val:.3f}" for val in amplitude_df['Seasonal Amplitude']],
+                    textposition='auto'
                 ))
                 
                 fig_amp.update_layout(
-                    title="Seasonal Amplitude vs Elevation",
-                    xaxis_title="Elevation Band",
+                    title="Seasonal Amplitude vs Elevation Zone",
+                    xaxis_title="Elevation Zone",
                     yaxis_title="Seasonal Amplitude",
                     height=400,
                     template="plotly_white"
@@ -379,68 +394,55 @@ with main_container:
         elif analysis_type == 'Trend Analysis':
             st.header("📈 Elevation-Dependent Trends")
             
-            # Calculate trends for each elevation band
-            trend_results = []
+            # Use the analyzer's trend calculation method
+            with st.spinner("Calculating trends for each elevation zone..."):
+                try:
+                    trend_results_dict = analyzer.calculate_trends()
+                    st.success("✅ Trends calculated successfully!")
+                except Exception as e:
+                    st.error(f"❌ Error calculating trends: {str(e)}")
+                    trend_results_dict = None
             
-            for band in bands:
-                band_col = f"{selected_fraction}_band_{band}_mean"
-                if band_col in data.columns:
-                    # Prepare data for trend analysis
-                    band_data = data[['date', band_col]].dropna()
-                    
-                    if len(band_data) > 10:
-                        # Simple linear regression for trend
-                        from scipy import stats
-                        
-                        # Convert date to numeric (days since start)
-                        x = (band_data['date'] - band_data['date'].min()).dt.days
-                        y = band_data[band_col]
-                        
-                        slope, intercept, r_value, p_value, std_err = stats.linregress(x, y)
-                        
-                        # Convert to per-year trend
-                        trend_per_year = slope * 365.25
-                        
+            if trend_results_dict:
+                # Convert to display format
+                trend_results = []
+                for zone in selected_zones:
+                    combination = f"{selected_fraction}_{zone}"
+                    if combination in trend_results_dict:
+                        result = trend_results_dict[combination]
                         trend_results.append({
-                            'Elevation Band': ELEVATION_CONFIG['bands'][band]['name'],
-                            'Mean Elevation (m)': np.mean(ELEVATION_CONFIG['bands'][band]['range']),
-                            'Trend (per year)': trend_per_year,
-                            'P-value': p_value,
-                            'R²': r_value**2,
-                            'Significant': '✅' if p_value < 0.05 else '❌'
+                            'Elevation Zone': zone.replace('_', ' ').title(),
+                            'Trend (per year)': result.slope_per_decade / 10.0,  # Convert from per decade to per year
+                            'P-value': result.p_value,
+                            'Tau': result.tau,
+                            'Significant': '✅' if result.p_value < 0.05 else '❌',
+                            'Trend Direction': result.trend
                         })
             
             if trend_results:
                 trend_df = pd.DataFrame(trend_results)
                 
-                # Plot trends vs elevation
+                # Plot trends by elevation zone
                 fig_trends = go.Figure()
                 
                 # Color based on significance
                 colors = ['green' if row['Significant'] == '✅' else 'gray' 
                          for _, row in trend_df.iterrows()]
                 
-                fig_trends.add_trace(go.Scatter(
-                    x=trend_df['Mean Elevation (m)'],
+                fig_trends.add_trace(go.Bar(
+                    x=trend_df['Elevation Zone'],
                     y=trend_df['Trend (per year)'],
-                    mode='lines+markers',
-                    marker=dict(
-                        size=12,
-                        color=colors,
-                        symbol=['circle' if row['Significant'] == '✅' else 'circle-open' 
-                               for _, row in trend_df.iterrows()]
-                    ),
-                    line=dict(width=2, color='blue'),
+                    marker=dict(color=colors),
                     text=[f"p={row['P-value']:.3f}" for _, row in trend_df.iterrows()],
-                    textposition="top center"
+                    textposition="outside"
                 ))
                 
                 # Add zero line
                 fig_trends.add_hline(y=0, line_dash="dash", line_color="red", opacity=0.5)
                 
                 fig_trends.update_layout(
-                    title=f"Albedo Trends by Elevation - {CLASS_LABELS[selected_fraction]}",
-                    xaxis_title="Elevation (m)",
+                    title=f"Albedo Trends by Elevation Zone - {CLASS_LABELS[selected_fraction]}",
+                    xaxis_title="Elevation Zone",
                     yaxis_title="Trend (per year)",
                     height=500,
                     template="plotly_white"
@@ -453,7 +455,7 @@ with main_container:
                 display_df = trend_df.copy()
                 display_df['Trend (per year)'] = display_df['Trend (per year)'].apply(lambda x: f"{x:.5f}")
                 display_df['P-value'] = display_df['P-value'].apply(lambda x: f"{x:.4f}")
-                display_df['R²'] = display_df['R²'].apply(lambda x: f"{x:.3f}")
+                display_df['Tau'] = display_df['Tau'].apply(lambda x: f"{x:.3f}")
                 
                 st.dataframe(display_df, use_container_width=True, hide_index=True)
                 
@@ -466,11 +468,8 @@ with main_container:
                     sig_count = (trend_df['Significant'] == '✅').sum()
                     st.metric("Significant Trends", f"{sig_count}/{len(trend_df)}")
                 with col3:
-                    if len(trend_df) > 1:
-                        # Check if trend changes with elevation
-                        elev_trend_corr = np.corrcoef(trend_df['Mean Elevation (m)'], 
-                                                     trend_df['Trend (per year)'])[0, 1]
-                        st.metric("Elevation-Trend Correlation", f"{elev_trend_corr:.3f}")
+                    avg_tau = trend_df['Tau'].mean()
+                    st.metric("Average Tau", f"{avg_tau:.3f}")
         
         elif analysis_type == 'Transient Snowline':
             st.header("🏔️ Transient Snowline Analysis")
@@ -491,39 +490,52 @@ with main_container:
                 help="Albedo value used to define the snow/ice transition"
             )
             
-            # Calculate TSL for each date
+            # Calculate TSL for each date using available elevation zones
             tsl_data = []
             
-            for date in data['date'].unique():
-                date_data = data[data['date'] == date]
+            # Define approximate elevations for zones (based on glacier context)
+            zone_elevations = {
+                'below_median': 2527,  # Below median elevation
+                'at_median': 2727,     # At median elevation
+                'above_median': 2927   # Above median elevation
+            }
+            
+            for date in analyzer.data['date'].unique():
+                date_data = analyzer.data[analyzer.data['date'] == date]
                 
-                # Get albedo values for each elevation
+                if len(date_data) == 0:
+                    continue
+                
+                # Get albedo values for each elevation zone
                 elev_albedo = []
-                for band in bands:
-                    band_col = f"{selected_fraction}_band_{band}_mean"
-                    if band_col in date_data.columns:
-                        mean_elev = np.mean(ELEVATION_CONFIG['bands'][band]['range'])
-                        albedo_val = date_data[band_col].iloc[0] if len(date_data) > 0 else np.nan
+                for zone in selected_zones:
+                    zone_col = f"{selected_fraction}_{zone}_mean"
+                    if zone_col in date_data.columns:
+                        albedo_val = date_data[zone_col].iloc[0] if len(date_data) > 0 else np.nan
                         if not np.isnan(albedo_val):
-                            elev_albedo.append((mean_elev, albedo_val))
+                            elev_albedo.append((zone_elevations[zone], albedo_val))
                 
                 if len(elev_albedo) >= 2:
                     elev_albedo.sort(key=lambda x: x[0])  # Sort by elevation
                     elevations = [x[0] for x in elev_albedo]
                     albedos = [x[1] for x in elev_albedo]
                     
-                    # Find TSL by interpolation
-                    tsl_elev = np.interp(tsl_threshold, albedos[::-1], elevations[::-1])
-                    
-                    # Only include if TSL is within elevation range
-                    if elevations[0] <= tsl_elev <= elevations[-1]:
-                        tsl_data.append({
-                            'date': date,
-                            'tsl_elevation': tsl_elev,
-                            'year': date.year,
-                            'month': date.month,
-                            'doy': date.dayofyear
-                        })
+                    # Find TSL by interpolation (if albedo decreases with elevation)
+                    if albedos[0] != albedos[-1]:  # Avoid division by zero
+                        try:
+                            tsl_elev = np.interp(tsl_threshold, albedos[::-1], elevations[::-1])
+                            
+                            # Only include if TSL is within elevation range
+                            if elevations[0] <= tsl_elev <= elevations[-1]:
+                                tsl_data.append({
+                                    'date': date,
+                                    'tsl_elevation': tsl_elev,
+                                    'year': date.year,
+                                    'month': date.month,
+                                    'doy': date.dayofyear
+                                })
+                        except:
+                            continue  # Skip problematic interpolations
             
             if tsl_data:
                 tsl_df = pd.DataFrame(tsl_data)
