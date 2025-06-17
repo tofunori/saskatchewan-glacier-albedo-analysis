@@ -4,10 +4,14 @@ Interactive web dashboard for exploring MODIS albedo data from Saskatchewan Glac
 
 ## Features
 
-- **Interactive Time Series**: Visualize albedo trends over time
-- **Fraction Class Selection**: Compare different ice coverage fractions
-- **Summary Statistics**: View descriptive statistics for selected data
-- **Real-time Updates**: Charts update instantly when changing selections
+- **Multi-Dataset Support**: Switch between MCD43A3 (16-day composite) and MOD10A1 (daily) datasets
+- **Multiple Visualization Types**: 
+  - **Line Plots**: Traditional trend visualization
+  - **Scatter Plots**: Individual daily observations as points
+  - **Stacked Bar Charts**: Comparative analysis of all fraction classes
+- **Interactive Controls**: Dataset selection, plot type, fraction class, and time aggregation
+- **Enhanced Analytics**: Summary statistics adapted to visualization type
+- **Real-time Updates**: All charts update instantly when changing selections
 
 ## Quick Start
 
@@ -52,10 +56,19 @@ pip install shiny pandas plotly numpy
 
 ## Data
 
-The dashboard uses the MCD43A3 dataset from the main project:
+The dashboard supports two MODIS datasets:
+
+### MCD43A3 - General Albedo
 - **File**: `../data/csv/daily_albedo_mann_kendall_ready_2010_2024.csv`
-- **Period**: 2010-2024
-- **Source**: MODIS Combined albedo data (16-day composite)
+- **Resolution**: 16-day composite
+- **Description**: MODIS Combined albedo data
+- **Best for**: Long-term trend analysis
+
+### MOD10A1 - Snow Albedo  
+- **File**: `../data/csv/daily_snow_albedo_mann_kendall_mod10a1_2010_2024.csv`
+- **Resolution**: Daily observations
+- **Description**: Terra Snow Cover daily albedo
+- **Best for**: Daily evolution analysis, detailed temporal patterns
 
 ## Fraction Classes
 
