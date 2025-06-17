@@ -1,0 +1,14 @@
+# Requirements pour l'analyse de tendances d'albédo
+# Installation: pip install -r requirements_trend_analysis.txt
+
+pandas>=1.5.0
+numpy>=1.21.0
+matplotlib>=3.5.0
+seaborn>=0.11.0
+scipy>=1.9.0
+pymannkendall>=1.4.3
+openpyxl>=3.0.10
+scikit-learn>=1.1.0
+
+# Optionnel pour des graphiques plus avancés
+plotly>=5.0.0

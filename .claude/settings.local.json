@@ -1,0 +1,35 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(cp:*)",
+      "Bash(mv:*)",
+      "Bash(rm:*)",
+      "Bash(python:*)",
+      "Bash(grep:*)",
+      "Bash(find:*)",
+      "Bash(ls:*)",
+      "Bash(rg:*)",
+      "Bash(head:*)",
+      "Bash(awk:*)",
+      "Bash(wc:*)",
+      "Bash(tail:*)",
+      "Bash(sed:*)",
+      "WebFetch(domain:developers.google.com)",
+      "WebFetch(domain:nsidc.org)",
+      "Bash(git pull:*)",
+      "Bash(md5sum:*)",
+      "Bash(true)",
+      "Bash(git restore:*)",
+      "Bash(git ls-tree:*)",
+      "Bash(timeout:*)",
+      "Bash(pip install:*)",
+      "Bash(git checkout:*)",
+      "Bash(git merge:*)"
+    ],
+    "deny": []
+  }
+}
