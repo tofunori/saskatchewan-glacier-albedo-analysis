@@ -7,10 +7,10 @@
 // de couverture des pixels MODIS, permettant de distinguer les pixels "purs glacier"
 // des pixels mixtes en bordure.
 //
-// NOUVEAU : Options de projection et visualisation MODIS
-// • Basculement entre Web Mercator et projection sinusoïdale MODIS (SR-ORG:6974)
-// • Affichage optionnel de la grille des pixels MODIS
-// • Option pour conserver la résolution native MODIS (500m)
+// NOUVEAU : Options de visualisation MODIS native
+// • Mode natif MODIS pour afficher les données dans leur résolution d'origine
+// • Affichage optionnel de la grille des pixels MODIS (500m)
+// • Préservation de la structure spatiale originale des données MODIS
 
 // ┌────────────────────────────────────────────────────────────────────────────────────────┐
 // │ SECTION 1 : CONFIGURATION ET INITIALISATION                                            │
@@ -430,36 +430,31 @@ var updateButton = ui.Button({
   style: {width: '200px'}
 });
 
-// Créer les contrôles de projection
-var projectionLabel = ui.Label('Options de projection:', {fontWeight: 'bold'});
+// Créer les contrôles de visualisation MODIS
+var projectionLabel = ui.Label('Options visualisation MODIS:', {fontWeight: 'bold'});
 
 // Variable globale pour stocker l'état de la projection
 var isModisProjection = false;
 
-// Bouton de basculement de projection
+// Bouton pour forcer l'affichage en résolution native MODIS
 var projectionButton = ui.Button({
-  label: 'Basculer en projection MODIS',
+  label: 'Activer mode natif MODIS',
   onClick: function() {
     isModisProjection = !isModisProjection;
     
     if (isModisProjection) {
-      // Passer en projection sinusoïdale MODIS
-      Map.setOptions({
-        mapTypeId: 'ROADMAP',
-        projection: 'SR-ORG:6974'  // Projection sinusoïdale MODIS
-      });
-      projectionButton.setLabel('Basculer en Web Mercator');
+      projectionButton.setLabel('Désactiver mode natif MODIS');
+      nativeResCheckbox.setValue(true); // Forcer résolution native
+      print('Mode natif MODIS activé - Les données sont affichées dans leur projection d\'origine');
+      print('Zoom recommandé: 13-15 pour voir les pixels individuels');
     } else {
-      // Revenir en Web Mercator
-      Map.setOptions({
-        mapTypeId: 'ROADMAP',
-        projection: 'EPSG:3857'  // Web Mercator par défaut
-      });
-      projectionButton.setLabel('Basculer en projection MODIS');
+      projectionButton.setLabel('Activer mode natif MODIS');
+      nativeResCheckbox.setValue(false);
+      print('Mode natif MODIS désactivé - Affichage en Web Mercator standard');
     }
     
-    // Recentrer après changement de projection
-    Map.centerObject(glacier_geometry, 12);
+    // Mettre à jour la visualisation
+    updateVisualization();
   },
   style: {width: '200px', margin: '5px 0'}
 });
