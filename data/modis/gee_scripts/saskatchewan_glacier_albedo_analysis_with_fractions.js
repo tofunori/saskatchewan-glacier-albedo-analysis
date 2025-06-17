@@ -344,13 +344,19 @@ var updateVisualization = function() {
   // Créer la grille de pixels MODIS avec contours plus visibles
   var modisGrid;
   if (useNativeRes) {
-    // Méthode simplifiée pour créer les contours de pixels MODIS
-    var pixelBoundaries = example_albedo.select(0)
+    // Créer une grille basée sur les contours de pixels avec valeurs entières
+    var pixelMask = example_albedo.select(0)
+      .mask()
       .reproject({
         crs: nativeProjection,
         scale: 500
-      })
-      .mask()
+      });
+    
+    // Convertir en valeurs entières (0 ou 1) pour reduceToVectors
+    var integerMask = pixelMask.gt(0).toInt();
+    
+    // Créer les contours des pixels
+    var pixelBoundaries = integerMask
       .reduceToVectors({
         geometry: glacier_geometry,
         scale: 500,
