@@ -22,6 +22,7 @@ plotly>=5.0.0
 shiny>=1.0.0
 shinywidgets>=0.6.0
 ipywidgets>=8.0.0
+anywidget>=0.9.0
 
 # Optional: Data processing (install separately if needed)
 # modis-tools>=1.0.0

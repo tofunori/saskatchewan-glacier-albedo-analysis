@@ -503,7 +503,7 @@ def run_elevation_analysis(csv_path=None, output_dir="results/elevation_analysis
         ElevationAnalyzer: Instance configurée avec tous les résultats
     """
     if csv_path is None:
-        csv_path = "data/csv/daily_snow_albedo_fraction_elevation_williamson_method_2010_2024.csv"
+        csv_path = "data/csv/MOD10A1_daily_elevation_2010_2024.csv"
     
     print(f"\n{'='*60}")
     print(f"🏔️ ANALYSE FRACTION × ÉLÉVATION - WILLIAMSON & MENOUNOS (2021)")

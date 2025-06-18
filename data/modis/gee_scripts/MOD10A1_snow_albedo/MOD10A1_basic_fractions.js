@@ -475,7 +475,7 @@ Export.table.toDrive({
   collection: annual_snow_albedo_by_fraction,
   description: 'Saskatchewan_Snow_Albedo_By_Fraction_MOD10A1_2010_2024',
   folder: 'GEE_exports',
-  fileNamePrefix: 'snow_albedo_by_fraction_annual_mod10a1',
+  fileNamePrefix: 'MOD10A1_annual_fractions_2010_2024',
   fileFormat: 'CSV'
 });
 
@@ -484,7 +484,7 @@ Export.table.toDrive({
   collection: trend_analyses,
   description: 'Saskatchewan_Snow_Albedo_Trends_By_Fraction_MOD10A1',
   folder: 'GEE_exports',
-  fileNamePrefix: 'snow_albedo_trends_by_fraction_mod10a1',
+  fileNamePrefix: 'MOD10A1_trends_fractions_2010_2024',
   fileFormat: 'CSV'
 });
 
@@ -493,7 +493,7 @@ Export.image.toDrive({
   image: example_fraction,
   description: 'Saskatchewan_Fraction_Map_Snow_Albedo_MOD10A1',
   folder: 'GEE_exports',
-  fileNamePrefix: 'fraction_map_snow_albedo_2020_mod10a1',
+  fileNamePrefix: 'MOD10A1_maps_fractions_example',
   scale: 500,
   region: glacier_geometry,
   maxPixels: 1e9
@@ -649,7 +649,7 @@ Export.table.toDrive({
   collection: dailySnowAlbedoByFraction,
   description: 'Saskatchewan_Daily_Snow_Albedo_MannKendall_MOD10A1_2010_2024',
   folder: 'GEE_exports',
-  fileNamePrefix: 'daily_snow_albedo_mann_kendall_mod10a1_2010_2024',
+  fileNamePrefix: 'MOD10A1_daily_fractions_2010_2024',
   fileFormat: 'CSV'
 });
 
@@ -778,7 +778,7 @@ Export.table.toDrive({
   collection: globalSnowQualityDistribution,
   description: 'Saskatchewan_Snow_Quality_Distribution_MOD10A1_2010_2024',
   folder: 'GEE_exports',
-  fileNamePrefix: 'snow_quality_distribution_daily_mod10a1_2010_2024',
+  fileNamePrefix: 'MOD10A1_quality_daily_2010_2024',
   fileFormat: 'CSV'
 });
 

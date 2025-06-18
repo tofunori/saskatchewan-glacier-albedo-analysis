@@ -33,7 +33,8 @@
       "Bash(./venv/bin/python3 -m pip install:*)",
       "mcp__tavily-search__tavily-search",
       "Bash(./venv/bin/python3:*)",
-      "Bash(PYTHONPATH=\"/mnt/d/UQTR/Maitrîse/Code/saskatchewan-glacier-albedo-analysis\" python3 dashboard/test_dashboard.py)"
+      "Bash(PYTHONPATH=\"/mnt/d/UQTR/Maitrîse/Code/saskatchewan-glacier-albedo-analysis\" python3 dashboard/test_dashboard.py)",
+      "Bash(tree:*)"
     ],
     "deny": []
   }

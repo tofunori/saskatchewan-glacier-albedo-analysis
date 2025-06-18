@@ -623,11 +623,19 @@ def server(input, output, session):
                 
                 # Add confidence intervals if requested
                 if input.show_confidence():
+                    # Convert color name to rgba format
+                    if color.startswith('#'):
+                        rgb = px.colors.hex_to_rgb(color)
+                        fillcolor = f'rgba({rgb[0]}, {rgb[1]}, {rgb[2]}, 0.2)'
+                    else:
+                        # Use a simple fallback for named colors
+                        fillcolor = f'{color}' if 'rgba' in color else f'rgba(100, 100, 200, 0.2)'
+                    
                     fig.add_trace(go.Scatter(
                         x=list(monthly_avg.index) + list(monthly_avg.index[::-1]),
                         y=list(monthly_avg.values + monthly_std.values) + list((monthly_avg.values - monthly_std.values)[::-1]),
                         fill='toself',
-                        fillcolor=f'rgba{tuple(list(px.colors.hex_to_rgb(color)) + [0.2])}',
+                        fillcolor=fillcolor,
                         line=dict(color='rgba(255,255,255,0)'),
                         hoverinfo="skip",
                         showlegend=False,
