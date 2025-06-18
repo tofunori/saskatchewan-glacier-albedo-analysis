@@ -1,250 +1,198 @@
-# Saskatchewan Glacier Albedo Dashboard
+# Saskatchewan Glacier Albedo Analysis Dashboard
 
-Interactive web dashboard for exploring MODIS albedo data from Saskatchewan Glacier (2010-2024).
+## Overview
 
-## 🆕 Academic Dashboard Available
+Interactive web dashboard for exploring 15 years (2010-2024) of Saskatchewan Glacier albedo data from MODIS satellite observations. Built with Python Shiny and Plotly for comprehensive data analysis and visualization.
 
-We now offer **two dashboard versions**:
+## Features
 
-### 🔬 **Academic Dashboard** (RECOMMENDED)
-**New enhanced version with comprehensive statistical analysis**
+### 🏔️ Core Capabilities
+- **Dual Dataset Support**: MCD43A3 (general albedo) and MOD10A1 (snow albedo)
+- **Interactive Time Series**: Pan, zoom, and explore temporal patterns
+- **Statistical Analysis**: Mann-Kendall trend tests, seasonal decomposition
+- **Multi-Dataset Comparison**: Side-by-side analysis of different MODIS products
+- **Quality Assessment**: Data coverage and reliability metrics
 
-- **Advanced Statistical Analysis**: Mann-Kendall tests, Sen's slope, bootstrap confidence intervals
-- **Publication-Quality Visualizations**: Academic-grade plots with statistical annotations
-- **Comprehensive Results Export**: CSV, Excel, JSON, PDF reports
-- **Professional Analytics**: Autocorrelation analysis, seasonal trends, correlation matrices
-- **Academic Standards**: Publication-ready outputs and methodology documentation
+### 📊 Analysis Tools
+- **Trend Detection**: Statistical significance testing with multiple methods
+- **Seasonal Patterns**: Monthly and day-of-year analysis
+- **Fraction Classes**: 5 glacier coverage categories (0-25% to 90-100%)
+- **Real-time Filtering**: Date ranges, quality thresholds, fraction selection
+- **Export Capabilities**: Data and visualizations in multiple formats
 
-### 📊 **Basic Dashboard** 
-**Original simple visualization dashboard**
-
-- **Multi-Dataset Support**: Switch between MCD43A3 (16-day composite) and MOD10A1 (daily) datasets
-- **Multiple Visualization Types**: 
-  - **Line Plots**: Traditional trend visualization
-  - **Scatter Plots**: Individual daily observations as points
-  - **Stacked Bar Charts**: Comparative analysis of all fraction classes
-- **Interactive Controls**: Dataset selection, plot type, fraction class, and time aggregation
-- **Enhanced Analytics**: Summary statistics adapted to visualization type
-- **Real-time Updates**: All charts update instantly when changing selections
+### 🎯 Interactive Features
+- **Responsive Design**: Works on desktop, tablet, and mobile
+- **Real-time Updates**: Analysis updates as you change filters
+- **Hover Details**: Rich tooltips with contextual information
+- **Customizable Views**: Toggle trends, seasonal patterns, confidence intervals
 
 ## Quick Start
 
-### 🔬 Academic Dashboard (RECOMMENDED)
-
-**Windows:**
-```powershell
-cd dashboard
-python run_academic_dashboard.py
+### Requirements
+```bash
+# Install dependencies
+pip install -r requirements.txt
 ```
 
-**Linux/Mac:**
+Required packages:
+- shiny >= 1.0.0
+- plotly >= 5.0.0
+- pandas >= 1.5.0
+- numpy >= 1.21.0
+- pymannkendall >= 1.4.3
+
+### Launch Dashboard
+
+**Option 1: Python Script**
+```bash
+python dashboard/run_dashboard.py
+```
+
+**Option 2: Direct App Launch**
 ```bash
 cd dashboard
-python3 run_academic_dashboard.py
+python app.py
 ```
 
-**Direct Python:**
-```bash
-cd dashboard
-python -m shiny run app_enhanced.py --host 0.0.0.0 --port 8000
+**Option 3: Windows Batch File**
+```cmd
+dashboard\run_dashboard.bat
 ```
 
-### 📊 Basic Dashboard
+### Access Dashboard
+- Open browser to: http://127.0.0.1:8000
+- Dashboard loads automatically with default settings
+- Use sidebar controls to customize analysis
 
-**Windows Users**
+## Dashboard Structure
 
-**Option 1: Double-click the batch file**
-```
-run_dashboard.bat
-```
+### 📂 Files
+- `app.py` - Main Shiny application
+- `components.py` - UI component definitions
+- `plots.py` - Interactive plotting functions
+- `run_dashboard.py` - Launch script
+- `run_dashboard.bat` - Windows launcher
 
-**Option 2: PowerShell/Command Prompt**
-```powershell
-cd dashboard
-python run_dashboard.py
-```
+### 🎛️ User Interface
 
-**Option 3: Direct Python**
-```powershell
-cd dashboard
-python -m shiny run app.py
-```
+#### Sidebar Controls
+1. **Dataset Selection** - Choose MCD43A3, MOD10A1, or comparison mode
+2. **Data Filters** - Fraction classes, date ranges, quality thresholds
+3. **Analysis Options** - Variable selection, trend methods, display options
+4. **Advanced Filters** - Seasonal focus, pixel thresholds, quality classes
+5. **Export Panel** - Download data and visualizations
+6. **Info Panel** - Dataset documentation and metadata
 
-**Linux/Mac Users**
+#### Main Tabs
+1. **📈 Time Series** - Interactive temporal analysis with trend detection
+2. **📊 Statistical Analysis** - Comprehensive trend and seasonal statistics
+3. **🔄 Dataset Comparison** - Multi-dataset correlation and difference analysis
+4. **🏔️ Elevation Analysis** - Elevation-stratified albedo patterns
+5. **📋 Data Quality** - Coverage metrics and quality assessment
 
-```bash
-cd dashboard
-python3 run_dashboard.py
-```
+## Data Requirements
 
-## Requirements
+### Input Files (in `data/csv/`)
+- `daily_albedo_mann_kendall_ready_2010_2024.csv` (MCD43A3)
+- `daily_snow_albedo_mann_kendall_mod10a1_2010_2024.csv` (MOD10A1)
+- `global_quality_distribution_daily_2010_2024.csv` (MCD43A3 quality)
+- `snow_quality_distribution_daily_mod10a1_2010_2024.csv` (MOD10A1 quality)
 
-### Academic Dashboard Requirements
-The academic dashboard requires additional packages for statistical analysis:
-- `shiny >= 1.0.0`
-- `pandas >= 1.5.0`
-- `plotly >= 5.0.0`
-- `numpy >= 1.21.0`
-- `scipy >= 1.9.0` *(for statistical tests)*
-- `scikit-learn >= 1.1.0` *(for bootstrap analysis)*
+### Expected Columns
+- `date` - Date in YYYY-MM-DD format
+- `{fraction}_{variable}` - Albedo values (e.g., `pure_ice_mean`)
+- `month`, `year`, `day_of_year` - Temporal variables
+- Quality columns (dataset-specific)
 
-Install all dependencies:
-```bash
-pip install shiny pandas plotly numpy scipy scikit-learn
-```
+## Usage Examples
 
-### Basic Dashboard Requirements
-- `shiny >= 1.0.0`
-- `pandas >= 1.5.0`
-- `plotly >= 5.0.0`
-- `numpy >= 1.21.0`
+### Basic Analysis
+1. Select dataset (MCD43A3 or MOD10A1)
+2. Choose fraction classes of interest
+3. Set date range
+4. View time series and trends
 
-Install basic dependencies:
-```bash
-pip install shiny pandas plotly numpy
-```
+### Comparative Analysis
+1. Switch to "Compare Datasets" mode
+2. Select matching fraction classes
+3. Examine correlation and differences
+4. Download comparison results
 
-## Data
+### Seasonal Analysis
+1. Enable "Highlight Seasonal Patterns"
+2. Focus on specific seasons using advanced filters
+3. Examine monthly and day-of-year patterns
+4. Export seasonal statistics
 
-The dashboard supports two MODIS datasets:
+## Technical Details
 
-### MCD43A3 - General Albedo
-- **File**: `../data/csv/daily_albedo_mann_kendall_ready_2010_2024.csv`
-- **Resolution**: 16-day composite
-- **Description**: MODIS Combined albedo data
-- **Best for**: Long-term trend analysis
+### Architecture
+- **Framework**: Python Shiny for reactive web applications
+- **Visualization**: Plotly for interactive charts
+- **Analysis**: Integration with existing Saskatchewan glacier analysis modules
+- **Data Handling**: Pandas for efficient data manipulation
 
-### MOD10A1 - Snow Albedo  
-- **File**: `../data/csv/daily_snow_albedo_mann_kendall_mod10a1_2010_2024.csv`
-- **Resolution**: Daily observations
-- **Description**: Terra Snow Cover daily albedo
-- **Best for**: Daily evolution analysis, detailed temporal patterns
+### Performance
+- **Caching**: Reactive computations cache data for speed
+- **Filtering**: Client-side filtering for responsive interactions
+- **Plotting**: Efficient Plotly rendering with selective updates
 
-## Fraction Classes
-
-- **Pure Ice** (90-100%): Nearly pure ice coverage
-- **Mostly Ice** (75-90%): Predominantly ice with some mixed surfaces
-- **Mixed High** (50-75%): Mixed ice and other surfaces, ice dominant
-- **Mixed Low** (25-50%): Mixed surfaces with moderate ice coverage
-- **Border** (0-25%): Edge areas with minimal ice coverage
+### Integration
+- **Existing Codebase**: Seamless integration with analysis modules
+- **Configuration**: Uses existing `config.py` settings
+- **Data Pipeline**: Compatible with current CSV export workflow
 
 ## Troubleshooting
 
-### Dashboard won't start
-1. **Check Python installation**: Run `python --version`
-2. **Install dependencies**: `pip install shiny pandas plotly`
-3. **Verify data files**: Ensure `../data/csv/` contains the required CSV files
+### Common Issues
 
-### Data loading errors
-- The dashboard includes fallback error handling
-- Check that CSV files exist and are properly formatted
-- Look for error messages in the terminal/console
+**Dashboard won't start:**
+```bash
+# Check requirements
+pip install -r requirements.txt
 
-### Port already in use
-- Change the port in `run_dashboard.py`: modify `--port 8000` to another port
-- Or kill the existing process using that port
+# Verify Python version (3.8+)
+python --version
 
-### Windows PowerShell execution policy
-If you get execution policy errors:
-```powershell
-Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+# Check file permissions
+ls -la dashboard/
 ```
+
+**Data not loading:**
+- Verify CSV files exist in `data/csv/`
+- Check file formats match expected structure
+- Review console for error messages
+
+**Plots not displaying:**
+- Ensure Plotly is installed and up-to-date
+- Check browser JavaScript console
+- Try refreshing the page
+
+### Performance Tips
+- Filter data to reasonable date ranges for large datasets
+- Limit number of fraction classes for complex analyses
+- Use quality thresholds to focus on reliable data
 
 ## Development
 
-The dashboard is built with:
-- **Framework**: Shiny for Python 1.4.0
-- **Visualization**: Plotly 6.1.2
-- **Data Processing**: Pandas 2.1.4
-- **Architecture**: Reactive programming with server-side state
+### Adding New Features
+1. Define UI components in `components.py`
+2. Implement plotting functions in `plots.py`
+3. Add server logic to `app.py`
+4. Test with sample data
 
-## 🔬 Academic Dashboard Features
-
-### Statistical Analysis Tabs
-
-1. **📊 Overview**: Dataset information and basic summary statistics
-2. **📈 Trend Analysis**: 
-   - Mann-Kendall trend tests with significance testing
-   - Sen's slope estimation with confidence intervals
-   - Autocorrelation analysis
-   - Publication-quality trend visualizations
-3. **🔄 Bootstrap Analysis**:
-   - Bootstrap confidence intervals (configurable iterations: 100-2000)
-   - Statistical power analysis
-   - Bootstrap distribution visualizations
-4. **📅 Seasonal Patterns**:
-   - Monthly trend analysis
-   - Seasonal significance testing
-   - Interactive seasonal pattern plots
-5. **🔗 Correlation Analysis**:
-   - Inter-fraction correlation matrices
-   - Statistical significance testing
-   - Correlation strength assessment
-6. **📋 Statistical Tables**:
-   - Comprehensive results tables
-   - Export functionality (CSV, Excel, JSON)
-   - Summary statistics
-
-### Advanced Features
-
-- **Publication-Quality Plots**: All visualizations meet academic publishing standards
-- **Statistical Rigor**: Same level of analysis as main.py command-line interface
-- **Export Capabilities**: 
-  - Statistical results in multiple formats
-  - High-resolution figures (PNG, SVG, PDF)
-  - Comprehensive methodology reports
-  - Citation-ready documentation
-- **Parameter Control**: 
-  - Adjustable significance levels (α = 0.001, 0.01, 0.05)
-  - Configurable bootstrap iterations
-  - Variable selection (mean/median)
-- **Academic Standards**: Following established statistical practices for albedo trend analysis
-
-### Validation
-
-Run the validation script to ensure accuracy:
-```bash
-cd dashboard
-python validate_dashboard_analysis.py
-```
-
-### File Structure
-```
-dashboard/
-├── app.py                        # Basic dashboard
-├── app_enhanced.py               # Academic dashboard ⭐
-├── statistical_analysis.py       # Statistical analysis module
-├── academic_plots.py             # Publication-quality plots
-├── export_manager.py             # Results export functionality
-├── run_dashboard.py              # Basic dashboard runner
-├── run_academic_dashboard.py     # Academic dashboard runner ⭐
-├── validate_dashboard_analysis.py # Validation script
-├── run_dashboard.bat             # Windows batch file
-├── test_dashboard.py             # Test suite
-└── README.md                     # This file
-```
-
-### Extending the Dashboard
-
-To add new features:
-1. Modify `app.py` for new UI components or server logic
-2. Update `run_dashboard.py` for new dependencies
-3. Test with `test_dashboard.py`
-
-## Integration
-
-This dashboard integrates with the main Saskatchewan Glacier analysis project:
-- Uses existing data handlers and configuration
-- Follows established naming conventions
-- Reuses visualization styling and color schemes
-- Compatible with the existing analysis workflow
+### Customization
+- Modify `components.py` for different UI layouts
+- Extend `plots.py` for additional visualization types
+- Update `config.py` for new datasets or parameters
 
 ## Support
 
-For issues with the dashboard:
-1. Check the console output for error messages
-2. Verify all dependencies are installed
-3. Ensure data files are present and accessible
-4. Review the troubleshooting section above
+For issues or questions:
+1. Check existing analysis documentation in parent directory
+2. Review error messages in console output
+3. Verify data file formats and availability
 
-The dashboard is designed to work alongside the existing command-line analysis tools and provides a user-friendly interface for data exploration.
+---
+
+*Built for the Saskatchewan Glacier Albedo Analysis project - Interactive exploration of 15 years of MODIS satellite data*

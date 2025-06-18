@@ -1,87 +1,40 @@
+#!/usr/bin/env python3
 """
-Simple script to run the Saskatchewan Glacier Albedo Dashboard
-===========================================================
+Saskatchewan Glacier Albedo Analysis Dashboard Launcher
+======================================================
 
-This script handles the dashboard startup with proper error handling.
+Simple launcher script for the interactive dashboard.
 """
 
 import sys
 import os
-import subprocess
+from pathlib import Path
 
-def check_dependencies():
-    """Check if required dependencies are installed"""
-    required_packages = ['shiny', 'pandas', 'plotly']
-    missing = []
-    
-    for package in required_packages:
-        try:
-            __import__(package)
-            print(f"✓ {package} is available")
-        except ImportError:
-            missing.append(package)
-            print(f"✗ {package} is missing")
-    
-    if missing:
-        print(f"\nMissing packages: {missing}")
-        print("Install them with: pip install " + " ".join(missing))
-        return False
-    
-    return True
+# Add parent directory to path
+parent_dir = Path(__file__).parent.parent
+sys.path.insert(0, str(parent_dir))
 
-def run_dashboard():
-    """Run the dashboard with proper error handling"""
-    
-    print("=" * 60)
-    print("🏔️  Saskatchewan Glacier Albedo Analysis Dashboard")
-    print("=" * 60)
-    
-    # Check dependencies
-    print("\nChecking dependencies...")
-    if not check_dependencies():
-        return False
-    
-    # Get the current directory
-    dashboard_dir = os.path.dirname(os.path.abspath(__file__))
-    app_path = os.path.join(dashboard_dir, "app.py")
-    
-    if not os.path.exists(app_path):
-        print(f"Error: Dashboard app not found at {app_path}")
-        return False
-    
-    print(f"\nStarting dashboard from: {dashboard_dir}")
-    print("Dashboard will be available at: http://localhost:8000")
-    print("\nPress Ctrl+C to stop the dashboard")
-    print("-" * 60)
+def main():
+    """Launch the dashboard application"""
+    print("🏔️ Saskatchewan Glacier Albedo Analysis Dashboard")
+    print("=" * 50)
+    print("🚀 Starting dashboard server...")
+    print("📊 Loading MODIS data (2010-2024)...")
+    print("🌐 Dashboard will open in your browser")
+    print("=" * 50)
     
     try:
-        # Run the dashboard
-        os.chdir(dashboard_dir)
-        result = subprocess.run([
-            sys.executable, "-m", "shiny", "run", "app.py",
-            "--host", "0.0.0.0", "--port", "8000"
-        ], check=True)
-        
-        return True
-        
-    except subprocess.CalledProcessError as e:
-        print(f"Error running dashboard: {e}")
-        return False
-    except KeyboardInterrupt:
-        print("\n\nDashboard stopped by user")
-        return True
+        from dashboard.app import app
+        # Run with auto-reload for development
+        app.run(host="127.0.0.1", port=8000, debug=True, reload=True)
+    except ImportError as e:
+        print(f"❌ Error importing dashboard: {e}")
+        print("💡 Make sure you have installed all requirements:")
+        print("   pip install -r requirements.txt")
+        sys.exit(1)
     except Exception as e:
-        print(f"Unexpected error: {e}")
-        return False
+        print(f"❌ Error starting dashboard: {e}")
+        sys.exit(1)
 
 if __name__ == "__main__":
-    success = run_dashboard()
-    if not success:
-        print("\n❌ Dashboard failed to start")
-        print("\nTroubleshooting:")
-        print("1. Make sure you're in the correct directory")
-        print("2. Install missing dependencies: pip install shiny pandas plotly")
-        print("3. Check that data files exist in ../data/csv/")
-        sys.exit(1)
-    else:
-        print("\n✅ Dashboard completed successfully")
+    main()
