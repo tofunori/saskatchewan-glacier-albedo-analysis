@@ -675,14 +675,15 @@ function exportSpecificDate(dateString, includeQuality, crs, exportAllPixels) {
         var fraction = calculatePixelFraction(selectedImage, glacier_mask);
         var masks = createFractionMasks(fraction, FRACTION_THRESHOLDS);
         
-        // Créer une carte de classification par valeurs distinctes
-        var classification_map = ee.Image(0)  // Background = 0
-          .where(masks.border, 1)      // Bordure = 1
-          .where(masks.mixed_low, 2)   // Mixte bas = 2
-          .where(masks.mixed_high, 3)  // Mixte haut = 3
-          .where(masks.mostly_ice, 4)  // Majoritaire = 4
-          .where(masks.pure_ice, 5)    // Pur = 5
-          .updateMask(glacier_mask)    // Seulement dans le glacier
+        // Créer une carte de classification par valeurs distinctes (FLOAT pour compatibilité)
+        var classification_map = ee.Image(0.0)  // Background = 0.0 (Float)
+          .where(masks.border, 1.0)      // Bordure = 1.0
+          .where(masks.mixed_low, 2.0)   // Mixte bas = 2.0
+          .where(masks.mixed_high, 3.0)  // Mixte haut = 3.0
+          .where(masks.mostly_ice, 4.0)  // Majoritaire = 4.0
+          .where(masks.pure_ice, 5.0)    // Pur = 5.0
+          .updateMask(glacier_mask)      // Seulement dans le glacier
+          .toFloat()                     // Force Float64 pour compatibilité
           .rename('fraction_classes');
         
         // Albédo complet du glacier (sans masquage par fraction)
@@ -690,11 +691,11 @@ function exportSpecificDate(dateString, includeQuality, crs, exportAllPixels) {
           .updateMask(glacier_mask)
           .rename('albedo_all_glacier');
         
-        // Créer l'image d'export unifiée
+        // Créer l'image d'export unifiée (tout en Float pour compatibilité)
         var baseBands = [
-          albedo_complete,           // Albédo de tous les pixels glacier
-          classification_map,        // Classes de fraction (1-5)
-          fraction.updateMask(glacier_mask).rename('fraction_coverage') // Fraction continue
+          albedo_complete,           // Albédo de tous les pixels glacier (Float)
+          classification_map,        // Classes de fraction 1.0-5.0 (Float)
+          fraction.updateMask(glacier_mask).toFloat().rename('fraction_coverage') // Fraction continue (Float)
         ];
         
         if (includeQuality) {
@@ -757,7 +758,7 @@ function exportSpecificDate(dateString, includeQuality, crs, exportAllPixels) {
       if (exportAllPixels) {
         // Messages pour mode unifié
         print('  • albedo_all_glacier (Albédo de tous pixels glacier)');
-        print('  • fraction_classes (Classes: 1=bordure, 2=mixte-bas, 3=mixte-haut, 4=majoritaire, 5=pur)');
+        print('  • fraction_classes (Classes Float: 1.0=bordure, 2.0=mixte-bas, 3.0=mixte-haut, 4.0=majoritaire, 5.0=pur)');
         print('  • fraction_coverage (Fraction continue 0-1)');
         if (includeQuality) {
           print('  • quality_flag (Qualité MODIS dans glacier)');
@@ -765,12 +766,12 @@ function exportSpecificDate(dateString, includeQuality, crs, exportAllPixels) {
           print('  ⚠️ Flag de qualité exclu');
         }
         print('🏔️ Zone: Tous les pixels à l\'intérieur du masque glacier');
-        print('🎨 CODAGE COULEUR:');
-        print('     1 = Rouge (bordure 0-25%)');
-        print('     2 = Orange (mixte 25-50%)');
-        print('     3 = Jaune (mixte 50-75%)');
-        print('     4 = Bleu clair (majoritaire 75-90%)');
-        print('     5 = Bleu foncé (pur 90-100%)');
+        print('🎨 CODAGE COULEUR (valeurs Float):');
+        print('     1.0 = Rouge (bordure 0-25%)');
+        print('     2.0 = Orange (mixte 25-50%)');
+        print('     3.0 = Jaune (mixte 50-75%)');
+        print('     4.0 = Bleu clair (majoritaire 75-90%)');
+        print('     5.0 = Bleu foncé (pur 90-100%)');
       } else {
         // Messages pour mode fractions glacier
         print('  • albedo_border_0_25 (Albédo 0-25%)');
