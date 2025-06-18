@@ -35,26 +35,26 @@ print('Date exacte de l\'image:', testImage.date().format('YYYY-MM-dd'));
 // │ SECTION 2 : CALCUL DE LA COUVERTURE DES PIXELS                                        │
 // └────────────────────────────────────────────────────────────────────────────────────────┘
 
-// 3. Fonction pour calculer la fraction exacte - INSPIRÉE DU SCRIPT PYTHON FONCTIONNEL
+// 3. Fonction pour calculer la fraction exacte - MÉTHODE CORRIGÉE POUR PRÉCISION SCIENTIFIQUE
 function calculatePixelCoverage(modisImage, glacierMask) {
-  // MÉTHODE SIMPLE ET EFFICACE (basée sur le script Python qui fonctionne)
-  
-  // 1. Raster 30m : 1 sur glace, 0 hors glace (exactement comme le Python)
-  var raster30 = ee.Image.constant(1)
-    .updateMask(glacierMask)    // 1 à l'intérieur du glacier
-    .unmask(0)                  // 0 ailleurs - CRUCIAL !
-    .reproject('EPSG:4326', null, 30);
-  
-  // 2. Projection MODIS (comme dans le script Python)
+  // Obtenir la projection native de l'image MODIS
   var modisProjection = modisImage.projection();
   
-  // 3. Calcul de la fraction (méthode exacte du Python)
+  // Reprojecter directement le masque glacier dans la projection MODIS
+  // tout en conservant la résolution fine de 30m
+  var raster30 = ee.Image.constant(1)
+    .updateMask(glacierMask)
+    .unmask(0)
+    .reproject(modisProjection, null, 30);
+  
+  // Effectuer l'agrégation DANS la projection MODIS native
+  // pour respecter exactement la grille des pixels MODIS
   var fraction = raster30
     .reduceResolution({
-      reducer: ee.Reducer.mean(),  // Moyenne = fraction couverte
-      maxPixels: 1024              // Exactement comme le Python !
+      reducer: ee.Reducer.mean(),
+      maxPixels: 1024
     })
-    .reproject(modisProjection);
+    .reproject(modisProjection, null, 500);
   
   // 4. Convertir en pourcentage et arrondir à 1 décimale
   var coveragePercent = fraction.multiply(100);
@@ -276,18 +276,22 @@ Map.addLayer(excluded_75.selfMask(),
 // 12. Fonction pour appliquer le seuil de couverture à une collection
 function applyPoverageThreshold(imageCollection, glacierMask, threshold) {
   return imageCollection.map(function(img) {
-    // Calculer la couverture avec la méthode simplifiée qui fonctionne
+    // Obtenir la projection native de l'image MODIS
+    var modisProjection = img.projection();
+    
+    // Reprojecter directement le masque glacier dans la projection MODIS
     var raster30 = ee.Image.constant(1)
       .updateMask(glacierMask)
       .unmask(0)
-      .reproject('EPSG:4326', null, 30);
+      .reproject(modisProjection, null, 30);
     
+    // Effectuer l'agrégation DANS la projection MODIS native
     var coverage = raster30
       .reduceResolution({
         reducer: ee.Reducer.mean(),
-        maxPixels: 1024  // Même valeur que le script Python fonctionnel
+        maxPixels: 1024
       })
-      .reproject(img.projection());
+      .reproject(modisProjection, null, 500);
     
     // Créer le masque basé sur le seuil (threshold en fraction 0-1)
     var coverageMask = coverage.gte(threshold);
