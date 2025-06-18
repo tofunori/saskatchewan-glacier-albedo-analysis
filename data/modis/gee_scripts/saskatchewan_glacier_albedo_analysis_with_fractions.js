@@ -343,49 +343,58 @@ var updateVisualization = function() {
   var useNativeRes = nativeResCheckbox.getValue();
   var nativeProjection = example_image.projection();
   
-  // Créer la grille de pixels MODIS avec contours plus visibles
+  // Créer la grille de pixels carrés Web Mercator
   var modisGrid;
   if (useNativeRes) {
-    // Créer une grille basée sur les contours de pixels avec valeurs entières
-    var pixelMask = example_albedo.select(0)
-      .mask()
+    // GRILLE CARRÉE FORCÉE EN WEB MERCATOR
+    
+    // Créer une grille régulière 500m en Web Mercator
+    var bounds = glacier_geometry.bounds();
+    var gridSize = 500; // 500m
+    
+    // Créer la grille en tant qu'image avec contours
+    var gridImage = ee.Image.constant(1)
       .reproject({
-        crs: nativeProjection,
-        scale: 500
-      });
+        crs: 'EPSG:3857',
+        scale: gridSize
+      })
+      .clip(glacier_geometry);
     
-    // Convertir en valeurs entières (0 ou 1) pour reduceToVectors
-    var integerMask = pixelMask.gt(0).toInt();
-    
-    // Créer les contours des pixels
-    var pixelBoundaries = integerMask
-      .reduceToVectors({
-        geometry: glacier_geometry,
-        scale: 500,
-        maxPixels: 1e6,
-        bestEffort: true
-      });
-    
-    // Styler les contours pour qu'ils soient visibles
-    modisGrid = pixelBoundaries.style({
-      color: '000000',
-      width: 2,
-      fillColor: '00000000'  // Fond transparent
-    });
+    // Créer les contours de la grille carrée
+    modisGrid = gridImage.zeroCrossing()
+      .updateMask(glacier_mask.reproject('EPSG:3857', null, gridSize));
+      
   } else {
     // Grille standard pour mode normal (contours de pixels fins)
     modisGrid = example_albedo.select(0).zeroCrossing()
       .updateMask(glacier_mask);
   }
   
-  // Fonction pour appliquer la visualisation native MODIS
+  // Fonction pour appliquer la visualisation native MODIS avec pixels carrés forcés
   var processImageForDisplay = function(image) {
     if (useNativeRes) {
-      // Approche simple : forcer la reprojection exacte à 500m
-      return image.reproject({
-        crs: nativeProjection,
-        scale: 500
-      });
+      // SOLUTION RADICALE : Créer de vrais pixels carrés visibles
+      
+      // 1. Reprojecter en Web Mercator avec résolution fixe pour créer des carrés
+      var webMercatorImage = image
+        .reproject({
+          crs: 'EPSG:3857',  // Web Mercator
+          scale: 500  // Résolution forcée 500m
+        })
+        // 2. Forcer la pixelisation en réduisant puis ré-expandant
+        .reduceNeighborhood({
+          reducer: ee.Reducer.mode(),  // Mode pour conserver les valeurs discrètes
+          kernel: ee.Kernel.square(1, 'pixels'),
+          optimization: 'boxcar'
+        })
+        // 3. Re-échantillonner pour créer des blocs nets
+        .resample('bilinear')
+        .reproject({
+          crs: 'EPSG:3857',
+          scale: 500
+        });
+      
+      return webMercatorImage;
     }
     return image;
   };
@@ -475,14 +484,14 @@ var projectionLabel = ui.Label('Options visualisation MODIS:', {fontWeight: 'bol
 // Variable globale pour stocker l'état de la projection
 var isModisProjection = false;
 
-// Bouton pour forcer l'affichage en résolution native MODIS
+// Bouton pour forcer l'affichage en pixels carrés
 var projectionButton = ui.Button({
-  label: 'Activer mode natif MODIS',
+  label: 'FORCER PIXELS CARRÉS',
   onClick: function() {
     isModisProjection = !isModisProjection;
     
     if (isModisProjection) {
-      projectionButton.setLabel('Désactiver mode natif MODIS');
+      projectionButton.setLabel('DÉSACTIVER PIXELS CARRÉS');
       nativeResCheckbox.setValue(true); // Forcer résolution native
       gridCheckbox.setValue(true); // Activer la grille pour voir les pixels
       
@@ -490,29 +499,30 @@ var projectionButton = ui.Button({
       Map.setOptions('SATELLITE');
       
       print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      print('🔬 MODE NATIF MODIS ACTIVÉ');
-      print('• Données en projection sinusoïdale MODIS native (500m)');
-      print('• Grille vectorielle des pixels MODIS activée');
-      print('• Fond de carte satellite pour meilleur contraste');
+      print('🔬 MODE PIXELS CARRÉS FORCÉS ACTIVÉ');
+      print('• SOLUTION RADICALE: Conversion forcée Web Mercator 500m');
+      print('• Grille carrée régulière 500m × 500m'); 
+      print('• Pixelisation forcée avec reduceNeighborhood');
+      print('• Fond de carte satellite pour contraste');
       print('');
-      print('💡 POURQUOI LES PIXELS SONT EN LOSANGE ?');
-      print('• Les pixels MODIS sont des carrés parfaits en proj. sinusoïdale');
-      print('• Affichés sur Web Mercator → apparaissent comme losanges');
-      print('• C\'est la VRAIE forme spatiale des données MODIS !');
-      print('• Option: Cochez "Masquer fond de carte" pour pixels purs');
+      print('⚡ NOUVEAUTÉ: VRAIS PIXELS CARRÉS !');
+      print('• Données reprojetées Web Mercator + pixelisation');
+      print('• Grille carrée au lieu de losanges sinusoïdaux');
+      print('• Perte de projection native MAIS pixels carrés visibles');
+      print('• Option: "Masquer fond de carte" pour pixels purs');
       print('');
-      print('• Zoom 13+ recommandé • Clic "Mettre à jour la carte"');
+      print('• Zoom 13+ REQUIS • Clic "Mettre à jour la carte"');
       print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     } else {
-      projectionButton.setLabel('Activer mode natif MODIS');
+      projectionButton.setLabel('FORCER PIXELS CARRÉS');
       nativeResCheckbox.setValue(false);
       gridCheckbox.setValue(false);
       
       // Remettre le fond de carte par défaut
       Map.setOptions('ROADMAP');
       
-      print('📍 Mode natif MODIS désactivé');
-      print('• Retour à l\'affichage Web Mercator standard');
+      print('📍 Mode pixels carrés désactivé');
+      print('• Retour à l\'affichage MODIS lissé standard');
       print('• Fond de carte routier rétabli');
     }
     
