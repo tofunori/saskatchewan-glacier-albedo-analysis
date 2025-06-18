@@ -2,7 +2,21 @@
 
 Interactive web dashboard for exploring MODIS albedo data from Saskatchewan Glacier (2010-2024).
 
-## Features
+## 🆕 Academic Dashboard Available
+
+We now offer **two dashboard versions**:
+
+### 🔬 **Academic Dashboard** (RECOMMENDED)
+**New enhanced version with comprehensive statistical analysis**
+
+- **Advanced Statistical Analysis**: Mann-Kendall tests, Sen's slope, bootstrap confidence intervals
+- **Publication-Quality Visualizations**: Academic-grade plots with statistical annotations
+- **Comprehensive Results Export**: CSV, Excel, JSON, PDF reports
+- **Professional Analytics**: Autocorrelation analysis, seasonal trends, correlation matrices
+- **Academic Standards**: Publication-ready outputs and methodology documentation
+
+### 📊 **Basic Dashboard** 
+**Original simple visualization dashboard**
 
 - **Multi-Dataset Support**: Switch between MCD43A3 (16-day composite) and MOD10A1 (daily) datasets
 - **Multiple Visualization Types**: 
@@ -15,7 +29,29 @@ Interactive web dashboard for exploring MODIS albedo data from Saskatchewan Glac
 
 ## Quick Start
 
-### Windows Users
+### 🔬 Academic Dashboard (RECOMMENDED)
+
+**Windows:**
+```powershell
+cd dashboard
+python run_academic_dashboard.py
+```
+
+**Linux/Mac:**
+```bash
+cd dashboard
+python3 run_academic_dashboard.py
+```
+
+**Direct Python:**
+```bash
+cd dashboard
+python -m shiny run app_enhanced.py --host 0.0.0.0 --port 8000
+```
+
+### 📊 Basic Dashboard
+
+**Windows Users**
 
 **Option 1: Double-click the batch file**
 ```
@@ -34,7 +70,7 @@ cd dashboard
 python -m shiny run app.py
 ```
 
-### Linux/Mac Users
+**Linux/Mac Users**
 
 ```bash
 cd dashboard
@@ -43,13 +79,27 @@ python3 run_dashboard.py
 
 ## Requirements
 
-The dashboard requires the following Python packages:
+### Academic Dashboard Requirements
+The academic dashboard requires additional packages for statistical analysis:
+- `shiny >= 1.0.0`
+- `pandas >= 1.5.0`
+- `plotly >= 5.0.0`
+- `numpy >= 1.21.0`
+- `scipy >= 1.9.0` *(for statistical tests)*
+- `scikit-learn >= 1.1.0` *(for bootstrap analysis)*
+
+Install all dependencies:
+```bash
+pip install shiny pandas plotly numpy scipy scikit-learn
+```
+
+### Basic Dashboard Requirements
 - `shiny >= 1.0.0`
 - `pandas >= 1.5.0`
 - `plotly >= 5.0.0`
 - `numpy >= 1.21.0`
 
-Install missing dependencies:
+Install basic dependencies:
 ```bash
 pip install shiny pandas plotly numpy
 ```
@@ -108,14 +158,70 @@ The dashboard is built with:
 - **Data Processing**: Pandas 2.1.4
 - **Architecture**: Reactive programming with server-side state
 
+## 🔬 Academic Dashboard Features
+
+### Statistical Analysis Tabs
+
+1. **📊 Overview**: Dataset information and basic summary statistics
+2. **📈 Trend Analysis**: 
+   - Mann-Kendall trend tests with significance testing
+   - Sen's slope estimation with confidence intervals
+   - Autocorrelation analysis
+   - Publication-quality trend visualizations
+3. **🔄 Bootstrap Analysis**:
+   - Bootstrap confidence intervals (configurable iterations: 100-2000)
+   - Statistical power analysis
+   - Bootstrap distribution visualizations
+4. **📅 Seasonal Patterns**:
+   - Monthly trend analysis
+   - Seasonal significance testing
+   - Interactive seasonal pattern plots
+5. **🔗 Correlation Analysis**:
+   - Inter-fraction correlation matrices
+   - Statistical significance testing
+   - Correlation strength assessment
+6. **📋 Statistical Tables**:
+   - Comprehensive results tables
+   - Export functionality (CSV, Excel, JSON)
+   - Summary statistics
+
+### Advanced Features
+
+- **Publication-Quality Plots**: All visualizations meet academic publishing standards
+- **Statistical Rigor**: Same level of analysis as main.py command-line interface
+- **Export Capabilities**: 
+  - Statistical results in multiple formats
+  - High-resolution figures (PNG, SVG, PDF)
+  - Comprehensive methodology reports
+  - Citation-ready documentation
+- **Parameter Control**: 
+  - Adjustable significance levels (α = 0.001, 0.01, 0.05)
+  - Configurable bootstrap iterations
+  - Variable selection (mean/median)
+- **Academic Standards**: Following established statistical practices for albedo trend analysis
+
+### Validation
+
+Run the validation script to ensure accuracy:
+```bash
+cd dashboard
+python validate_dashboard_analysis.py
+```
+
 ### File Structure
 ```
 dashboard/
-├── app.py              # Main Shiny application
-├── run_dashboard.py    # Cross-platform runner script
-├── run_dashboard.bat   # Windows batch file
-├── test_dashboard.py   # Test suite
-└── README.md          # This file
+├── app.py                        # Basic dashboard
+├── app_enhanced.py               # Academic dashboard ⭐
+├── statistical_analysis.py       # Statistical analysis module
+├── academic_plots.py             # Publication-quality plots
+├── export_manager.py             # Results export functionality
+├── run_dashboard.py              # Basic dashboard runner
+├── run_academic_dashboard.py     # Academic dashboard runner ⭐
+├── validate_dashboard_analysis.py # Validation script
+├── run_dashboard.bat             # Windows batch file
+├── test_dashboard.py             # Test suite
+└── README.md                     # This file
 ```
 
 ### Extending the Dashboard
