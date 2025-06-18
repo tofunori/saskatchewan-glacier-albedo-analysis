@@ -417,26 +417,36 @@ class ChartGenerator:
         """Graphique principal des tendances"""
         ax.set_title('Tendances Principales par Fraction', fontweight='bold')
         
+        if not basic_results:
+            ax.text(0.5, 0.5, 'Aucune donnée de tendance disponible', 
+                   ha='center', va='center', transform=ax.transAxes)
+            return
+        
+        has_data = False
         for i, fraction in enumerate(self.fraction_classes):
             if fraction in basic_results and not basic_results[fraction].get('error', False):
                 result = basic_results[fraction]
-                times = result['data']['times']
-                values = result['data']['values']
-                
-                # Scatter plot
-                ax.scatter(times, values, alpha=0.4, s=10, 
-                          color=FRACTION_COLORS.get(fraction, 'gray'))
-                
-                # Ligne de tendance
-                sen_slope = result['sen_slope']['slope']
-                sen_intercept = result['sen_slope']['intercept']
-                
-                if not np.isnan(sen_slope):
-                    trend_line = sen_slope * times + sen_intercept
-                    ax.plot(times, trend_line, color=FRACTION_COLORS.get(fraction, 'gray'), 
-                           linewidth=2, alpha=0.8, label=self.class_labels[fraction])
+                if 'data' in result and 'times' in result['data'] and 'values' in result['data']:
+                    times = result['data']['times']
+                    values = result['data']['values']
+                    
+                    if len(times) > 0 and len(values) > 0:
+                        has_data = True
+                        # Scatter plot
+                        ax.scatter(times, values, alpha=0.4, s=10, 
+                                  color=FRACTION_COLORS.get(fraction, 'gray'))
+                        
+                        # Ligne de tendance
+                        sen_slope = result['sen_slope']['slope']
+                        sen_intercept = result['sen_slope']['intercept']
+                        
+                        if not np.isnan(sen_slope):
+                            trend_line = sen_slope * times + sen_intercept
+                            ax.plot(times, trend_line, color=FRACTION_COLORS.get(fraction, 'gray'), 
+                                   linewidth=2, alpha=0.8, label=self.class_labels[fraction])
         
-        ax.legend(fontsize=8)
+        if has_data:
+            ax.legend(fontsize=8)
         ax.grid(True, alpha=0.3)
         ax.set_xlabel('Année')
         ax.set_ylabel('Albédo')
@@ -446,12 +456,19 @@ class ChartGenerator:
         trends = {'increasing': 0, 'decreasing': 0, 'no trend': 0}
         significant = 0
         
+        if not basic_results:
+            ax.text(0.5, 0.5, 'Aucune donnée disponible', 
+                   ha='center', va='center', transform=ax.transAxes)
+            ax.set_title('Résumé de Significativité')
+            return
+        
         for fraction, result in basic_results.items():
-            if not result.get('error', False):
+            if not result.get('error', False) and 'mann_kendall' in result:
                 trend = result['mann_kendall']['trend']
                 p_value = result['mann_kendall']['p_value']
                 
-                trends[trend] += 1
+                if trend in trends:
+                    trends[trend] += 1
                 if p_value < 0.05:
                     significant += 1
         
@@ -576,10 +593,21 @@ def create_charts(data, trend_results=None, variable='mean', output_dir='output'
     generated_files = {}
     
     try:
-        # Graphique d'aperçu des tendances si disponible
-        if trend_results:
+        # Si pas de trend_results fournis, calculer rapidement les tendances
+        if trend_results is None:
+            print("📊 Calcul rapide des tendances pour les visualisations...")
+            from analysis.trends import TrendCalculator
+            trend_calculator = TrendCalculator(data)
+            basic_trends = trend_calculator.calculate_basic_trends(variable)
+            trend_results = {'basic_trends': basic_trends}
+        
+        # Extraire les tendances de base si c'est un dict structuré
+        basic_results = trend_results.get('basic_trends', trend_results)
+        
+        # Graphique d'aperçu des tendances
+        if basic_results:
             overview_path = chart_generator.create_trend_overview_graph(
-                trend_results, variable, 
+                basic_results, variable, 
                 os.path.join(output_dir, f'trend_overview_{variable}.png')
             )
             generated_files['trend_overview'] = overview_path
@@ -591,9 +619,9 @@ def create_charts(data, trend_results=None, variable='mean', output_dir='output'
         )
         generated_files['seasonal_patterns'] = seasonal_path
         
-        # Dashboard résumé
+        # Dashboard résumé avec les tendances calculées
         dashboard_path = chart_generator.create_summary_dashboard(
-            trend_results or {}, variable,
+            basic_results, variable,
             os.path.join(output_dir, f'dashboard_summary_{variable}.png')
         )
         generated_files['dashboard'] = dashboard_path
@@ -602,5 +630,7 @@ def create_charts(data, trend_results=None, variable='mean', output_dir='output'
         
     except Exception as e:
         print(f"⚠️ Erreur lors de la création des graphiques: {e}")
+        import traceback
+        traceback.print_exc()
     
     return generated_files
