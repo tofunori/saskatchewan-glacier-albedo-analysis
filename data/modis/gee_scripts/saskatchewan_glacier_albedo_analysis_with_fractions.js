@@ -577,6 +577,18 @@ var includeQualityCheckbox = ui.Checkbox({
   style: {margin: '5px 0', fontSize: '12px'}
 });
 
+// Sélecteur de projection pour l'export
+var projectionSelect = ui.Select({
+  items: [
+    {label: 'EPSG:6842 - NAD83(CSRS) MTM 11 (Canada)', value: 'EPSG:6842'},
+    {label: 'EPSG:4326 - WGS84 (Global)', value: 'EPSG:4326'},
+    {label: 'EPSG:3857 - Web Mercator', value: 'EPSG:3857'},
+    {label: 'SR-ORG:6974 - MODIS Sinusoidal', value: 'SR-ORG:6974'}
+  ],
+  value: 'EPSG:6842', // Défaut
+  style: {width: '200px', margin: '5px 0'}
+});
+
 // Bouton d'export pour la date spécifiée
 var exportDateButton = ui.Button({
   label: 'Exporter cette date',
@@ -591,18 +603,21 @@ var exportDateButton = ui.Button({
     }
     
     var includeQuality = includeQualityCheckbox.getValue();
-    exportSpecificDate(inputDate, includeQuality);
+    var selectedCRS = projectionSelect.getValue();
+    exportSpecificDate(inputDate, includeQuality, selectedCRS);
   },
   style: {width: '200px', margin: '5px 0'}
 });
 
 // Fonction pour exporter une date spécifique
-function exportSpecificDate(dateString, includeQuality) {
+function exportSpecificDate(dateString, includeQuality, crs) {
   includeQuality = includeQuality || false; // Default false si non spécifié
+  crs = crs || 'EPSG:6842'; // Default EPSG:6842 si non spécifié
   
   print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   print('📤 DÉBUT EXPORT DATE SPÉCIFIQUE: ' + dateString);
   print('🏷️ Flag de qualité inclus: ' + (includeQuality ? 'OUI' : 'NON'));
+  print('🗺️ Projection sélectionnée: ' + crs);
   
   try {
     var targetDate = ee.Date(dateString);
@@ -674,7 +689,7 @@ function exportSpecificDate(dateString, includeQuality) {
         scale: 500,
         region: glacier_geometry,
         maxPixels: 1e9,
-        crs: 'EPSG:4326'
+        crs: crs  // Projection choisie par l'utilisateur
       });
       
       print('✅ Export configuré avec succès!');
@@ -693,8 +708,11 @@ function exportSpecificDate(dateString, includeQuality) {
         print('  ⚠️ Flag de qualité exclu (évite erreurs de type)');
       }
       print('📍 Résolution: 500m');
-      print('🗺️ Projection: EPSG:4326 (WGS84)');
+      print('🗺️ Projection: ' + crs);
       print('💾 Type de données: Float (homogène)');
+      if (crs === 'EPSG:6842') {
+        print('🇨🇦 Système optimisé pour le Canada');
+      }
       print('');
       print('⏳ Vérifiez l\'onglet "Tasks" pour lancer l\'export');
     });
@@ -721,6 +739,8 @@ var panel = ui.Panel([
   ui.Label('─────────────────', {margin: '10px 0', color: 'gray'}), // Séparateur
   exportLabel,
   dateInput,
+  ui.Label('Projection export:', {fontSize: '12px', margin: '5px 0 2px 0'}),
+  projectionSelect,
   includeQualityCheckbox,
   exportDateButton
 ], ui.Panel.Layout.flow('vertical'), {
