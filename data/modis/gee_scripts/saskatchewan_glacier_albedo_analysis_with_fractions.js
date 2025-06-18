@@ -570,6 +570,13 @@ var dateInput = ui.Textbox({
   style: {width: '200px', margin: '5px 0'}
 });
 
+// Checkbox pour inclure le flag de qualité
+var includeQualityCheckbox = ui.Checkbox({
+  label: 'Inclure flag qualité (peut causer erreurs)',
+  value: false,
+  style: {margin: '5px 0', fontSize: '12px'}
+});
+
 // Bouton d'export pour la date spécifiée
 var exportDateButton = ui.Button({
   label: 'Exporter cette date',
@@ -583,15 +590,19 @@ var exportDateButton = ui.Button({
       return;
     }
     
-    exportSpecificDate(inputDate);
+    var includeQuality = includeQualityCheckbox.getValue();
+    exportSpecificDate(inputDate, includeQuality);
   },
   style: {width: '200px', margin: '5px 0'}
 });
 
 // Fonction pour exporter une date spécifique
-function exportSpecificDate(dateString) {
+function exportSpecificDate(dateString, includeQuality) {
+  includeQuality = includeQuality || false; // Default false si non spécifié
+  
   print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   print('📤 DÉBUT EXPORT DATE SPÉCIFIQUE: ' + dateString);
+  print('🏷️ Flag de qualité inclus: ' + (includeQuality ? 'OUI' : 'NON'));
   
   try {
     var targetDate = ee.Date(dateString);
@@ -633,16 +644,24 @@ function exportSpecificDate(dateString) {
       var fraction = calculatePixelFraction(selectedImage, glacier_mask);
       var masks = createFractionMasks(fraction, FRACTION_THRESHOLDS);
       
-      // Créer l'image multi-bandes avec toutes les fractions
-      var export_albedo_bands = ee.Image.cat([
+      // Créer la liste des bandes de base (albédo + fraction)
+      var baseBands = [
         albedo_scaled.updateMask(masks.border).rename('albedo_border_0_25'),
         albedo_scaled.updateMask(masks.mixed_low).rename('albedo_mixed_25_50'),
         albedo_scaled.updateMask(masks.mixed_high).rename('albedo_mixed_50_75'),
         albedo_scaled.updateMask(masks.mostly_ice).rename('albedo_mostly_75_90'),
         albedo_scaled.updateMask(masks.pure_ice).rename('albedo_pure_90_100'),
-        fraction.rename('fraction_coverage'),
-        quality.rename('quality_flag')
-      ]);
+        fraction.rename('fraction_coverage')
+      ];
+      
+      // Ajouter le flag de qualité seulement si demandé
+      var export_albedo_bands;
+      if (includeQuality) {
+        baseBands.push(quality.toFloat().rename('quality_flag'));
+        export_albedo_bands = ee.Image.cat(baseBands);
+      } else {
+        export_albedo_bands = ee.Image.cat(baseBands);
+      }
       
       // Configurer l'export
       var exportFileName = 'MODIS_Albedo_Fractions_' + dateString.replace(/-/g, '');
@@ -668,9 +687,14 @@ function exportSpecificDate(dateString) {
       print('  • albedo_mostly_75_90 (Albédo 75-90%)');
       print('  • albedo_pure_90_100 (Albédo 90-100%)');
       print('  • fraction_coverage (Fraction de couverture)');
-      print('  • quality_flag (Indicateur de qualité)');
+      if (includeQuality) {
+        print('  • quality_flag (Indicateur de qualité - Float)');
+      } else {
+        print('  ⚠️ Flag de qualité exclu (évite erreurs de type)');
+      }
       print('📍 Résolution: 500m');
       print('🗺️ Projection: EPSG:4326 (WGS84)');
+      print('💾 Type de données: Float (homogène)');
       print('');
       print('⏳ Vérifiez l\'onglet "Tasks" pour lancer l\'export');
     });
@@ -697,6 +721,7 @@ var panel = ui.Panel([
   ui.Label('─────────────────', {margin: '10px 0', color: 'gray'}), // Séparateur
   exportLabel,
   dateInput,
+  includeQualityCheckbox,
   exportDateButton
 ], ui.Panel.Layout.flow('vertical'), {
   width: '350px',
