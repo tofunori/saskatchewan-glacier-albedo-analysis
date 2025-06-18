@@ -688,9 +688,9 @@ print('📁 Génération des fichiers d\'export pour analyse locale...');
 // 14. Export principal : Statistiques quotidiennes fraction × élévation (Dataset complet)
 Export.table.toDrive({
   collection: dailySnowAlbedoByFractionElevation,
-  description: 'Saskatchewan_Daily_Snow_Albedo_Fraction_Elevation_2010_2024',
+  description: 'Saskatchewan_MOD10A1_Daily_Snow_Albedo_Fraction_Elevation_2010_2024',
   folder: 'GEE_exports',
-  fileNamePrefix: 'daily_snow_albedo_fraction_elevation_williamson_method_2010_2024',
+  fileNamePrefix: 'MOD10A1_daily_snow_albedo_fraction_elevation_williamson_2010_2024',
   fileFormat: 'CSV',
   selectors: [
     'date', 'year', 'doy', 'decimal_year', 'season',
@@ -722,7 +722,7 @@ Export.table.toDrive({
   collection: elevationTrendAnalyses,
   description: 'Saskatchewan_Snow_Albedo_Elevation_Trends_2010_2024',
   folder: 'GEE_exports',
-  fileNamePrefix: 'snow_albedo_elevation_trends_williamson_menounos_method_2010_2024',
+  fileNamePrefix: 'MOD10A1_snow_albedo_elevation_trends_williamson_2010_2024',
   fileFormat: 'CSV'
 });
 
@@ -738,7 +738,7 @@ Export.image.toDrive({
   image: elevationZonesComposite,
   description: 'Saskatchewan_DEM_Elevation_Zones_Williamson_Method',
   folder: 'GEE_exports',
-  fileNamePrefix: 'dem_elevation_zones_williamson_menounos_method_500m',
+  fileNamePrefix: 'MOD10A1_dem_elevation_zones_williamson_500m',
   scale: 500,
   region: glacier_geometry,
   maxPixels: 1e9,
@@ -761,7 +761,7 @@ Export.image.toDrive({
   image: combinationExamples,
   description: 'Saskatchewan_Albedo_Fraction_Elevation_Example_2020_07_15',
   folder: 'GEE_exports',
-  fileNamePrefix: 'albedo_fraction_elevation_combinations_example_20200715',
+  fileNamePrefix: 'MOD10A1_albedo_fraction_elevation_example_20200715',
   scale: 500,
   region: glacier_geometry,
   maxPixels: 1e9,
@@ -797,7 +797,7 @@ Export.table.toDrive({
   collection: analysisMetadata,
   description: 'Saskatchewan_Analysis_Metadata_Williamson_Method',
   folder: 'GEE_exports',
-  fileNamePrefix: 'analysis_metadata_williamson_menounos_method',
+  fileNamePrefix: 'MOD10A1_analysis_metadata_williamson',
   fileFormat: 'CSV'
 });
 

@@ -24,8 +24,8 @@ DEFAULT_DATASET = "MCD43A3"
 
 # Configuration pour MCD43A3 (Albédo général)
 MCD43A3_CONFIG = {
-    'csv_path': "data/csv/MCD43A3_daily_fractions_2010_2024.csv",
-    'qa_csv_path': "data/csv/MCD43A3_quality_daily_2010_2024.csv",
+    'csv_path': "data/csv/MCD43A3_albedo_daily_stats_2010_2024.csv",
+    'qa_csv_path': "data/csv/MCD43A3_quality_distribution_daily_2010_2024.csv",
     'name': 'MCD43A3',
     'description': 'Albédo général (MODIS Combined)',
     'quality_levels': ['quality_0_best', 'quality_1_good', 'quality_2_moderate', 'quality_3_poor'],
@@ -35,8 +35,8 @@ MCD43A3_CONFIG = {
 
 # Configuration pour MOD10A1 (Albédo de neige)
 MOD10A1_CONFIG = {
-    'csv_path': "data/csv/MOD10A1_daily_fractions_2010_2024.csv",
-    'qa_csv_path': "data/csv/MOD10A1_quality_daily_2010_2024.csv",
+    'csv_path': "data/csv/MOD10A1_snow_daily_stats_2010_2024.csv",
+    'qa_csv_path': "data/csv/MOD10A1_quality_distribution_daily_2010_2024.csv",
     'name': 'MOD10A1',
     'description': 'Albédo de neige (Terra Snow Cover)',
     'quality_levels': ['quality_0_best', 'quality_1_good', 'quality_2_ok', 'quality_other_night_ocean'],
@@ -46,7 +46,7 @@ MOD10A1_CONFIG = {
 
 # Configuration pour l'analyse fraction × élévation (Williamson & Menounos 2021)
 ELEVATION_CONFIG = {
-    'csv_path': "data/csv/MOD10A1_daily_elevation_2010_2024.csv",
+    'csv_path': "data/csv/MOD10A1_daily_snow_albedo_fraction_elevation_williamson_2010_2024.csv",
     'name': 'MOD10A1_Elevation',
     'description': 'Albédo par fraction × élévation (Williamson & Menounos 2021)',
     'elevation_zones': ['above_median', 'at_median', 'below_median'],

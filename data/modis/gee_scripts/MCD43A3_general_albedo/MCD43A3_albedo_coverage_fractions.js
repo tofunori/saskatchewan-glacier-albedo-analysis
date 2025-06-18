@@ -890,27 +890,27 @@ Map.addLayer(initial_modis_grid, {palette: ['000000'], opacity: 0.6}, '7. Grille
 // 11. Export des statistiques par fraction
 Export.table.toDrive({
   collection: annual_albedo_by_fraction,
-  description: 'Saskatchewan_Albedo_By_Fraction_2010_2024',
+  description: 'Saskatchewan_MCD43A3_Albedo_Fractions_2010_2024',
   folder: 'GEE_exports',
-  fileNamePrefix: 'albedo_by_fraction_annual',
+  fileNamePrefix: 'MCD43A3_albedo_fractions_annual',
   fileFormat: 'CSV'
 });
 
 // 12. Export des analyses de tendance
 Export.table.toDrive({
   collection: trend_analyses,
-  description: 'Saskatchewan_Albedo_Trends_By_Fraction',
+  description: 'Saskatchewan_MCD43A3_Albedo_Trends_Fractions',
   folder: 'GEE_exports',
-  fileNamePrefix: 'albedo_trends_by_fraction',
+  fileNamePrefix: 'MCD43A3_albedo_trends_fractions',
   fileFormat: 'CSV'
 });
 
 // 13. Export de la carte de fraction d'exemple
 Export.image.toDrive({
   image: example_fraction,
-  description: 'Saskatchewan_Fraction_Map_Example',
+  description: 'Saskatchewan_MCD43A3_Fraction_Map_Example',
   folder: 'GEE_exports',
-  fileNamePrefix: 'fraction_map_2020',
+  fileNamePrefix: 'MCD43A3_fraction_map_example',
   scale: 500,
   region: glacier_geometry,
   maxPixels: 1e9
@@ -1063,9 +1063,9 @@ print(dailyChart);
 // 17. Export des statistiques quotidiennes par fraction (optimisé Mann-Kendall)
 Export.table.toDrive({
   collection: dailyAlbedoByFraction,
-  description: 'Saskatchewan_Daily_Albedo_MannKendall_Ready_2010_2024',
+  description: 'Saskatchewan_MCD43A3_Daily_Stats_2010_2024',
   folder: 'GEE_exports',
-  fileNamePrefix: 'daily_albedo_mann_kendall_ready_2010_2024',
+  fileNamePrefix: 'MCD43A3_albedo_daily_stats_2010_2024',
   fileFormat: 'CSV'
 });
 
@@ -1176,9 +1176,9 @@ print(globalStackedChart);
 // Export de l'analyse de qualité globale
 Export.table.toDrive({
   collection: globalQualityDistribution,
-  description: 'Saskatchewan_Global_Quality_Distribution_2010_2024',
+  description: 'Saskatchewan_MCD43A3_Quality_Distribution_2010_2024',
   folder: 'GEE_exports',
-  fileNamePrefix: 'global_quality_distribution_daily_2010_2024',
+  fileNamePrefix: 'MCD43A3_quality_distribution_daily_2010_2024',
   fileFormat: 'CSV'
 });
 

@@ -231,18 +231,18 @@ print('Statistiques de changement d\'albédo:', changeStats);
 // 10. Export des résultats en CSV
 Export.table.toDrive({
   collection: annual_albedo,
-  description: 'Saskatchewan_Glacier_Albedo_Evolution_2010_2024',
+  description: 'Saskatchewan_MCD43A3_Albedo_Evolution_2010_2024',
   folder: 'GEE_exports',
-  fileNamePrefix: 'albedo_annual_stats',
+  fileNamePrefix: 'MCD43A3_albedo_annual_stats',
   fileFormat: 'CSV'
 });
 
 // 11. Export des cartes d'albédo moyen
 Export.image.toDrive({
   image: albedo_2010_2014,
-  description: 'Saskatchewan_Albedo_2010_2014',
+  description: 'Saskatchewan_MCD43A3_Albedo_2010_2014',
   folder: 'GEE_exports',
-  fileNamePrefix: 'albedo_mean_2010_2014',
+  fileNamePrefix: 'MCD43A3_albedo_mean_2010_2014',
   scale: 500,
   region: glacier_geometry,
   maxPixels: 1e9
@@ -250,9 +250,9 @@ Export.image.toDrive({
 
 Export.image.toDrive({
   image: albedo_2020_2024,
-  description: 'Saskatchewan_Albedo_2020_2024',
+  description: 'Saskatchewan_MCD43A3_Albedo_2020_2024',
   folder: 'GEE_exports',
-  fileNamePrefix: 'albedo_mean_2020_2024',
+  fileNamePrefix: 'MCD43A3_albedo_mean_2020_2024',
   scale: 500,
   region: glacier_geometry,
   maxPixels: 1e9
@@ -260,9 +260,9 @@ Export.image.toDrive({
 
 Export.image.toDrive({
   image: albedo_change,
-  description: 'Saskatchewan_Albedo_Change',
+  description: 'Saskatchewan_MCD43A3_Albedo_Change',
   folder: 'GEE_exports',
-  fileNamePrefix: 'albedo_change_2010_2024',
+  fileNamePrefix: 'MCD43A3_albedo_change_2010_2024',
   scale: 500,
   region: glacier_geometry,
   maxPixels: 1e9
@@ -383,9 +383,9 @@ print(stackedChart);
 // Export des données de qualité pour toute la période
 Export.table.toDrive({
   collection: qualityDistribution,
-  description: 'Saskatchewan_Summer_Quality_Distribution_2010_2024',
+  description: 'Saskatchewan_MCD43A3_Summer_Quality_Distribution_2010_2024',
   folder: 'GEE_exports',
-  fileNamePrefix: 'summer_quality_stats_2010_2024',
+  fileNamePrefix: 'MCD43A3_summer_quality_stats_2010_2024',
   fileFormat: 'CSV'
 });
 
@@ -559,9 +559,9 @@ print('Nombre de pixels avec au moins une observation valide (2010-2024):', pixe
 // Export de la carte de couverture
 Export.image.toDrive({
   image: coveragePercentage.updateMask(glacier_mask),
-  description: 'Saskatchewan_Data_Coverage_Map',
+  description: 'Saskatchewan_MCD43A3_Data_Coverage_Map',
   folder: 'GEE_exports',
-  fileNamePrefix: 'pixel_coverage_percentage',
+  fileNamePrefix: 'MCD43A3_pixel_coverage_percentage',
   scale: 500,
   region: glacier_geometry,
   maxPixels: 1e9
@@ -758,9 +758,9 @@ print(correlationChart);
 // Export des statistiques quotidiennes complètes pour toute la période
 Export.table.toDrive({
   collection: dailyStats,
-  description: 'Saskatchewan_Daily_Albedo_Quality_Stats_2010_2024',
+  description: 'Saskatchewan_MCD43A3_Daily_Albedo_Quality_Stats_2010_2024',
   folder: 'GEE_exports',
-  fileNamePrefix: 'daily_albedo_quality_stats_2010_2024',
+  fileNamePrefix: 'MCD43A3_daily_albedo_quality_stats_2010_2024',
   fileFormat: 'CSV'
 });
 

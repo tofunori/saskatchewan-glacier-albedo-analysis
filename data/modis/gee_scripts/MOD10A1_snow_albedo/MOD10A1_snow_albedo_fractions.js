@@ -647,15 +647,15 @@ print(dailySnowChart);
 // 17. Export des statistiques quotidiennes d'albédo de neige par fraction (optimisé Mann-Kendall)
 Export.table.toDrive({
   collection: dailySnowAlbedoByFraction,
-  description: 'Saskatchewan_Daily_Snow_Albedo_MannKendall_MOD10A1_2010_2024',
+  description: 'Saskatchewan_MOD10A1_Daily_Stats_2010_2024',
   folder: 'GEE_exports',
-  fileNamePrefix: 'MOD10A1_daily_fractions_2010_2024',
+  fileNamePrefix: 'MOD10A1_snow_daily_stats_2010_2024',
   fileFormat: 'CSV'
 });
 
 print('');
 print('EXPORT CONFIGURÉ POUR MANN-KENDALL & SEN\'S SLOPE (ALBÉDO DE NEIGE MOD10A1) :');
-print('✓ Fichier: daily_snow_albedo_mann_kendall_mod10a1_2010_2024.csv');
+print('✓ Fichier: MOD10A1_snow_daily_stats_2010_2024.csv');
 print('✓ Contenu: Statistiques quotidiennes d\'albédo de neige optimisées pour analyse de tendance');
 print('✓ Dataset: MOD10A1.061 Snow_Albedo_Daily_Tile');
 print('✓ Période: Étés 2010-2024 (juin-septembre)');
