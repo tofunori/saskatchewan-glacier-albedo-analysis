@@ -26,7 +26,7 @@ from config import (
 )
 from data.handler import AlbedoDataHandler
 from data.dataset_manager import DatasetManager
-from analysis.trends import TrendAnalyzer
+from analysis.trends import TrendCalculator
 from analysis.seasonal import SeasonalAnalyzer
 from analysis.comparison import ComparisonAnalyzer
 from visualization.charts import ChartGenerator
