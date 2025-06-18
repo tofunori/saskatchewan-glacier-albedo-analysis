@@ -97,3 +97,30 @@ def create_daily_albedo_plots(data_handler, output_dir):
         saved_plots.append(save_path)
     
     return saved_plots
+
+def create_daily_plots(data, variable='mean', output_dir='output'):
+    """
+    Fonction de création de graphiques quotidiens pour l'interface interactive
+    
+    Args:
+        data: AlbedoDataHandler avec données chargées
+        variable (str): Variable à analyser ('mean' ou 'median')
+        output_dir (str): Répertoire de sortie
+        
+    Returns:
+        dict: Chemins des graphiques créés
+    """
+    from utils.helpers import ensure_directory_exists
+    
+    # Créer le répertoire de sortie
+    ensure_directory_exists(output_dir)
+    
+    # Créer les graphiques quotidiens
+    saved_plots = create_daily_albedo_plots(data, output_dir)
+    
+    print(f"✅ {len(saved_plots)} graphiques quotidiens créés")
+    
+    return {
+        'daily_plots': saved_plots,
+        'count': len(saved_plots)
+    }

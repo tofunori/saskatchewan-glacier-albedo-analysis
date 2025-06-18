@@ -554,3 +554,53 @@ MÉTADONNÉES DE L'ANALYSE
         ax.text(0.05, 0.95, info_text, transform=ax.transAxes, fontsize=10,
                verticalalignment='top', fontfamily='monospace',
                bbox=dict(boxstyle='round', facecolor='lightgray', alpha=0.5))
+
+def create_charts(data, trend_results=None, variable='mean', output_dir='output'):
+    """
+    Fonction de création de graphiques pour l'interface interactive
+    
+    Args:
+        data: AlbedoDataHandler avec données chargées
+        trend_results (dict, optional): Résultats des analyses de tendances
+        variable (str): Variable à analyser ('mean' ou 'median')
+        output_dir (str): Répertoire de sortie
+        
+    Returns:
+        dict: Chemins des graphiques créés
+    """
+    chart_generator = ChartGenerator(data)
+    
+    # Créer le répertoire de sortie
+    ensure_directory_exists(output_dir)
+    
+    generated_files = {}
+    
+    try:
+        # Graphique d'aperçu des tendances si disponible
+        if trend_results:
+            overview_path = chart_generator.create_trend_overview_graph(
+                trend_results, variable, 
+                os.path.join(output_dir, f'trend_overview_{variable}.png')
+            )
+            generated_files['trend_overview'] = overview_path
+        
+        # Patterns saisonniers
+        seasonal_path = chart_generator.create_seasonal_patterns_graph(
+            variable, 
+            os.path.join(output_dir, f'seasonal_patterns_{variable}.png')
+        )
+        generated_files['seasonal_patterns'] = seasonal_path
+        
+        # Dashboard résumé
+        dashboard_path = chart_generator.create_summary_dashboard(
+            trend_results or {}, variable,
+            os.path.join(output_dir, f'dashboard_summary_{variable}.png')
+        )
+        generated_files['dashboard'] = dashboard_path
+        
+        print(f"✅ Graphiques créés dans: {output_dir}")
+        
+    except Exception as e:
+        print(f"⚠️ Erreur lors de la création des graphiques: {e}")
+    
+    return generated_files

@@ -30,6 +30,17 @@ class AlbedoDataHandler:
         self.fraction_classes = FRACTION_CLASSES
         self.class_labels = CLASS_LABELS
         
+    def __len__(self):
+        """
+        Retourne le nombre d'observations dans les données chargées
+        
+        Returns:
+            int: Nombre d'observations, ou 0 si aucune donnée n'est chargée
+        """
+        if self.data is not None:
+            return len(self.data)
+        return 0
+        
     def load_data(self):
         """
         Charge et prépare les données CSV

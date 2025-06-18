@@ -528,3 +528,34 @@ class PixelCountAnalyzer:
             print(f"📊 Statistiques QA exportées: {qa_path}")
         
         return exported_files
+
+def analyze_pixel_quality(data, qa_csv_path=None):
+    """
+    Fonction d'analyse de la qualité des pixels pour l'interface interactive
+    
+    Args:
+        data: AlbedoDataHandler avec données chargées
+        qa_csv_path (str, optional): Chemin vers le fichier CSV de qualité
+        
+    Returns:
+        dict: Résultats de l'analyse de qualité des pixels
+    """
+    analyzer = PixelCountAnalyzer(data, qa_csv_path)
+    
+    # Analyses de comptage des pixels
+    monthly_results = analyzer.analyze_monthly_pixel_counts()
+    
+    # Analyses de qualité si fichier QA disponible
+    qa_results = None
+    if qa_csv_path:
+        try:
+            qa_results = analyzer.analyze_qa_distribution(qa_csv_path)
+        except Exception as e:
+            print(f"⚠️ Impossible d'analyser la qualité QA: {e}")
+    
+    print("✅ Analyse des pixels/QA terminée")
+    
+    return {
+        'monthly_pixels': monthly_results,
+        'qa_distribution': qa_results
+    }

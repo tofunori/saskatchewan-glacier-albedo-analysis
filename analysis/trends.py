@@ -471,3 +471,31 @@ class TrendCalculator:
                       f"({trend['slope_decade']:.6f}/décennie)")
         else:
             print("\n❌ Aucune tendance significative détectée")
+
+def analyze_trends(data, variable='mean'):
+    """
+    Fonction d'analyse des tendances pour l'interface interactive
+    
+    Args:
+        data: AlbedoDataHandler avec données chargées
+        variable (str): Variable à analyser ('mean' ou 'median')
+        
+    Returns:
+        dict: Résultats des analyses de tendances
+    """
+    trend_calculator = TrendCalculator(data)
+    
+    # Analyses de base
+    basic_results = trend_calculator.calculate_basic_trends(variable)
+    
+    # Analyses mensuelles
+    monthly_results = trend_calculator.calculate_monthly_trends(variable)
+    
+    # Afficher le résumé
+    trend_calculator.print_summary(variable)
+    
+    return {
+        'basic_trends': basic_results,
+        'monthly_trends': monthly_results,
+        'summary_table': trend_calculator.get_summary_table(variable)
+    }
