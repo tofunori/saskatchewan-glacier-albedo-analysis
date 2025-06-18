@@ -7,6 +7,7 @@ during melt seasons.
 """
 
 import os
+import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 from config import FRACTION_CLASSES, CLASS_LABELS, FRACTION_COLORS, ANALYSIS_VARIABLE
@@ -49,42 +50,99 @@ def create_daily_albedo_plots(data_handler, output_dir):
         year_data = year_data.sort_values('date')
         
         # Create the plot
-        fig, ax = plt.subplots(figsize=(14, 8))
-        fig.suptitle(f'Albédo Quotidien - Saison de Fonte {year}', 
+        fig, ax = plt.subplots(figsize=(16, 8))
+        fig.suptitle(f'Composition Albédo Quotidien - Saison de Fonte {year}', 
                      fontsize=16, fontweight='bold')
         
-        # Plot albedo for each fraction
+        # Prepare data for stacked bar plot
+        dates = year_data['date'].unique()
+        dates = pd.to_datetime(dates).sort_values()
+        
+        # Create a matrix for stacked bars
+        fraction_data = {}
         for fraction in FRACTION_CLASSES:
             col_mean = f"{fraction}_{ANALYSIS_VARIABLE}"
             if col_mean in year_data.columns:
-                albedo_data = year_data[col_mean].dropna()
-                if len(albedo_data) > 0:
-                    # Plot only non-null values
-                    valid_data = year_data[year_data[col_mean].notna()]
-                    ax.plot(valid_data['date'], valid_data[col_mean], 
-                           marker='o', markersize=3, linewidth=1.5, alpha=0.8,
-                           label=CLASS_LABELS[fraction],
-                           color=FRACTION_COLORS.get(fraction, 'gray'))
+                # Align data with dates
+                fraction_values = []
+                for date in dates:
+                    day_data = year_data[year_data['date'] == date]
+                    if len(day_data) > 0 and not day_data[col_mean].isna().all():
+                        fraction_values.append(day_data[col_mean].iloc[0])
+                    else:
+                        fraction_values.append(0)  # Fill missing with 0 for stacking
+                fraction_data[fraction] = fraction_values
+            else:
+                fraction_data[fraction] = [0] * len(dates)
+        
+        # Create stacked bar chart
+        bar_width = 1.0  # Full width for daily bars
+        bottom_values = np.zeros(len(dates))
+        
+        for i, fraction in enumerate(FRACTION_CLASSES):
+            values = fraction_data[fraction]
+            color = FRACTION_COLORS.get(fraction, f'C{i}')
+            
+            # Only plot bars where there's actual data
+            non_zero_mask = np.array(values) > 0
+            if np.any(non_zero_mask):
+                ax.bar(dates, values, bottom=bottom_values, 
+                      width=bar_width, label=CLASS_LABELS[fraction],
+                      color=color, alpha=0.8, edgecolor='white', linewidth=0.5)
+            
+            bottom_values += np.array(values)
         
         # Configure the plot
-        ax.set_xlabel('Date')
-        ax.set_ylabel(f'Albédo ({ANALYSIS_VARIABLE.capitalize()})')
+        ax.set_xlabel('Date', fontsize=12, fontweight='bold')
+        ax.set_ylabel(f'Composition Albédo ({ANALYSIS_VARIABLE.capitalize()})', fontsize=12, fontweight='bold')
         ax.set_ylim([0, 1])
-        ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
-        ax.grid(True, alpha=0.3)
+        ax.legend(bbox_to_anchor=(1.02, 1), loc='upper left', fontsize=10)
+        ax.grid(True, alpha=0.3, axis='y')  # Only horizontal grid for better readability
         
-        # Add vertical lines to separate months
+        # Improve date formatting on x-axis
+        import matplotlib.dates as mdates
+        ax.xaxis.set_major_formatter(mdates.DateFormatter('%m-%d'))
+        ax.xaxis.set_major_locator(mdates.WeekdayLocator(interval=2))
+        plt.setp(ax.xaxis.get_majorticklabels(), rotation=45)
+        
+        # Add vertical lines to separate months with better styling
+        month_colors = {'Jun': '#ffeeee', 'Jul': '#eeffee', 'Aug': '#eeeeff', 'Sep': '#ffffee'}
+        month_names = {6: 'Jun', 7: 'Jul', 8: 'Aug', 9: 'Sep'}
+        
         for month in [7, 8, 9]:
             month_start = year_data[year_data['month'] == month]['date'].min()
             if not pd.isna(month_start):
-                ax.axvline(x=month_start, color='gray', linestyle='--', alpha=0.5)
+                ax.axvline(x=month_start, color='gray', linestyle='--', alpha=0.7, linewidth=1.5)
+                
+        # Add month labels at the top
+        for month in [6, 7, 8, 9]:
+            month_data = year_data[year_data['month'] == month]
+            if len(month_data) > 0:
+                month_center = month_data['date'].mean()
+                ax.text(month_center, 0.95, month_names[month], 
+                       ha='center', va='center', transform=ax.get_xaxis_transform(),
+                       bbox=dict(boxstyle='round,pad=0.3', facecolor='white', alpha=0.8),
+                       fontsize=10, fontweight='bold')
         
-        # Add statistics
+        # Add enhanced statistics for composition analysis
         stats_text = f"Période: {year_data['date'].min().strftime('%Y-%m-%d')} à {year_data['date'].max().strftime('%Y-%m-%d')}\n"
-        stats_text += f"Observations: {len(year_data)} jours"
+        stats_text += f"Observations: {len(year_data)} jours\n"
+        
+        # Calculate composition statistics
+        total_albedo_mean = sum([np.mean([v for v in fraction_data[f] if v > 0]) if any(v > 0 for v in fraction_data[f]) else 0 
+                                for f in FRACTION_CLASSES])
+        if total_albedo_mean > 0:
+            stats_text += "\nComposition moyenne:"
+            for fraction in FRACTION_CLASSES:
+                values = [v for v in fraction_data[fraction] if v > 0]
+                if values:
+                    mean_val = np.mean(values)
+                    percentage = (mean_val / total_albedo_mean) * 100 if total_albedo_mean > 0 else 0
+                    stats_text += f"\n• {CLASS_LABELS[fraction]}: {percentage:.1f}%"
+        
         ax.text(0.02, 0.98, stats_text, transform=ax.transAxes, 
-                verticalalignment='top', fontsize=10,
-                bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
+                verticalalignment='top', fontsize=9,
+                bbox=dict(boxstyle='round', facecolor='white', alpha=0.9))
         
         plt.tight_layout()
         
