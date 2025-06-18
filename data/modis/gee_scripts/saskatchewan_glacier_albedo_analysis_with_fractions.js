@@ -577,6 +577,13 @@ var includeQualityCheckbox = ui.Checkbox({
   style: {margin: '5px 0', fontSize: '12px'}
 });
 
+// Checkbox pour exporter tous les pixels
+var exportAllPixelsCheckbox = ui.Checkbox({
+  label: 'Exporter TOUS les pixels (pas seulement glacier)',
+  value: false,
+  style: {margin: '5px 0', fontSize: '12px', fontWeight: 'bold'}
+});
+
 // Sélecteur de projection pour l'export
 var projectionSelect = ui.Select({
   items: [
@@ -604,20 +611,23 @@ var exportDateButton = ui.Button({
     
     var includeQuality = includeQualityCheckbox.getValue();
     var selectedCRS = projectionSelect.getValue();
-    exportSpecificDate(inputDate, includeQuality, selectedCRS);
+    var exportAllPixels = exportAllPixelsCheckbox.getValue();
+    exportSpecificDate(inputDate, includeQuality, selectedCRS, exportAllPixels);
   },
   style: {width: '200px', margin: '5px 0'}
 });
 
 // Fonction pour exporter une date spécifique
-function exportSpecificDate(dateString, includeQuality, crs) {
+function exportSpecificDate(dateString, includeQuality, crs, exportAllPixels) {
   includeQuality = includeQuality || false; // Default false si non spécifié
   crs = crs || 'EPSG:6842'; // Default EPSG:6842 si non spécifié
+  exportAllPixels = exportAllPixels || false; // Default false si non spécifié
   
   print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   print('📤 DÉBUT EXPORT DATE SPÉCIFIQUE: ' + dateString);
   print('🏷️ Flag de qualité inclus: ' + (includeQuality ? 'OUI' : 'NON'));
   print('🗺️ Projection sélectionnée: ' + crs);
+  print('🌍 Zone export: ' + (exportAllPixels ? 'TOUS LES PIXELS' : 'GLACIER SEULEMENT'));
   
   try {
     var targetDate = ee.Date(dateString);
@@ -649,37 +659,66 @@ function exportSpecificDate(dateString, includeQuality, crs) {
       // Prendre la première image disponible
       var selectedImage = imageCollection.first();
       
-      // Traiter l'image comme dans la fonction de visualisation
+      // Traiter l'image selon le mode d'export
       var quality = selectedImage.select('BRDF_Albedo_Band_Mandatory_Quality_shortwave');
       var albedo = selectedImage.select('Albedo_WSA_shortwave');
       var good_quality_mask = quality.lte(1);
       var albedo_scaled = albedo.multiply(0.001).updateMask(good_quality_mask);
       
-      // Calculer la fraction pour cette image
-      var fraction = calculatePixelFraction(selectedImage, glacier_mask);
-      var masks = createFractionMasks(fraction, FRACTION_THRESHOLDS);
-      
-      // Créer la liste des bandes de base (albédo + fraction)
-      var baseBands = [
-        albedo_scaled.updateMask(masks.border).rename('albedo_border_0_25'),
-        albedo_scaled.updateMask(masks.mixed_low).rename('albedo_mixed_25_50'),
-        albedo_scaled.updateMask(masks.mixed_high).rename('albedo_mixed_50_75'),
-        albedo_scaled.updateMask(masks.mostly_ice).rename('albedo_mostly_75_90'),
-        albedo_scaled.updateMask(masks.pure_ice).rename('albedo_pure_90_100'),
-        fraction.rename('fraction_coverage')
-      ];
-      
-      // Ajouter le flag de qualité seulement si demandé
       var export_albedo_bands;
-      if (includeQuality) {
-        baseBands.push(quality.toFloat().rename('quality_flag'));
-        export_albedo_bands = ee.Image.cat(baseBands);
+      
+      if (exportAllPixels) {
+        // MODE TOUS LES PIXELS: Export simple albédo + qualité sur toute la zone
+        print('🌍 Mode TOUS LES PIXELS activé - Export de toute la zone MODIS');
+        
+        var baseBands = [
+          albedo_scaled.rename('albedo_all_pixels'),
+          quality.toFloat().multiply(0.1).rename('quality_flag_scaled') // Échelle 0-25.5 → 0-2.55
+        ];
+        
+        if (includeQuality) {
+          export_albedo_bands = ee.Image.cat(baseBands);
+        } else {
+          export_albedo_bands = albedo_scaled.rename('albedo_all_pixels');
+        }
+        
+        // Définir une région plus large que le glacier pour tous les pixels
+        var bounds = glacier_geometry.bounds().buffer(5000); // 5km buffer autour du glacier
+        var exportRegion = bounds;
+        
       } else {
-        export_albedo_bands = ee.Image.cat(baseBands);
+        // MODE GLACIER SEULEMENT: Export par fractions comme avant
+        print('🏔️ Mode GLACIER SEULEMENT - Export par fractions');
+        
+        // Calculer la fraction pour cette image
+        var fraction = calculatePixelFraction(selectedImage, glacier_mask);
+        var masks = createFractionMasks(fraction, FRACTION_THRESHOLDS);
+        
+        // Créer la liste des bandes de base (albédo + fraction)
+        var baseBands = [
+          albedo_scaled.updateMask(masks.border).rename('albedo_border_0_25'),
+          albedo_scaled.updateMask(masks.mixed_low).rename('albedo_mixed_25_50'),
+          albedo_scaled.updateMask(masks.mixed_high).rename('albedo_mixed_50_75'),
+          albedo_scaled.updateMask(masks.mostly_ice).rename('albedo_mostly_75_90'),
+          albedo_scaled.updateMask(masks.pure_ice).rename('albedo_pure_90_100'),
+          fraction.rename('fraction_coverage')
+        ];
+        
+        // Ajouter le flag de qualité seulement si demandé
+        if (includeQuality) {
+          baseBands.push(quality.toFloat().rename('quality_flag'));
+          export_albedo_bands = ee.Image.cat(baseBands);
+        } else {
+          export_albedo_bands = ee.Image.cat(baseBands);
+        }
+        
+        var exportRegion = glacier_geometry;
       }
       
-      // Configurer l'export
-      var exportFileName = 'MODIS_Albedo_Fractions_' + dateString.replace(/-/g, '');
+      // Configurer l'export avec nom adapté
+      var exportFileName = 'MODIS_Albedo_' + 
+        (exportAllPixels ? 'AllPixels_' : 'Fractions_') + 
+        dateString.replace(/-/g, '');
       
       Export.image.toDrive({
         image: export_albedo_bands,
@@ -687,7 +726,7 @@ function exportSpecificDate(dateString, includeQuality, crs) {
         folder: 'GEE_exports_dates_specifiques',
         fileNamePrefix: exportFileName,
         scale: 500,
-        region: glacier_geometry,
+        region: exportRegion,  // Région dynamique (glacier ou zone élargie)
         maxPixels: 1e9,
         crs: crs  // Projection choisie par l'utilisateur
       });
@@ -696,17 +735,32 @@ function exportSpecificDate(dateString, includeQuality, crs) {
       print('📁 Dossier: GEE_exports_dates_specifiques');
       print('📄 Fichier: ' + exportFileName);
       print('🎯 Bandes exportées:');
-      print('  • albedo_border_0_25 (Albédo 0-25%)');
-      print('  • albedo_mixed_25_50 (Albédo 25-50%)');
-      print('  • albedo_mixed_50_75 (Albédo 50-75%)');
-      print('  • albedo_mostly_75_90 (Albédo 75-90%)');
-      print('  • albedo_pure_90_100 (Albédo 90-100%)');
-      print('  • fraction_coverage (Fraction de couverture)');
-      if (includeQuality) {
-        print('  • quality_flag (Indicateur de qualité - Float)');
+      
+      if (exportAllPixels) {
+        // Messages pour mode tous les pixels
+        print('  • albedo_all_pixels (Albédo de tous les pixels)');
+        if (includeQuality) {
+          print('  • quality_flag_scaled (Qualité MODIS 0-2.55)');
+        } else {
+          print('  ⚠️ Flag de qualité exclu');
+        }
+        print('🌍 Zone: Région élargie (glacier + 5km buffer)');
       } else {
-        print('  ⚠️ Flag de qualité exclu (évite erreurs de type)');
+        // Messages pour mode fractions glacier
+        print('  • albedo_border_0_25 (Albédo 0-25%)');
+        print('  • albedo_mixed_25_50 (Albédo 25-50%)');
+        print('  • albedo_mixed_50_75 (Albédo 50-75%)');
+        print('  • albedo_mostly_75_90 (Albédo 75-90%)');
+        print('  • albedo_pure_90_100 (Albédo 90-100%)');
+        print('  • fraction_coverage (Fraction de couverture)');
+        if (includeQuality) {
+          print('  • quality_flag (Indicateur de qualité - Float)');
+        } else {
+          print('  ⚠️ Flag de qualité exclu (évite erreurs de type)');
+        }
+        print('🏔️ Zone: Contour du glacier uniquement');
       }
+      
       print('📍 Résolution: 500m');
       print('🗺️ Projection: ' + crs);
       print('💾 Type de données: Float (homogène)');
@@ -741,6 +795,7 @@ var panel = ui.Panel([
   dateInput,
   ui.Label('Projection export:', {fontSize: '12px', margin: '5px 0 2px 0'}),
   projectionSelect,
+  exportAllPixelsCheckbox,
   includeQualityCheckbox,
   exportDateButton
 ], ui.Panel.Layout.flow('vertical'), {
