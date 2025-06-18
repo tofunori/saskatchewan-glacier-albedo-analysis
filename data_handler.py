@@ -29,6 +29,17 @@ class AlbedoDataHandler:
         self.raw_data = None
         self.fraction_classes = FRACTION_CLASSES
         self.class_labels = CLASS_LABELS
+    
+    def __len__(self):
+        """
+        Retourne le nombre d'observations dans le dataset
+        
+        Returns:
+            int: Nombre d'observations (0 si données non chargées)
+        """
+        if self.data is not None:
+            return len(self.data)
+        return 0
         
     def load_data(self):
         """

@@ -14,11 +14,11 @@ from datetime import datetime
 # Gérer les imports relatifs et absolus
 try:
     from .config import (FRACTION_CLASSES, CLASS_LABELS, TREND_SYMBOLS,
-                        get_significance_marker, EXPORT_CONFIG)
+                        get_significance_marker, EXPORT_CONFIG, get_output_path)
     from .utils import print_section_header, format_pvalue, ensure_directory_exists, get_timestamp
 except ImportError:
     from config import (FRACTION_CLASSES, CLASS_LABELS, TREND_SYMBOLS,
-                       get_significance_marker, EXPORT_CONFIG)
+                       get_significance_marker, EXPORT_CONFIG, get_output_path)
     from utils import print_section_header, format_pvalue, ensure_directory_exists, get_timestamp
 
 class ResultsExporter:
@@ -54,9 +54,8 @@ class ResultsExporter:
         
         if output_path is None:
             timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-            output_path = f'saskatchewan_albedo_analysis_{variable}_{timestamp}.xlsx'
-        
-        ensure_directory_exists(output_path)
+            reports_dir = get_output_path('MCD43A3_albedo', 'reports')
+            output_path = os.path.join(reports_dir, f'saskatchewan_albedo_analysis_{variable}_{timestamp}.xlsx')
         
         try:
             with pd.ExcelWriter(output_path, engine='openpyxl') as writer:

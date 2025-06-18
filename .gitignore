@@ -1,9 +1,39 @@
-# Earth Engine exports
+# Earth Engine exports (legacy structure)
 exports/
 GEE_exports/
+
+# New organized results structure
+results/MCD43A3_albedo/raw_data/
+results/MCD43A3_albedo/processed_data/
+results/MCD43A3_albedo/trend_analysis/
+results/MCD43A3_albedo/figures/
+results/MCD43A3_albedo/reports/
+results/MOD10A1_snow_cover/raw_data/
+results/MOD10A1_snow_cover/processed_data/
+results/MOD10A1_snow_cover/analysis/
+results/MOD10A1_snow_cover/figures/
+results/MYD10A1_aqua_snow/raw_data/
+results/MYD10A1_aqua_snow/processed_data/
+results/MYD10A1_aqua_snow/analysis/
+results/MYD10A1_aqua_snow/figures/
+results/combined_analysis/
+results/metadata/processing_logs/
+results/metadata/data_quality_reports/
+
+# Allow documentation and structure files
+!results/*/README.md
+!results/README.md
+!results/metadata/configuration_snapshots/
+
+# Data file patterns (all formats)
 *.tif
 *.tiff
 *.csv
+*.xlsx
+*.txt
+*.png
+*.jpg
+*.jpeg
 
 # Temporary files
 *.tmp

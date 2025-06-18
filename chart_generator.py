@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from datetime import datetime
 from config import (FRACTION_CLASSES, CLASS_LABELS, FRACTION_COLORS, PLOT_STYLES,
-                   TREND_SYMBOLS, get_significance_marker, OUTPUT_DIR)
+                   TREND_SYMBOLS, get_significance_marker, get_output_path)
 from helpers import print_section_header, format_pvalue, ensure_directory_exists
 import os
 
@@ -101,8 +101,8 @@ class ChartGenerator:
         plt.tight_layout()
         
         if save_path is None:
-            ensure_directory_exists(OUTPUT_DIR)
-            save_path = os.path.join(OUTPUT_DIR, f'trend_overview_{variable}.png')
+            figures_dir = get_output_path('MCD43A3_albedo', 'figures')
+            save_path = os.path.join(figures_dir, f'trend_overview_{variable}.png')
         
         plt.savefig(save_path, dpi=300, bbox_inches='tight')
         print(f"✅ Aperçu des tendances sauvegardé: {save_path}")
@@ -215,8 +215,8 @@ class ChartGenerator:
         plt.tight_layout()
         
         if save_path is None:
-            ensure_directory_exists(OUTPUT_DIR)
-            save_path = os.path.join(OUTPUT_DIR, f'seasonal_patterns_{variable}.png')
+            figures_dir = get_output_path('MCD43A3_albedo', 'figures')
+            save_path = os.path.join(figures_dir, f'seasonal_patterns_{variable}.png')
         
         plt.savefig(save_path, dpi=300, bbox_inches='tight')
         print(f"✅ Patterns saisonniers sauvegardés: {save_path}")
@@ -268,8 +268,8 @@ class ChartGenerator:
         plt.tight_layout()
         
         if save_path is None:
-            ensure_directory_exists(OUTPUT_DIR)
-            save_path = os.path.join(OUTPUT_DIR, f'correlation_matrix_{variable}.png')
+            figures_dir = get_output_path('MCD43A3_albedo', 'figures')
+            save_path = os.path.join(figures_dir, f'correlation_matrix_{variable}.png')
         
         plt.savefig(save_path, dpi=300, bbox_inches='tight')
         print(f"✅ Matrice de corrélation sauvegardée: {save_path}")
@@ -347,8 +347,8 @@ class ChartGenerator:
         plt.tight_layout()
         
         if save_path is None:
-            ensure_directory_exists(OUTPUT_DIR)
-            save_path = os.path.join(OUTPUT_DIR, f'timeseries_{fraction}_{variable}.png')
+            figures_dir = get_output_path('MCD43A3_albedo', 'figures')
+            save_path = os.path.join(figures_dir, f'timeseries_{fraction}_{variable}.png')
         
         plt.savefig(save_path, dpi=300, bbox_inches='tight')
         print(f"✅ Série temporelle sauvegardée: {save_path}")
@@ -403,8 +403,8 @@ class ChartGenerator:
         self._plot_metadata_summary(ax6)
         
         if save_path is None:
-            ensure_directory_exists(OUTPUT_DIR)
-            save_path = os.path.join(OUTPUT_DIR, f'dashboard_summary_{variable}.png')
+            figures_dir = get_output_path('MCD43A3_albedo', 'figures')
+            save_path = os.path.join(figures_dir, f'dashboard_summary_{variable}.png')
         
         plt.savefig(save_path, dpi=300, bbox_inches='tight')
         print(f"✅ Dashboard sauvegardé: {save_path}")
