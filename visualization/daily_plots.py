@@ -51,68 +51,54 @@ def create_daily_albedo_plots(data_handler, output_dir):
         
         # Create the plot
         fig, ax = plt.subplots(figsize=(16, 8))
-        fig.suptitle(f'Composition Albédo Quotidien - Saison de Fonte {year}', 
+        fig.suptitle(f'Albédo Quotidien par Fraction - Saison de Fonte {year}', 
                      fontsize=16, fontweight='bold')
         
-        # Prepare data for stacked bar plot
-        dates = year_data['date'].unique()
-        dates = pd.to_datetime(dates).sort_values()
-        
-        # Create a matrix for stacked bars
-        fraction_data = {}
-        for fraction in FRACTION_CLASSES:
+        # Plot scatter points for each fraction
+        for i, fraction in enumerate(FRACTION_CLASSES):
             col_mean = f"{fraction}_{ANALYSIS_VARIABLE}"
             if col_mean in year_data.columns:
-                # Align data with dates
-                fraction_values = []
-                for date in dates:
-                    day_data = year_data[year_data['date'] == date]
-                    if len(day_data) > 0 and not day_data[col_mean].isna().all():
-                        fraction_values.append(day_data[col_mean].iloc[0])
-                    else:
-                        fraction_values.append(0)  # Fill missing with 0 for stacking
-                fraction_data[fraction] = fraction_values
-            else:
-                fraction_data[fraction] = [0] * len(dates)
-        
-        # Create stacked bar chart
-        bar_width = 1.0  # Full width for daily bars
-        bottom_values = np.zeros(len(dates))
-        
-        for i, fraction in enumerate(FRACTION_CLASSES):
-            values = fraction_data[fraction]
-            color = FRACTION_COLORS.get(fraction, f'C{i}')
-            
-            # Only plot bars where there's actual data
-            non_zero_mask = np.array(values) > 0
-            if np.any(non_zero_mask):
-                ax.bar(dates, values, bottom=bottom_values, 
-                      width=bar_width, label=CLASS_LABELS[fraction],
-                      color=color, alpha=0.8, edgecolor='white', linewidth=0.5)
-            
-            bottom_values += np.array(values)
+                # Get valid data for this fraction
+                fraction_data = year_data[year_data[col_mean].notna()].copy()
+                
+                if len(fraction_data) > 0:
+                    color = FRACTION_COLORS.get(fraction, f'C{i}')
+                    
+                    # Create scatter plot
+                    ax.scatter(fraction_data['date'], fraction_data[col_mean],
+                             label=CLASS_LABELS[fraction], color=color, 
+                             alpha=0.7, s=30, edgecolors='white', linewidth=0.5)
+                    
+                    # Optional: Add light trend line for each fraction
+                    if len(fraction_data) > 5:
+                        # Simple moving average for trend
+                        window = min(7, len(fraction_data) // 3)  # 7-day or 1/3 of data
+                        if window >= 2:
+                            fraction_data_sorted = fraction_data.sort_values('date')
+                            rolling_mean = fraction_data_sorted[col_mean].rolling(window=window, center=True).mean()
+                            ax.plot(fraction_data_sorted['date'], rolling_mean, 
+                                   color=color, alpha=0.3, linewidth=2, linestyle='-')
         
         # Configure the plot
         ax.set_xlabel('Date', fontsize=12, fontweight='bold')
-        ax.set_ylabel(f'Composition Albédo ({ANALYSIS_VARIABLE.capitalize()})', fontsize=12, fontweight='bold')
+        ax.set_ylabel(f'Albédo ({ANALYSIS_VARIABLE.capitalize()})', fontsize=12, fontweight='bold')
         ax.set_ylim([0, 1])
         ax.legend(bbox_to_anchor=(1.02, 1), loc='upper left', fontsize=10)
-        ax.grid(True, alpha=0.3, axis='y')  # Only horizontal grid for better readability
+        ax.grid(True, alpha=0.3)  # Grid for better readability
         
         # Improve date formatting on x-axis
         import matplotlib.dates as mdates
         ax.xaxis.set_major_formatter(mdates.DateFormatter('%m-%d'))
-        ax.xaxis.set_major_locator(mdates.WeekdayLocator(interval=2))
+        ax.xaxis.set_major_locator(mdates.WeekdayLocator(interval=1))  # More frequent for scatter
         plt.setp(ax.xaxis.get_majorticklabels(), rotation=45)
         
-        # Add vertical lines to separate months with better styling
-        month_colors = {'Jun': '#ffeeee', 'Jul': '#eeffee', 'Aug': '#eeeeff', 'Sep': '#ffffee'}
+        # Add vertical lines to separate months
         month_names = {6: 'Jun', 7: 'Jul', 8: 'Aug', 9: 'Sep'}
         
         for month in [7, 8, 9]:
             month_start = year_data[year_data['month'] == month]['date'].min()
             if not pd.isna(month_start):
-                ax.axvline(x=month_start, color='gray', linestyle='--', alpha=0.7, linewidth=1.5)
+                ax.axvline(x=month_start, color='gray', linestyle='--', alpha=0.5, linewidth=1)
                 
         # Add month labels at the top
         for month in [6, 7, 8, 9]:
@@ -121,24 +107,22 @@ def create_daily_albedo_plots(data_handler, output_dir):
                 month_center = month_data['date'].mean()
                 ax.text(month_center, 0.95, month_names[month], 
                        ha='center', va='center', transform=ax.get_xaxis_transform(),
-                       bbox=dict(boxstyle='round,pad=0.3', facecolor='white', alpha=0.8),
-                       fontsize=10, fontweight='bold')
+                       bbox=dict(boxstyle='round,pad=0.2', facecolor='lightgray', alpha=0.7),
+                       fontsize=9, fontweight='bold')
         
-        # Add enhanced statistics for composition analysis
+        # Add simplified statistics
         stats_text = f"Période: {year_data['date'].min().strftime('%Y-%m-%d')} à {year_data['date'].max().strftime('%Y-%m-%d')}\n"
         stats_text += f"Observations: {len(year_data)} jours\n"
         
-        # Calculate composition statistics
-        total_albedo_mean = sum([np.mean([v for v in fraction_data[f] if v > 0]) if any(v > 0 for v in fraction_data[f]) else 0 
-                                for f in FRACTION_CLASSES])
-        if total_albedo_mean > 0:
-            stats_text += "\nComposition moyenne:"
-            for fraction in FRACTION_CLASSES:
-                values = [v for v in fraction_data[fraction] if v > 0]
-                if values:
-                    mean_val = np.mean(values)
-                    percentage = (mean_val / total_albedo_mean) * 100 if total_albedo_mean > 0 else 0
-                    stats_text += f"\n• {CLASS_LABELS[fraction]}: {percentage:.1f}%"
+        # Calculate basic statistics for each fraction
+        stats_text += "\nValeurs moyennes:"
+        for fraction in FRACTION_CLASSES:
+            col_mean = f"{fraction}_{ANALYSIS_VARIABLE}"
+            if col_mean in year_data.columns:
+                values = year_data[col_mean].dropna()
+                if len(values) > 0:
+                    mean_val = values.mean()
+                    stats_text += f"\n• {CLASS_LABELS[fraction]}: {mean_val:.3f}"
         
         ax.text(0.02, 0.98, stats_text, transform=ax.transAxes, 
                 verticalalignment='top', fontsize=9,
