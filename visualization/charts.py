@@ -15,6 +15,11 @@ from config import (FRACTION_CLASSES, CLASS_LABELS, FRACTION_COLORS, PLOT_STYLES
                      TREND_SYMBOLS, get_significance_marker, OUTPUT_DIR)
 from utils.helpers import print_section_header, format_pvalue, ensure_directory_exists
 import os
+import warnings
+
+# Configurer matplotlib pour éviter les avertissements de police
+plt.rcParams['font.family'] = ['DejaVu Sans', 'Arial', 'sans-serif']
+warnings.filterwarnings('ignore', category=UserWarning, message='.*Glyph.*missing from font.*')
 
 class ChartGenerator:
     """
@@ -512,21 +517,58 @@ class ChartGenerator:
             ax.grid(True, alpha=0.3, axis='x')
     
     def _plot_main_timeseries(self, ax, variable):
-        """Série temporelle principale"""
+        """Série temporelle principale - segmentée par saison de fonte"""
         main_fraction = 'pure_ice'
         col_name = f"{main_fraction}_{variable}"
         
         if col_name in self.data.columns:
-            data_subset = self.data[['date', col_name]].dropna()
-            ax.plot(data_subset['date'], data_subset[col_name], 
-                   alpha=0.6, linewidth=1, color='blue')
+            # Filtrer pour saison de fonte seulement (juin-septembre)
+            melt_season_data = self.data[
+                (self.data['month'].isin([6, 7, 8, 9])) & 
+                (self.data[col_name].notna())
+            ].copy()
             
-            # Moyenne mobile
-            if len(data_subset) > 30:
-                rolling = data_subset.set_index('date')[col_name].rolling(window=30).mean()
-                ax.plot(rolling.index, rolling.values, color='red', linewidth=2)
+            if len(melt_season_data) > 0:
+                # Trier par date
+                melt_season_data = melt_season_data.sort_values('date')
+                
+                # Grouper par année et tracer chaque saison séparément
+                years = sorted(melt_season_data['year'].unique())
+                colors = plt.cm.viridis(np.linspace(0, 1, len(years)))
+                
+                # Tracer les données par année (évite connexions hiver-été)
+                for i, year in enumerate(years):
+                    year_data = melt_season_data[melt_season_data['year'] == year]
+                    if len(year_data) > 0:
+                        # Ligne pour cette année seulement
+                        ax.plot(year_data['date'], year_data[col_name], 
+                               alpha=0.7, linewidth=1, color=colors[i])
+                        
+                        # Points pour marquer les observations
+                        ax.scatter(year_data['date'], year_data[col_name], 
+                                  alpha=0.6, s=8, color=colors[i])
+                
+                # Tendance générale sur toute la période (optionnel)
+                if len(melt_season_data) > 10:
+                    from scipy import stats
+                    # Convertir dates en nombre pour régression
+                    date_nums = pd.to_numeric(melt_season_data['date'])
+                    values = melt_season_data[col_name].values
+                    
+                    slope, intercept, r_value, p_value, std_err = stats.linregress(date_nums, values)
+                    
+                    # Ligne de tendance générale
+                    trend_line = slope * date_nums + intercept
+                    ax.plot(melt_season_data['date'], trend_line, 
+                           color='red', linewidth=2, alpha=0.8, 
+                           linestyle='--', label=f'Tendance générale')
+                    
+                    ax.legend(fontsize=8)
+            else:
+                ax.text(0.5, 0.5, 'Aucune donnée de saison de fonte disponible', 
+                       ha='center', va='center', transform=ax.transAxes)
         
-        ax.set_title(f'Série Temporelle - {self.class_labels[main_fraction]}', fontweight='bold')
+        ax.set_title(f'Série Temporelle - {self.class_labels[main_fraction]} (Saisons de fonte)', fontweight='bold')
         ax.set_xlabel('Date')
         ax.set_ylabel('Albédo')
         ax.grid(True, alpha=0.3)
