@@ -686,16 +686,17 @@ function exportSpecificDate(dateString, includeQuality, crs, exportAllPixels) {
           .toFloat()                     // Force Float64 pour compatibilité
           .rename('fraction_classes');
         
-        // Albédo complet du glacier (sans masquage par fraction)
+        // Albédo complet du glacier (sans masquage par fraction) - FORCE Float64
         var albedo_complete = albedo_scaled
           .updateMask(glacier_mask)
+          .toFloat()                 // Force Float64 pour compatibilité
           .rename('albedo_all_glacier');
         
-        // Créer l'image d'export unifiée (tout en Float pour compatibilité)
+        // Créer l'image d'export unifiée (tout en Float64 pour compatibilité)
         var baseBands = [
-          albedo_complete,           // Albédo de tous les pixels glacier (Float)
-          classification_map,        // Classes de fraction 1.0-5.0 (Float)
-          fraction.updateMask(glacier_mask).toFloat().rename('fraction_coverage') // Fraction continue (Float)
+          albedo_complete,           // Albédo de tous les pixels glacier (Float64)
+          classification_map,        // Classes de fraction 1.0-5.0 (Float64)
+          fraction.updateMask(glacier_mask).toFloat().rename('fraction_coverage') // Fraction continue (Float64)
         ];
         
         if (includeQuality) {
@@ -713,14 +714,14 @@ function exportSpecificDate(dateString, includeQuality, crs, exportAllPixels) {
         var fraction = calculatePixelFraction(selectedImage, glacier_mask);
         var masks = createFractionMasks(fraction, FRACTION_THRESHOLDS);
         
-        // Créer la liste des bandes de base (albédo + fraction)
+        // Créer la liste des bandes de base (albédo + fraction) - FORCE Float64
         var baseBands = [
-          albedo_scaled.updateMask(masks.border).rename('albedo_border_0_25'),
-          albedo_scaled.updateMask(masks.mixed_low).rename('albedo_mixed_25_50'),
-          albedo_scaled.updateMask(masks.mixed_high).rename('albedo_mixed_50_75'),
-          albedo_scaled.updateMask(masks.mostly_ice).rename('albedo_mostly_75_90'),
-          albedo_scaled.updateMask(masks.pure_ice).rename('albedo_pure_90_100'),
-          fraction.rename('fraction_coverage')
+          albedo_scaled.updateMask(masks.border).toFloat().rename('albedo_border_0_25'),
+          albedo_scaled.updateMask(masks.mixed_low).toFloat().rename('albedo_mixed_25_50'),
+          albedo_scaled.updateMask(masks.mixed_high).toFloat().rename('albedo_mixed_50_75'),
+          albedo_scaled.updateMask(masks.mostly_ice).toFloat().rename('albedo_mostly_75_90'),
+          albedo_scaled.updateMask(masks.pure_ice).toFloat().rename('albedo_pure_90_100'),
+          fraction.toFloat().rename('fraction_coverage')
         ];
         
         // Ajouter le flag de qualité seulement si demandé
