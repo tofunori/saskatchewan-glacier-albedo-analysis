@@ -2,6 +2,7 @@
 // ║        ANALYSE ALBÉDO DE NEIGE PAR FRACTION ET ÉLÉVATION - SASKATCHEWAN GLACIER       ║
 // ║                         MODIS MOD10A1.061 + SRTM DEM 2010-2024                        ║
 // ║                    Méthodologie Williamson & Menounos (2021) + Fractions              ║
+// ║                           Fichier: MOD10A1_fractions_elevation.js                     ║
 // ╚════════════════════════════════════════════════════════════════════════════════════════╝
 
 // Description : Analyse l'évolution de l'albédo de neige selon les fractions de couverture 
@@ -152,20 +153,26 @@ function createElevationZones(dem, median_elev, glacierMask) {
 // │ SECTION 3 : FONCTIONS DE CALCUL DE FRACTION (EXISTANTES)                               │
 // └────────────────────────────────────────────────────────────────────────────────────────┘
 
-// 6. Fonction pour calculer la fraction de couverture (méthode testée et fonctionnelle)
+// 6. Fonction pour calculer la fraction de couverture (méthode corrigée pour respecter la projection MODIS)
 function calculatePixelFraction(modisImage, glacierMask) {
-  // Méthode inspirée du script Python fonctionnel
+  // Obtenir la projection native de l'image MODIS
+  var modisProjection = modisImage.projection();
+  
+  // Reprojecter directement le masque glacier dans la projection MODIS
+  // tout en conservant la résolution fine de 30m
   var raster30 = ee.Image.constant(1)
     .updateMask(glacierMask)
     .unmask(0)
-    .reproject('EPSG:4326', null, 30);
+    .reproject(modisProjection, null, 30);
   
+  // Effectuer l'agrégation DANS la projection MODIS native
+  // pour respecter exactement la grille des pixels MODIS
   var fraction = raster30
     .reduceResolution({
       reducer: ee.Reducer.mean(),
       maxPixels: 1024
     })
-    .reproject('EPSG:4326', null, 500); // FORCE 500m resolution consistent with DEM
+    .reproject(modisProjection, null, 500);
   
   return fraction; // Retourne valeurs 0-1
 }

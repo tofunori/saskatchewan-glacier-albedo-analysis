@@ -2,6 +2,7 @@
 // ║              ANALYSE DE L'ALBÉDO DE NEIGE PAR FRACTION DE COUVERTURE GLACIER          ║
 // ║                           GLACIER SASKATCHEWAN 2010-2024                              ║
 // ║                        MODIS MOD10A1.061 Snow_Albedo_Daily_Tile                       ║
+// ║                            Fichier: MOD10A1_basic_fractions.js                        ║
 // ╚════════════════════════════════════════════════════════════════════════════════════════╝
 
 // Description : Analyse l'évolution de l'albédo de neige selon différents seuils de fraction
@@ -32,20 +33,26 @@ var glacier_geometry = glacier_mask.reduceToVectors({
 // │ SECTION 2 : FONCTIONS DE CALCUL DE FRACTION                                            │
 // └────────────────────────────────────────────────────────────────────────────────────────┘
 
-// 3. Fonction pour calculer la fraction de couverture (méthode testée et fonctionnelle)
+// 3. Fonction pour calculer la fraction de couverture (méthode corrigée pour respecter la projection MODIS)
 function calculatePixelFraction(modisImage, glacierMask) {
-  // Méthode inspirée du script Python fonctionnel
+  // Obtenir la projection native de l'image MODIS
+  var modisProjection = modisImage.projection();
+  
+  // Reprojecter directement le masque glacier dans la projection MODIS
+  // tout en conservant la résolution fine de 30m
   var raster30 = ee.Image.constant(1)
     .updateMask(glacierMask)
     .unmask(0)
-    .reproject('EPSG:4326', null, 30);
+    .reproject(modisProjection, null, 30);
   
+  // Effectuer l'agrégation DANS la projection MODIS native
+  // pour respecter exactement la grille des pixels MODIS
   var fraction = raster30
     .reduceResolution({
       reducer: ee.Reducer.mean(),
       maxPixels: 1024
     })
-    .reproject(modisImage.projection());
+    .reproject(modisProjection, null, 500);
   
   return fraction; // Retourne valeurs 0-1
 }
@@ -739,16 +746,19 @@ var qualityChart2020 = ui.Chart.feature.groups(
     height: 400
   });
 
-// Alternative : Graphique en barres simple pour la qualité
-var globalSnowStackedChart = ui.Chart.feature.byProperty({
-    features: singleYearSnowQuality,
-    xProperty: 'date',
-    yProperties: ['quality_0_best', 'quality_1_good', 'quality_2_ok', 'quality_other_night_ocean']
-  })
+// Alternative : Graphique en barres empilées corrigé
+var globalSnowStackedChart = ui.Chart.feature.byFeature(
+    singleYearSnowQuality,
+    'system:time_start',  // Utiliser le timestamp au lieu de 'date'
+    ['quality_0_best', 'quality_1_good', 'quality_2_ok', 'quality_other_night_ocean']
+  )
   .setChartType('ColumnChart')
   .setOptions({
     title: 'Distribution quotidienne de la qualité des pixels MOD10A1 Snow Albedo - Saison de fonte 2020',
-    hAxis: {title: 'Date'},
+    hAxis: {
+      title: 'Date',
+      format: 'MM/dd'
+    },
     vAxis: {title: 'Nombre de pixels'},
     colors: ['#2166ac', '#92c5de', '#fddbc7', '#d6604d'],
     isStacked: true,

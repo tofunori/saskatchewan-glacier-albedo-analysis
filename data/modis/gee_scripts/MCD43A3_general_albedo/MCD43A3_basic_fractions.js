@@ -1,6 +1,8 @@
 // ╔════════════════════════════════════════════════════════════════════════════════════════╗
-// ║              ANALYSE DE L'ALBÉDO PAR FRACTION DE COUVERTURE GLACIER                    ║
+// ║              ANALYSE DE L'ALBÉDO GÉNÉRAL PAR FRACTION DE COUVERTURE GLACIER           ║
 // ║                           GLACIER SASKATCHEWAN 2010-2024                              ║
+// ║                         MODIS MCD43A3.061 Albedo_WSA_shortwave                        ║
+// ║                            Fichier: MCD43A3_basic_fractions.js                        ║
 // ╚════════════════════════════════════════════════════════════════════════════════════════╝
 
 // Description : Analyse l'évolution de l'albédo selon différents seuils de fraction
@@ -37,20 +39,26 @@ var glacier_geometry = glacier_mask.reduceToVectors({
 // │ SECTION 2 : FONCTIONS DE CALCUL DE FRACTION                                            │
 // └────────────────────────────────────────────────────────────────────────────────────────┘
 
-// 3. Fonction pour calculer la fraction de couverture (méthode testée et fonctionnelle)
+// 3. Fonction pour calculer la fraction de couverture (méthode corrigée pour respecter la projection MODIS)
 function calculatePixelFraction(modisImage, glacierMask) {
-  // Méthode inspirée du script Python fonctionnel
+  // Obtenir la projection native de l'image MODIS
+  var modisProjection = modisImage.projection();
+  
+  // Reprojecter directement le masque glacier dans la projection MODIS
+  // tout en conservant la résolution fine de 30m
   var raster30 = ee.Image.constant(1)
     .updateMask(glacierMask)
     .unmask(0)
-    .reproject('EPSG:4326', null, 30);
+    .reproject(modisProjection, null, 30);
   
+  // Effectuer l'agrégation DANS la projection MODIS native
+  // pour respecter exactement la grille des pixels MODIS
   var fraction = raster30
     .reduceResolution({
       reducer: ee.Reducer.mean(),
       maxPixels: 1024
     })
-    .reproject(modisImage.projection());
+    .reproject(modisProjection, null, 500);
   
   return fraction; // Retourne valeurs 0-1
 }
