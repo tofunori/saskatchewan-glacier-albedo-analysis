@@ -529,6 +529,38 @@ class PixelCountAnalyzer:
         
         return exported_files
 
+    def analyze_qa_distribution(self, qa_csv_path):
+        """
+        Analyse la distribution de qualité QA
+        
+        Args:
+            qa_csv_path (str): Chemin vers le fichier CSV de qualité
+            
+        Returns:
+            dict: Résultats de l'analyse de distribution QA
+        """
+        print_section_header("Analyse de la distribution QA", level=3)
+        
+        try:
+            # Charger les données QA si nécessaire
+            if self.qa_data is None:
+                self.qa_csv_path = qa_csv_path
+                self.load_qa_data()
+            
+            if self.qa_data is None or self.qa_data.empty:
+                print("❌ Pas de données QA disponibles")
+                return {}
+            
+            # Analyser les statistiques QA
+            qa_results = self.analyze_true_qa_statistics()
+            
+            print("✅ Analyse de distribution QA terminée")
+            return qa_results
+            
+        except Exception as e:
+            print(f"❌ Erreur lors de l'analyse QA: {e}")
+            return {}
+
 def analyze_pixel_quality(data, qa_csv_path=None):
     """
     Fonction d'analyse de la qualité des pixels pour l'interface interactive

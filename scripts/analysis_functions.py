@@ -341,14 +341,17 @@ def _run_trend_analysis(data, dataset_name):
     try:
         from analysis.trends import analyze_trends
         
-        trends = analyze_trends(data)
+        trends_results = analyze_trends(data)
         
         # Sauvegarder les résultats
         results_dir = Path(f"results/{dataset_name.lower()}")
         results_dir.mkdir(parents=True, exist_ok=True)
         
-        trends.to_csv(results_dir / "summary_trends_mean.csv", index=False)
-        print(f"📊 Tendances sauvegardées dans {results_dir}/summary_trends_mean.csv")
+        # Sauvegarder le tableau de résumé si disponible
+        if 'summary_table' in trends_results:
+            summary_table = trends_results['summary_table']
+            summary_table.to_csv(results_dir / "summary_trends_mean.csv", index=False)
+            print(f"📊 Tendances sauvegardées dans {results_dir}/summary_trends_mean.csv")
         
     except Exception as e:
         print(f"❌ Erreur lors de l'analyse des tendances: {e}")
@@ -358,7 +361,9 @@ def _run_visualizations(data, dataset_name):
     try:
         from visualization.charts import create_charts
         
-        create_charts(data, dataset_name)
+        # Créer les visualisations
+        output_dir = f"output/{dataset_name.lower()}"
+        create_charts(data, trend_results=None, variable='mean', output_dir=output_dir)
         print(f"📈 Visualisations générées pour {dataset_name}")
         
     except Exception as e:
@@ -369,7 +374,7 @@ def _run_pixel_analysis(data, dataset_name):
     try:
         from analysis.pixel_analysis import analyze_pixel_quality
         
-        analyze_pixel_quality(data, dataset_name)
+        analyze_pixel_quality(data, qa_csv_path=None)
         print(f"🔍 Analyse pixels/QA terminée pour {dataset_name}")
         
     except Exception as e:
@@ -380,7 +385,8 @@ def _run_daily_plots(data, dataset_name):
     try:
         from visualization.daily_plots import create_daily_plots
         
-        create_daily_plots(data, dataset_name)
+        output_dir = f"output/{dataset_name.lower()}"
+        create_daily_plots(data, variable='mean', output_dir=output_dir)
         print(f"📅 Graphiques quotidiens générés pour {dataset_name}")
         
     except Exception as e:
