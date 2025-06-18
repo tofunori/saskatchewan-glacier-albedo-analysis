@@ -577,9 +577,9 @@ var includeQualityCheckbox = ui.Checkbox({
   style: {margin: '5px 0', fontSize: '12px'}
 });
 
-// Checkbox pour exporter tous les pixels
+// Checkbox pour exporter tous les pixels avec classification
 var exportAllPixelsCheckbox = ui.Checkbox({
-  label: 'Exporter TOUS les pixels (pas seulement glacier)',
+  label: 'Export unifié: tous pixels glacier + classes',
   value: false,
   style: {margin: '5px 0', fontSize: '12px', fontWeight: 'bold'}
 });
@@ -627,7 +627,7 @@ function exportSpecificDate(dateString, includeQuality, crs, exportAllPixels) {
   print('📤 DÉBUT EXPORT DATE SPÉCIFIQUE: ' + dateString);
   print('🏷️ Flag de qualité inclus: ' + (includeQuality ? 'OUI' : 'NON'));
   print('🗺️ Projection sélectionnée: ' + crs);
-  print('🌍 Zone export: ' + (exportAllPixels ? 'TOUS LES PIXELS' : 'GLACIER SEULEMENT'));
+  print('🌍 Zone export: ' + (exportAllPixels ? 'TOUS PIXELS GLACIER + CLASSES' : 'FRACTIONS SÉPARÉES'));
   
   try {
     var targetDate = ee.Date(dateString);
@@ -668,23 +668,41 @@ function exportSpecificDate(dateString, includeQuality, crs, exportAllPixels) {
       var export_albedo_bands;
       
       if (exportAllPixels) {
-        // MODE TOUS LES PIXELS: Export simple albédo + qualité sur toute la zone
-        print('🌍 Mode TOUS LES PIXELS activé - Export de toute la zone MODIS');
+        // MODE UNIFIÉ: Tous les pixels glacier avec classification par couleurs
+        print('🎨 Mode UNIFIÉ activé - Tous pixels glacier avec codes couleur');
         
+        // Calculer la fraction pour cette image
+        var fraction = calculatePixelFraction(selectedImage, glacier_mask);
+        var masks = createFractionMasks(fraction, FRACTION_THRESHOLDS);
+        
+        // Créer une carte de classification par valeurs distinctes
+        var classification_map = ee.Image(0)  // Background = 0
+          .where(masks.border, 1)      // Bordure = 1
+          .where(masks.mixed_low, 2)   // Mixte bas = 2
+          .where(masks.mixed_high, 3)  // Mixte haut = 3
+          .where(masks.mostly_ice, 4)  // Majoritaire = 4
+          .where(masks.pure_ice, 5)    // Pur = 5
+          .updateMask(glacier_mask)    // Seulement dans le glacier
+          .rename('fraction_classes');
+        
+        // Albédo complet du glacier (sans masquage par fraction)
+        var albedo_complete = albedo_scaled
+          .updateMask(glacier_mask)
+          .rename('albedo_all_glacier');
+        
+        // Créer l'image d'export unifiée
         var baseBands = [
-          albedo_scaled.rename('albedo_all_pixels'),
-          quality.toFloat().multiply(0.1).rename('quality_flag_scaled') // Échelle 0-25.5 → 0-2.55
+          albedo_complete,           // Albédo de tous les pixels glacier
+          classification_map,        // Classes de fraction (1-5)
+          fraction.updateMask(glacier_mask).rename('fraction_coverage') // Fraction continue
         ];
         
         if (includeQuality) {
-          export_albedo_bands = ee.Image.cat(baseBands);
-        } else {
-          export_albedo_bands = albedo_scaled.rename('albedo_all_pixels');
+          baseBands.push(quality.toFloat().updateMask(glacier_mask).rename('quality_flag'));
         }
         
-        // Définir une région plus large que le glacier pour tous les pixels
-        var bounds = glacier_geometry.bounds().buffer(5000); // 5km buffer autour du glacier
-        var exportRegion = bounds;
+        export_albedo_bands = ee.Image.cat(baseBands);
+        var exportRegion = glacier_geometry;
         
       } else {
         // MODE GLACIER SEULEMENT: Export par fractions comme avant
@@ -717,7 +735,7 @@ function exportSpecificDate(dateString, includeQuality, crs, exportAllPixels) {
       
       // Configurer l'export avec nom adapté
       var exportFileName = 'MODIS_Albedo_' + 
-        (exportAllPixels ? 'AllPixels_' : 'Fractions_') + 
+        (exportAllPixels ? 'Unified_Classified_' : 'Fractions_') + 
         dateString.replace(/-/g, '');
       
       Export.image.toDrive({
@@ -737,14 +755,22 @@ function exportSpecificDate(dateString, includeQuality, crs, exportAllPixels) {
       print('🎯 Bandes exportées:');
       
       if (exportAllPixels) {
-        // Messages pour mode tous les pixels
-        print('  • albedo_all_pixels (Albédo de tous les pixels)');
+        // Messages pour mode unifié
+        print('  • albedo_all_glacier (Albédo de tous pixels glacier)');
+        print('  • fraction_classes (Classes: 1=bordure, 2=mixte-bas, 3=mixte-haut, 4=majoritaire, 5=pur)');
+        print('  • fraction_coverage (Fraction continue 0-1)');
         if (includeQuality) {
-          print('  • quality_flag_scaled (Qualité MODIS 0-2.55)');
+          print('  • quality_flag (Qualité MODIS dans glacier)');
         } else {
           print('  ⚠️ Flag de qualité exclu');
         }
-        print('🌍 Zone: Région élargie (glacier + 5km buffer)');
+        print('🏔️ Zone: Tous les pixels à l\'intérieur du masque glacier');
+        print('🎨 CODAGE COULEUR:');
+        print('     1 = Rouge (bordure 0-25%)');
+        print('     2 = Orange (mixte 25-50%)');
+        print('     3 = Jaune (mixte 50-75%)');
+        print('     4 = Bleu clair (majoritaire 75-90%)');
+        print('     5 = Bleu foncé (pur 90-100%)');
       } else {
         // Messages pour mode fractions glacier
         print('  • albedo_border_0_25 (Albédo 0-25%)');
