@@ -370,31 +370,14 @@ var updateVisualization = function() {
       .updateMask(glacier_mask);
   }
   
-  // Fonction pour appliquer la visualisation native MODIS avec pixels carrés forcés
+  // Fonction pour appliquer la visualisation avec pixels carrés Web Mercator
   var processImageForDisplay = function(image) {
     if (useNativeRes) {
-      // SOLUTION RADICALE : Créer de vrais pixels carrés visibles
-      
-      // 1. Reprojecter en Web Mercator avec résolution fixe pour créer des carrés
-      var webMercatorImage = image
-        .reproject({
-          crs: 'EPSG:3857',  // Web Mercator
-          scale: 500  // Résolution forcée 500m
-        })
-        // 2. Forcer la pixelisation en réduisant puis ré-expandant
-        .reduceNeighborhood({
-          reducer: ee.Reducer.mode(),  // Mode pour conserver les valeurs discrètes
-          kernel: ee.Kernel.square(1, 'pixels'),
-          optimization: 'boxcar'
-        })
-        // 3. Re-échantillonner pour créer des blocs nets
-        .resample('bilinear')
-        .reproject({
-          crs: 'EPSG:3857',
-          scale: 500
-        });
-      
-      return webMercatorImage;
+      // SOLUTION ULTRA-SIMPLE : Juste reprojecter en Web Mercator avec 500m fixe
+      return image.reproject({
+        crs: 'EPSG:3857',  // Web Mercator = pixels carrés sur la carte
+        scale: 500         // Résolution forcée 500m
+      });
     }
     return image;
   };
@@ -484,14 +467,14 @@ var projectionLabel = ui.Label('Options visualisation MODIS:', {fontWeight: 'bol
 // Variable globale pour stocker l'état de la projection
 var isModisProjection = false;
 
-// Bouton pour forcer l'affichage en pixels carrés
+// Bouton pour forcer l'affichage en Web Mercator 500m
 var projectionButton = ui.Button({
-  label: 'FORCER PIXELS CARRÉS',
+  label: 'MODE WEB MERCATOR 500M',
   onClick: function() {
     isModisProjection = !isModisProjection;
     
     if (isModisProjection) {
-      projectionButton.setLabel('DÉSACTIVER PIXELS CARRÉS');
+      projectionButton.setLabel('DÉSACTIVER WEB MERCATOR');
       nativeResCheckbox.setValue(true); // Forcer résolution native
       gridCheckbox.setValue(true); // Activer la grille pour voir les pixels
       
@@ -499,30 +482,30 @@ var projectionButton = ui.Button({
       Map.setOptions('SATELLITE');
       
       print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      print('🔬 MODE PIXELS CARRÉS FORCÉS ACTIVÉ');
-      print('• SOLUTION RADICALE: Conversion forcée Web Mercator 500m');
-      print('• Grille carrée régulière 500m × 500m'); 
-      print('• Pixelisation forcée avec reduceNeighborhood');
-      print('• Fond de carte satellite pour contraste');
+      print('🔬 MODE WEB MERCATOR 500M ACTIVÉ');
+      print('• Reprojection simple : MODIS sinusoïdale → Web Mercator');
+      print('• Résolution fixe 500m en projection Web Mercator'); 
+      print('• Grille carrée régulière Web Mercator 500m');
+      print('• Fond satellite pour meilleur contraste');
       print('');
-      print('⚡ NOUVEAUTÉ: VRAIS PIXELS CARRÉS !');
-      print('• Données reprojetées Web Mercator + pixelisation');
-      print('• Grille carrée au lieu de losanges sinusoïdaux');
-      print('• Perte de projection native MAIS pixels carrés visibles');
-      print('• Option: "Masquer fond de carte" pour pixels purs');
+      print('📐 RÉSULTAT : PIXELS PLUS CARRÉS');
+      print('• Conversion Web Mercator = forme plus carrée');
+      print('• Grille alignée sur Web Mercator (non sinusoïdale)');
+      print('• Compromise: projection différente, forme améliorée');
+      print('• Zoom 13+ pour voir la différence de forme');
       print('');
-      print('• Zoom 13+ REQUIS • Clic "Mettre à jour la carte"');
+      print('• Clic "Mettre à jour la carte" pour appliquer');
       print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     } else {
-      projectionButton.setLabel('FORCER PIXELS CARRÉS');
+      projectionButton.setLabel('MODE WEB MERCATOR 500M');
       nativeResCheckbox.setValue(false);
       gridCheckbox.setValue(false);
       
       // Remettre le fond de carte par défaut
       Map.setOptions('ROADMAP');
       
-      print('📍 Mode pixels carrés désactivé');
-      print('• Retour à l\'affichage MODIS lissé standard');
+      print('📍 Mode Web Mercator désactivé');
+      print('• Retour à l\'affichage MODIS sinusoïdal (losanges)');
       print('• Fond de carte routier rétabli');
     }
     
