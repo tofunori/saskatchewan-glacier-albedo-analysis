@@ -660,3 +660,97 @@ class ComparisonVisualizer:
             print(f"  ✓ {plot}")
         
         return plots_generated
+
+def create_comparison_plots(mcd43a3_data, mod10a1_data, variable='mean', output_dir='comparison_output'):
+    """
+    Fonction de création de graphiques comparatifs pour l'interface interactive
+    
+    Args:
+        mcd43a3_data: Données MCD43A3 chargées (AlbedoDataHandler)
+        mod10a1_data: Données MOD10A1 chargées (AlbedoDataHandler)
+        variable (str): Variable à analyser ('mean' ou 'median')
+        output_dir (str): Répertoire de sortie
+        
+    Returns:
+        dict: Chemins des graphiques créés
+    """
+    print_section_header("Création des visualisations comparatives", level=2)
+    
+    try:
+        # Créer le répertoire de sortie
+        ensure_directory_exists(output_dir)
+        
+        # Récupérer les DataFrames des handlers
+        mcd43a3_df = mcd43a3_data.data
+        mod10a1_df = mod10a1_data.data
+        
+        # Créer un merge simple basé sur la date pour les visualisations
+        print("🔄 Fusion des datasets pour visualisations...")
+        
+        # Préparer les datasets pour le merge
+        mcd43a3_merge = mcd43a3_df[['date'] + [f'{f}_{variable}' for f in FRACTION_CLASSES if f'{f}_{variable}' in mcd43a3_df.columns]].copy()
+        mod10a1_merge = mod10a1_df[['date'] + [f'{f}_{variable}' for f in FRACTION_CLASSES if f'{f}_{variable}' in mod10a1_df.columns]].copy()
+        
+        # Renommer les colonnes pour éviter les conflits
+        mcd43a3_cols = {col: f'mcd43a3_{col}' if col != 'date' else col for col in mcd43a3_merge.columns}
+        mod10a1_cols = {col: f'mod10a1_{col}' if col != 'date' else col for col in mod10a1_merge.columns}
+        
+        mcd43a3_merge = mcd43a3_merge.rename(columns=mcd43a3_cols)
+        mod10a1_merge = mod10a1_merge.rename(columns=mod10a1_cols)
+        
+        # Fusionner sur la date
+        merged_data = pd.merge(mcd43a3_merge, mod10a1_merge, on='date', how='inner')
+        
+        print(f"✓ Fusion réussie: {len(merged_data)} observations communes")
+        
+        if len(merged_data) == 0:
+            print("❌ Aucune date commune entre les datasets pour visualisations")
+            return {}
+        
+        # Créer l'objet de données de comparaison
+        comparison_data = {
+            'mcd43a3': mcd43a3_df,
+            'mod10a1': mod10a1_df,
+            'merged': merged_data
+        }
+        
+        # Créer le visualizer de comparaison
+        visualizer = ComparisonVisualizer(comparison_data, output_dir)
+        
+        generated_files = {}
+        
+        # Créer les visualisations principales
+        try:
+            # Matrice de corrélation
+            print("### Matrice de corrélation MCD43A3 vs MOD10A1")
+            corr_path = visualizer.plot_correlation_matrix(save=True)
+            if corr_path:
+                generated_files['correlation_matrix'] = corr_path
+                print(f"✓ Matrice de corrélation: {corr_path}")
+        except Exception as e:
+            print(f"⚠️ Erreur matrice de corrélation: {e}")
+        
+        try:
+            # Comparaisons par fraction (fractions principales seulement)
+            main_fractions = ['mostly_ice', 'pure_ice'] if hasattr(visualizer, 'plot_scatter_comparison') else []
+            for fraction in main_fractions:
+                try:
+                    print(f"### Graphique de dispersion - {CLASS_LABELS.get(fraction, fraction)}")
+                    scatter_path = visualizer.plot_scatter_comparison(fraction)
+                    if scatter_path:
+                        generated_files[f'scatter_{fraction}'] = scatter_path
+                        print(f"✓ Scatter {fraction}: {scatter_path}")
+                except Exception as e:
+                    print(f"⚠️ Erreur scatter {fraction}: {e}")
+        except Exception as e:
+            print(f"⚠️ Erreur comparaisons par fraction: {e}")
+        
+        print(f"✅ Visualisations comparatives créées dans: {output_dir}")
+        
+        return generated_files
+        
+    except Exception as e:
+        print(f"❌ Erreur lors de la création des visualisations comparatives: {e}")
+        import traceback
+        traceback.print_exc()
+        return {}

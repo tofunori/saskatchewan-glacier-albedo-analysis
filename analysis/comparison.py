@@ -701,3 +701,85 @@ class DatasetComparator:
         except Exception as e:
             print(f"Error calculating comparison statistics: {str(e)}")
             return None
+
+def analyze_correlation(mcd43a3_data, mod10a1_data, variable='mean'):
+    """
+    Fonction d'analyse de corrélation pour l'interface interactive
+    
+    Args:
+        mcd43a3_data: Données MCD43A3 chargées (AlbedoDataHandler)
+        mod10a1_data: Données MOD10A1 chargées (AlbedoDataHandler)
+        variable (str): Variable à analyser ('mean' ou 'median')
+        
+    Returns:
+        dict: Résultats de l'analyse de corrélation
+    """
+    print_section_header("Analyse de corrélation entre MCD43A3 et MOD10A1", level=2)
+    
+    try:
+        # Récupérer les DataFrames des handlers
+        mcd43a3_df = mcd43a3_data.data
+        mod10a1_df = mod10a1_data.data
+        
+        # Créer un merge simple basé sur la date
+        print("🔄 Fusion des datasets par date...")
+        
+        # Préparer les datasets pour le merge
+        mcd43a3_merge = mcd43a3_df[['date'] + [f'{f}_{variable}' for f in FRACTION_CLASSES if f'{f}_{variable}' in mcd43a3_df.columns]].copy()
+        mod10a1_merge = mod10a1_df[['date'] + [f'{f}_{variable}' for f in FRACTION_CLASSES if f'{f}_{variable}' in mod10a1_df.columns]].copy()
+        
+        # Renommer les colonnes pour éviter les conflits
+        mcd43a3_cols = {col: f'mcd43a3_{col}' if col != 'date' else col for col in mcd43a3_merge.columns}
+        mod10a1_cols = {col: f'mod10a1_{col}' if col != 'date' else col for col in mod10a1_merge.columns}
+        
+        mcd43a3_merge = mcd43a3_merge.rename(columns=mcd43a3_cols)
+        mod10a1_merge = mod10a1_merge.rename(columns=mod10a1_cols)
+        
+        # Fusionner sur la date
+        merged_data = pd.merge(mcd43a3_merge, mod10a1_merge, on='date', how='inner')
+        
+        print(f"✓ Fusion réussie: {len(merged_data)} observations communes")
+        
+        if len(merged_data) == 0:
+            print("❌ Aucune date commune entre les datasets")
+            return {}
+        
+        # Créer l'objet de données de comparaison
+        comparison_data = {
+            'mcd43a3': mcd43a3_df,
+            'mod10a1': mod10a1_df,
+            'merged': merged_data
+        }
+        
+        # Créer l'analyzer de comparaison
+        analyzer = ComparisonAnalyzer(comparison_data)
+        
+        # Calculer les corrélations
+        correlations = analyzer.calculate_correlations(method='pearson')
+        
+        # Afficher un résumé des corrélations
+        if correlations:
+            print("\n📊 Résumé des corrélations (Pearson):")
+            for fraction, result in correlations.items():
+                if result and 'correlation' in result and not np.isnan(result['correlation']):
+                    corr = result['correlation']
+                    p_val = result['p_value']
+                    n_obs = result['n_observations']
+                    significance = "***" if p_val < 0.001 else "**" if p_val < 0.01 else "*" if p_val < 0.05 else "ns"
+                    print(f"  • {CLASS_LABELS.get(fraction, fraction)}: r={corr:.3f} {significance} (p={p_val:.4f}, n={n_obs})")
+                elif result and 'error' in result:
+                    print(f"  • {CLASS_LABELS.get(fraction, fraction)}: {result['error']}")
+        
+        print("✅ Analyse de corrélation terminée")
+        
+        return {
+            'correlations': correlations,
+            'method': 'pearson',
+            'merged_observations': len(merged_data)
+        }
+        
+    except Exception as e:
+        print(f"❌ Erreur lors de l'analyse de corrélation: {e}")
+        import traceback
+        traceback.print_exc()
+        return {}
