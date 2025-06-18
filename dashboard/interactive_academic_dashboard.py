@@ -505,7 +505,7 @@ def server(input, output, session):
                     marker=dict(size=4, opacity=0.8),
                     hovertemplate=f'<b>{label}</b><br>' +
                                  'Date: %{x}<br>' +
-                                 f'{input.analysis_variable().title()}: %{y:.4f}<br>' +
+                                 f'{input.analysis_variable().title()}: %{{y:.4f}}<br>' +
                                  '<extra></extra>'
                 ))
                 
@@ -545,15 +545,13 @@ def server(input, output, session):
                 title="Date",
                 showgrid=True,
                 gridwidth=1,
-                gridcolor='rgba(128,128,128,0.2)',
-                font=dict(family="Georgia, serif")
+                gridcolor='rgba(128,128,128,0.2)'
             ),
             yaxis=dict(
                 title=f"{input.analysis_variable().title()} Albedo",
                 showgrid=True,
                 gridwidth=1,
-                gridcolor='rgba(128,128,128,0.2)',
-                font=dict(family="Georgia, serif")
+                gridcolor='rgba(128,128,128,0.2)'
             ),
             hovermode='x unified',
             legend=dict(
@@ -561,8 +559,7 @@ def server(input, output, session):
                 yanchor="bottom",
                 y=1.02,
                 xanchor="right",
-                x=1,
-                font=dict(family="Georgia, serif")
+                x=1
             ),
             height=600,
             template=input.plot_theme(),
@@ -620,7 +617,7 @@ def server(input, output, session):
                     marker=dict(size=8),
                     hovertemplate=f'<b>{label}</b><br>' +
                                  'Month: %{x}<br>' +
-                                 f'Mean {input.analysis_variable()}: %{y:.4f}<br>' +
+                                 f'Mean {input.analysis_variable()}: %{{y:.4f}}<br>' +
                                  '<extra></extra>'
                 ))
                 
@@ -648,12 +645,10 @@ def server(input, output, session):
                 tickmode='array',
                 tickvals=list(range(1, 13)),
                 ticktext=['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-                         'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-                font=dict(family="Georgia, serif")
+                         'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
             ),
             yaxis=dict(
-                title=f"{input.analysis_variable().title()} Albedo",
-                font=dict(family="Georgia, serif")
+                title=f"{input.analysis_variable().title()} Albedo"
             ),
             height=400,
             template=input.plot_theme(),
