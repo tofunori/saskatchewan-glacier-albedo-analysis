@@ -7,12 +7,12 @@
 // de couverture des pixels MODIS, permettant de distinguer les pixels "purs glacier"
 // des pixels mixtes en bordure.
 //
-// NOUVEAU : Options de visualisation MODIS native
-// • Mode natif MODIS pour afficher les données dans leur résolution d'origine
+// NOUVEAU : Options de visualisation MODIS et export de dates spécifiques
+// • Mode Web Mercator 500m pour pixels plus carrés
 // • Affichage optionnel de la grille des pixels MODIS (500m)
-// • Préservation de la structure spatiale originale des données MODIS
-// • Les pixels apparaissent en losange (projection sinusoïdale sur Web Mercator)
 // • Option pour masquer le fond de carte et voir les pixels purs
+// • EXPORT DATE SPÉCIFIQUE : Exporter n'importe quelle date (ex: 2023-08-18)
+// • Export multi-bandes avec toutes les fractions d'albédo
 
 // ┌────────────────────────────────────────────────────────────────────────────────────────┐
 // │ SECTION 1 : CONFIGURATION ET INITIALISATION                                            │
@@ -558,6 +558,130 @@ var hideBasemapCheckbox = ui.Checkbox({
   style: {margin: '5px 0'}
 });
 
+// =================== SECTION EXPORT DATE SPÉCIFIQUE ===================
+
+// Label pour export de date
+var exportLabel = ui.Label('Export date spécifique:', {fontWeight: 'bold', margin: '10px 0 5px 0'});
+
+// Zone de texte pour entrer une date
+var dateInput = ui.Textbox({
+  placeholder: 'AAAA-MM-JJ (ex: 2023-08-18)',
+  value: '2023-08-18',
+  style: {width: '200px', margin: '5px 0'}
+});
+
+// Bouton d'export pour la date spécifiée
+var exportDateButton = ui.Button({
+  label: 'Exporter cette date',
+  onClick: function() {
+    var inputDate = dateInput.getValue();
+    
+    // Validation simple du format de date
+    var dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(inputDate)) {
+      print('❌ Format de date invalide. Utilisez AAAA-MM-JJ (ex: 2023-08-18)');
+      return;
+    }
+    
+    exportSpecificDate(inputDate);
+  },
+  style: {width: '200px', margin: '5px 0'}
+});
+
+// Fonction pour exporter une date spécifique
+function exportSpecificDate(dateString) {
+  print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  print('📤 DÉBUT EXPORT DATE SPÉCIFIQUE: ' + dateString);
+  
+  try {
+    var targetDate = ee.Date(dateString);
+    var endDate = targetDate.advance(1, 'day');
+    
+    // Charger l'image pour cette date spécifique
+    var imageCollection = ee.ImageCollection('MODIS/061/MCD43A3')
+      .filterDate(targetDate, endDate)
+      .filterBounds(glacier_geometry)
+      .select(['Albedo_WSA_shortwave', 'BRDF_Albedo_Band_Mandatory_Quality_shortwave']);
+    
+    var imageCount = imageCollection.size();
+    print('Images trouvées pour ' + dateString + ':', imageCount);
+    
+    // Vérifier s'il y a des images
+    var hasImages = ee.Algorithms.If(
+      imageCount.gt(0),
+      true,
+      false
+    );
+    
+    hasImages.evaluate(function(result) {
+      if (!result) {
+        print('❌ Aucune image MODIS trouvée pour ' + dateString);
+        print('💡 Essayez une autre date ou vérifiez la période de couverture MODIS');
+        return;
+      }
+      
+      // Prendre la première image disponible
+      var selectedImage = imageCollection.first();
+      
+      // Traiter l'image comme dans la fonction de visualisation
+      var quality = selectedImage.select('BRDF_Albedo_Band_Mandatory_Quality_shortwave');
+      var albedo = selectedImage.select('Albedo_WSA_shortwave');
+      var good_quality_mask = quality.lte(1);
+      var albedo_scaled = albedo.multiply(0.001).updateMask(good_quality_mask);
+      
+      // Calculer la fraction pour cette image
+      var fraction = calculatePixelFraction(selectedImage, glacier_mask);
+      var masks = createFractionMasks(fraction, FRACTION_THRESHOLDS);
+      
+      // Créer l'image multi-bandes avec toutes les fractions
+      var export_albedo_bands = ee.Image.cat([
+        albedo_scaled.updateMask(masks.border).rename('albedo_border_0_25'),
+        albedo_scaled.updateMask(masks.mixed_low).rename('albedo_mixed_25_50'),
+        albedo_scaled.updateMask(masks.mixed_high).rename('albedo_mixed_50_75'),
+        albedo_scaled.updateMask(masks.mostly_ice).rename('albedo_mostly_75_90'),
+        albedo_scaled.updateMask(masks.pure_ice).rename('albedo_pure_90_100'),
+        fraction.rename('fraction_coverage'),
+        quality.rename('quality_flag')
+      ]);
+      
+      // Configurer l'export
+      var exportFileName = 'MODIS_Albedo_Fractions_' + dateString.replace(/-/g, '');
+      
+      Export.image.toDrive({
+        image: export_albedo_bands,
+        description: exportFileName,
+        folder: 'GEE_exports_dates_specifiques',
+        fileNamePrefix: exportFileName,
+        scale: 500,
+        region: glacier_geometry,
+        maxPixels: 1e9,
+        crs: 'EPSG:4326'
+      });
+      
+      print('✅ Export configuré avec succès!');
+      print('📁 Dossier: GEE_exports_dates_specifiques');
+      print('📄 Fichier: ' + exportFileName);
+      print('🎯 Bandes exportées:');
+      print('  • albedo_border_0_25 (Albédo 0-25%)');
+      print('  • albedo_mixed_25_50 (Albédo 25-50%)');
+      print('  • albedo_mixed_50_75 (Albédo 50-75%)');
+      print('  • albedo_mostly_75_90 (Albédo 75-90%)');
+      print('  • albedo_pure_90_100 (Albédo 90-100%)');
+      print('  • fraction_coverage (Fraction de couverture)');
+      print('  • quality_flag (Indicateur de qualité)');
+      print('📍 Résolution: 500m');
+      print('🗺️ Projection: EPSG:4326 (WGS84)');
+      print('');
+      print('⏳ Vérifiez l\'onglet "Tasks" pour lancer l\'export');
+    });
+    
+  } catch (error) {
+    print('❌ Erreur lors de l\'export:', error);
+  }
+  
+  print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+}
+
 // Ajouter les widgets au panneau
 var panel = ui.Panel([
   dateLabel,
@@ -569,7 +693,11 @@ var panel = ui.Panel([
   projectionButton,
   gridCheckbox,
   nativeResCheckbox,
-  hideBasemapCheckbox
+  hideBasemapCheckbox,
+  ui.Label('─────────────────', {margin: '10px 0', color: 'gray'}), // Séparateur
+  exportLabel,
+  dateInput,
+  exportDateButton
 ], ui.Panel.Layout.flow('vertical'), {
   width: '350px',
   position: 'top-left'
