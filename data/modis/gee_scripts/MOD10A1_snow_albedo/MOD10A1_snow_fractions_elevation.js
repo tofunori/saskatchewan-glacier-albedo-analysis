@@ -214,8 +214,8 @@ function analyzeDailySnowAlbedoByFractionAndElevation(img) {
   var fractionMasks = createFractionMasks(fraction, FRACTION_THRESHOLDS);
   var elevationZones = createElevationZones(dem_500m, glacier_median_elevation, glacier_mask);
   
-  // Masques de qualité pour MOD10A1: 0=Best, 1=Good, 2=Ok, 11=No Decision
-  var goodQualityMask = quality.lte(2);
+  // Masques de qualité pour MOD10A1: 0=Best, 1=Good seulement
+  var goodQualityMask = quality.lte(1);
   var validAlbedoMask = img.select('Snow_Albedo_Daily_Tile').lte(100);
   
   var stats = {};

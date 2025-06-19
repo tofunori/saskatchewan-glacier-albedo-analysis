@@ -34,7 +34,10 @@
       "mcp__tavily-search__tavily-search",
       "Bash(./venv/bin/python3:*)",
       "Bash(PYTHONPATH=\"/mnt/d/UQTR/Maitrîse/Code/saskatchewan-glacier-albedo-analysis\" python3 dashboard/test_dashboard.py)",
-      "Bash(tree:*)"
+      "Bash(tree:*)",
+      "Bash(git config:*)",
+      "mcp__search-scholar__deep_research",
+      "Bash(git rm:*)"
     ],
     "deny": []
   }

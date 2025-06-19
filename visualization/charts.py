@@ -192,7 +192,7 @@ class ChartGenerator:
         )
         
         if not pivot_data.empty:
-            sns.heatmap(pivot_data, cmap='Blues', annot=False, 
+            sns.heatmap(pivot_data, cmap='RdYlBu', annot=False, 
                        cbar_kws={'label': 'Albédo'}, ax=ax3)
         
         ax3.set_title('Heatmap Année-Mois')

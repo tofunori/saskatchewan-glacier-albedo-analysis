@@ -100,7 +100,7 @@ function calculateAnnualSnowAlbedoByFraction(year) {
     var snow_albedo = img.select('Snow_Albedo_Daily_Tile');
     
     // Filtres de qualité pour MOD10A1: 0=Best, 1=Good, 2=Ok
-    var good_quality_mask = quality.lte(2);
+    var good_quality_mask = quality.lte(1);
     
     // Masque pour valeurs valides d'albédo de neige (≤100%)
     var valid_albedo_mask = snow_albedo.lte(100);
@@ -330,7 +330,7 @@ var updateVisualization = function() {
   // Préparer l'albédo de neige pour visualisation
   var example_snow_albedo = example_image.select('Snow_Albedo_Daily_Tile')
     .divide(100)
-    .updateMask(example_image.select('NDSI_Snow_Cover_Basic_QA').lte(2))
+    .updateMask(example_image.select('NDSI_Snow_Cover_Basic_QA').lte(1))  // Seulement Best et Good
     .updateMask(example_image.select('Snow_Albedo_Daily_Tile').lte(100));
   
   // Sauvegarder l'état de visibilité des couches existantes
@@ -444,7 +444,7 @@ var example_masks = createFractionMasks(example_fraction, FRACTION_THRESHOLDS);
 // Préparer l'albédo de neige pour visualisation
 var example_snow_albedo = example_image.select('Snow_Albedo_Daily_Tile')
   .divide(100)
-  .updateMask(example_image.select('NDSI_Snow_Cover_Basic_QA').lte(2))
+  .updateMask(example_image.select('NDSI_Snow_Cover_Basic_QA').lte(1))  // Seulement Best et Good
   .updateMask(example_image.select('Snow_Albedo_Daily_Tile').lte(100));
 
 // Centrer la carte
@@ -513,8 +513,8 @@ function analyzeDailySnowAlbedoByFraction(img) {
   var fraction = calculatePixelFraction(img, glacier_mask);
   var masks = createFractionMasks(fraction, FRACTION_THRESHOLDS);
   
-  // Masques de qualité pour MOD10A1: 0=Best, 1=Good, 2=Ok
-  var goodQualityMask = quality.lte(2);
+  // Masques de qualité pour MOD10A1: 0=Best, 1=Good seulement
+  var goodQualityMask = quality.lte(1);
   var validAlbedoMask = img.select('Snow_Albedo_Daily_Tile').lte(100);
   
   // Calculer les statistiques pour chaque classe de fraction
