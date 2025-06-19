@@ -40,13 +40,13 @@ class BasePixelVisualizer:
         self.fraction_classes = FRACTION_CLASSES
         self.class_labels = CLASS_LABELS
         
-        # Academic color scheme for publication
+        # Academic color scheme for publication (standardisé avec GEE/config)
         self.academic_colors = {
-            'border': '#d62728',      # Red
-            'mixed_low': '#ff7f0e',   # Orange  
-            'mixed_high': '#2ca02c',  # Green
-            'mostly_ice': '#1f77b4',  # Blue
-            'pure_ice': '#17becf'     # Cyan
+            'border': '#d62728',      # Red - correspond à 'red'
+            'mixed_low': '#ff7f0e',   # Orange - correspond à 'orange'  
+            'mixed_high': '#ffff14',  # Yellow - correspond à 'yellow' (changé de green)
+            'mostly_ice': '#87ceeb',  # Light blue - correspond à 'lightblue'
+            'pure_ice': '#0000ff'     # Blue - correspond à 'blue'
         }
     
     def _create_smooth_line(self, x_data, y_data, num_points=300):

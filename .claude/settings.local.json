@@ -37,7 +37,9 @@
       "Bash(tree:*)",
       "Bash(git config:*)",
       "mcp__search-scholar__deep_research",
-      "Bash(git rm:*)"
+      "Bash(git rm:*)",
+      "mcp__playwright__browser_navigate",
+      "mcp__playwright__browser_install"
     ],
     "deny": []
   }

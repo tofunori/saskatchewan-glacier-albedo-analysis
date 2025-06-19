@@ -92,11 +92,11 @@ CLASS_LABELS = {
     'pure_ice': '90-100% (Pur)'
 }
 
-# Couleurs pour les visualisations
+# Couleurs pour les visualisations (standardisées avec GEE)
 FRACTION_COLORS = {
     'border': 'red',
     'mixed_low': 'orange', 
-    'mixed_high': 'gold',
+    'mixed_high': 'yellow',  # Changé de 'gold' à 'yellow' pour correspondre à GEE
     'mostly_ice': 'lightblue',
     'pure_ice': 'blue'
 }

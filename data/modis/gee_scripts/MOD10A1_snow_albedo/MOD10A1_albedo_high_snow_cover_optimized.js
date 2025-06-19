@@ -45,18 +45,24 @@ var modis_reference = ee.ImageCollection('MODIS/061/MOD10A1')
   .first();
 var modis_projection = modis_reference.projection();
 
-// Calculer la fraction glacier globale une seule fois
+// Calculer la fraction glacier globale une seule fois avec meilleur alignement
 var raster30 = ee.Image.constant(1)
   .updateMask(glacier_mask)
   .unmask(0)
   .reproject(modis_projection, null, 30);
 
+// Amélioration: utiliser un reducer agrégé et un meilleur alignement pixel
 var STATIC_GLACIER_FRACTION = raster30
   .reduceResolution({
     reducer: ee.Reducer.mean(),
-    maxPixels: 1024
+    maxPixels: 2048,  // Augmenté pour meilleure précision
+    bestEffort: false  // Force le respect de la résolution exacte
   })
-  .reproject(modis_projection, null, 500);
+  .reproject({
+    crs: modis_projection.crs(),
+    scale: 500,
+    crsTransform: modis_projection.transform()  // Alignement exact avec MODIS
+  });
 
 print('Fraction glacier calculée. Min/Max:', 
   STATIC_GLACIER_FRACTION.reduceRegion({
@@ -82,10 +88,21 @@ function createFractionMasks(fractionImage, thresholds) {
   return masks;
 }
 
-// 5. Fonction pour filtrage qualité amélioré (bits contamination nuages)
+// 5. Fonction pour filtrage qualité amélioré avec critères adaptatifs
 function createQualityMask(qualityBand) {
-  // Utilise bitwiseAnd pour filtrer bits contamination nuages
-  return qualityBand.bitwiseAnd(0x3).lte(1);
+  // Bits 0-1: NDSI snow cover basic QA
+  // 0 = best quality, 1 = good quality, 2 = ok quality, 3 = poor quality
+  var basicQuality = qualityBand.bitwiseAnd(0x3);
+  
+  // Utiliser un seuil moins restrictif (≤2 au lieu de ≤1) pour plus de pixels
+  // Permet "ok quality" en plus de "best" et "good"
+  var relaxedMask = basicQuality.lte(2);
+  
+  // Masque strict pour validation (optionnel)
+  var strictMask = basicQuality.lte(1);
+  
+  // Retourner le masque relaxé par défaut
+  return relaxedMask;
 }
 
 // ┌────────────────────────────────────────────────────────────────────────────────────────┐
@@ -441,10 +458,26 @@ var updateFiltering = function() {
     Map.remove(layers.get(layers.length() - 1));
   }
   
-  // Ajouter la couche de fraction glacier pour l'inspecteur
+  // Ajouter la couche de fraction glacier pour l'inspecteur avec debug
   Map.addLayer(STATIC_GLACIER_FRACTION.multiply(100), 
     {min: 0, max: 100, palette: ['red', 'orange', 'yellow', 'lightblue', 'blue']}, 
     'Fraction glacier (%)', false);
+  
+  // NOUVELLE COUCHE DEBUG: Masque MODIS pixels pour validation
+  var modis_pixel_grid = ee.Image.pixelLonLat()
+    .reproject(modis_projection, null, 500);
+  Map.addLayer(modis_pixel_grid.select('longitude').mod(0.01).lt(0.005), 
+    {min: 0, max: 1, palette: ['transparent', 'white']}, 
+    'Grille MODIS (debug)', false);
+    
+  // NOUVELLE COUCHE DEBUG: Neige cover pour comparaison
+  var snow_debug = ee.ImageCollection('MODIS/061/MOD10A1')
+    .filterDate(selectedDate)
+    .select('NDSI_Snow_Cover')
+    .first();
+  Map.addLayer(snow_debug, 
+    {min: 0, max: 100, palette: ['black', 'blue', 'cyan', 'white']}, 
+    'NDSI Snow Cover (debug)', false);
   
   // Ajouter la couche d'albédo avec palette adaptative
   albedoRange.evaluate(function(range) {
@@ -463,6 +496,22 @@ var updateFiltering = function() {
     scale: 500,
     maxPixels: 1e9,
     tileScale: 2
+  });
+  
+  // NOUVEAU: Statistiques de validation des masques pour debug
+  var maskValidation = ee.Dictionary({
+    'total_modis_pixels': totalSnowImage.select('NDSI_Snow_Cover').reduceRegion({
+      reducer: ee.Reducer.count(),
+      geometry: glacier_geometry,
+      scale: 500,
+      maxPixels: 1e9
+    }),
+    'glacier_fraction_stats': STATIC_GLACIER_FRACTION.reduceRegion({
+      reducer: ee.Reducer.minMax().combine(ee.Reducer.mean(), '', true),
+      geometry: glacier_geometry,
+      scale: 500,
+      maxPixels: 1e9
+    })
   });
   
   dayStats.evaluate(function(stats) {
