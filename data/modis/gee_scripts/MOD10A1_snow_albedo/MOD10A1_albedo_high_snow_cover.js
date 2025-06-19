@@ -18,6 +18,7 @@
 // 1. Paramètres configurables
 var SNOW_COVER_THRESHOLD = 50; // Seuil minimal de couverture de neige (%)
 var GLACIER_FRACTION_THRESHOLD = 75; // Seuil minimal de fraction glacier dans le pixel (%)
+var MIN_PIXEL_THRESHOLD = 0; // Nombre minimum de pixels requis (0 = désactivé)
 var FRACTION_THRESHOLDS = [0.25, 0.50, 0.75, 0.90]; // Seuils de fraction glacier pour classes
 var STUDY_YEARS = ee.List.sequence(2010, 2024);
 var SUMMER_START_MONTH = 6;  // Juin
@@ -149,8 +150,8 @@ function calculateAnnualAlbedoHighSnowCover(year) {
     bestEffort: true
   });
   
-  // Calculer aussi le nombre moyen de pixels haute neige
-  var high_snow_stats = annual_means.select('high_snow_pixel_count').reduceRegion({
+  // Calculer aussi le nombre moyen de pixels filtrés
+  var filtered_pixel_stats = annual_means.select('high_snow_pixel_count').reduceRegion({
     reducer: ee.Reducer.sum(),
     geometry: glacier_geometry,
     scale: 500,
@@ -163,7 +164,7 @@ function calculateAnnualAlbedoHighSnowCover(year) {
     'year': year,
     'snow_cover_threshold': SNOW_COVER_THRESHOLD,
     'glacier_fraction_threshold': GLACIER_FRACTION_THRESHOLD,
-    'total_filtered_pixels': high_snow_stats.get('high_snow_pixel_count')
+    'total_filtered_pixels': filtered_pixel_stats.get('high_snow_pixel_count')
   };
   
   classNames.forEach(function(className) {
@@ -180,10 +181,10 @@ function calculateAnnualAlbedoHighSnowCover(year) {
 // └────────────────────────────────────────────────────────────────────────────────────────┘
 
 // 6. Calculer pour toutes les années
-print('Calcul des statistiques d\'albédo pour couverture de neige >' + SNOW_COVER_THRESHOLD + '%...');
+print('Calcul des statistiques d\'albédo avec double filtrage (neige >' + SNOW_COVER_THRESHOLD + '% ET glacier >' + GLACIER_FRACTION_THRESHOLD + '%)...');
 var annual_albedo_high_snow = ee.FeatureCollection(STUDY_YEARS.map(calculateAnnualAlbedoHighSnowCover));
 
-print('Statistiques annuelles (neige >' + SNOW_COVER_THRESHOLD + '%):', annual_albedo_high_snow);
+print('Statistiques annuelles (double filtrage):', annual_albedo_high_snow);
 
 // ┌────────────────────────────────────────────────────────────────────────────────────────┐
 // │ SECTION 5 : VISUALISATIONS                                                            │
@@ -198,7 +199,7 @@ var temporalChart = ui.Chart.feature.byFeature(
   )
   .setChartType('LineChart')
   .setOptions({
-    title: 'Évolution albédo de neige (couverture >50%) par classe de fraction',
+    title: 'Évolution albédo de neige (double filtrage) par classe de fraction',
     hAxis: {title: 'Année', format: '####'},
     vAxis: {title: 'Albédo moyen', viewWindow: {min: 0.4, max: 0.9}},
     series: {
@@ -216,18 +217,18 @@ var temporalChart = ui.Chart.feature.byFeature(
   });
 
 print('');
-print('GRAPHIQUE TEMPOREL (ALBÉDO NEIGE PURE):');
+print('GRAPHIQUE TEMPOREL (ALBÉDO DOUBLE FILTRAGE):');
 print(temporalChart);
 
-// 8. Graphique du nombre de pixels haute neige
+// 8. Graphique du nombre de pixels filtrés
 var pixelCountChart = ui.Chart.feature.byFeature(
     annual_albedo_high_snow, 
     'year', 
-    'total_high_snow_pixels'
+    'total_filtered_pixels'
   )
   .setChartType('ColumnChart')
   .setOptions({
-    title: 'Nombre de pixels avec couverture de neige >50% par année',
+    title: 'Nombre de pixels filtrés (double critère) par année',
     hAxis: {title: 'Année', format: '####'},
     vAxis: {title: 'Nombre de pixels'},
     colors: ['steelblue'],
@@ -235,7 +236,7 @@ var pixelCountChart = ui.Chart.feature.byFeature(
   });
 
 print('');
-print('ÉVOLUTION DU NOMBRE DE PIXELS HAUTE NEIGE:');
+print('ÉVOLUTION DU NOMBRE DE PIXELS FILTRÉS:');
 print(pixelCountChart);
 
 // ┌────────────────────────────────────────────────────────────────────────────────────────┐
@@ -293,8 +294,8 @@ function analyzeDailyAlbedoHighSnowCover(img) {
     stats[className + '_pixel_count'] = classStats.get('Snow_Albedo_Daily_Tile_count');
   });
   
-  // Compter pixels totaux haute neige
-  var total_high_snow = combined_mask.updateMask(fraction.gt(0)).reduceRegion({
+  // Compter pixels totaux filtrés
+  var total_filtered = combined_mask.updateMask(fraction.gt(0)).reduceRegion({
     reducer: ee.Reducer.sum(),
     geometry: glacier_geometry,
     scale: 500,
@@ -310,7 +311,7 @@ function analyzeDailyAlbedoHighSnowCover(img) {
   stats['year'] = year;
   stats['doy'] = doy;
   stats['decimal_year'] = year.add(doy.divide(365.25));
-  stats['total_filtered_pixels'] = total_high_snow;
+  stats['total_filtered_pixels'] = total_filtered;
   stats['snow_cover_threshold'] = SNOW_COVER_THRESHOLD;
   stats['glacier_fraction_threshold'] = GLACIER_FRACTION_THRESHOLD;
   stats['system:time_start'] = date.millis();
@@ -320,7 +321,7 @@ function analyzeDailyAlbedoHighSnowCover(img) {
 
 // 10. Calculer les statistiques quotidiennes
 print('');
-print('=== CALCUL DES STATISTIQUES QUOTIDIENNES (NEIGE >' + SNOW_COVER_THRESHOLD + '%) ===');
+print('=== CALCUL DES STATISTIQUES QUOTIDIENNES (DOUBLE FILTRAGE) ===');
 
 var dailyCollection = ee.ImageCollection('MODIS/061/MOD10A1')
   .filterDate('2010-01-01', '2024-12-31')
@@ -336,9 +337,16 @@ print('Nombre de jours analysés:', dailyAlbedoHighSnow.size());
 // │ SECTION 7 : VISUALISATION CARTOGRAPHIQUE INTERACTIVE                                  │
 // └────────────────────────────────────────────────────────────────────────────────────────┘
 
-// 11. Interface interactive pour choisir la date de visualisation
+// 11. Interface interactive avec sliders pour filtres dynamiques
 print('');
-print('=== SÉLECTION DE DATE INTERACTIVE (ALBÉDO NEIGE >50%) ===');
+print('=== INTERFACE INTERACTIVE AVEC SLIDERS DE FILTRAGE ===');
+
+// Variables globales pour les données de base
+var currentImage = null;
+var baseSnowCover = null;
+var baseAlbedo = null;
+var baseQuality = null;
+var baseFraction = null;
 
 // Créer un sélecteur de date
 var dateSlider = ui.DateSlider({
@@ -349,11 +357,41 @@ var dateSlider = ui.DateSlider({
   style: {width: '300px'}
 });
 
-var dateLabel = ui.Label('Visualisation albédo (neige >' + SNOW_COVER_THRESHOLD + '% ET glacier >' + GLACIER_FRACTION_THRESHOLD + '%):');
-var selectedDateLabel = ui.Label('Date sélectionnée: 2020-07-15');
+// Sliders pour les filtres
+var snowCoverSlider = ui.Slider({
+  min: 0,
+  max: 100,
+  value: SNOW_COVER_THRESHOLD,
+  step: 5,
+  style: {width: '300px'}
+});
 
-// Fonction pour mettre à jour la visualisation selon la date choisie
-var updateVisualization = function() {
+var glacierFractionSlider = ui.Slider({
+  min: 0,
+  max: 100,
+  value: GLACIER_FRACTION_THRESHOLD,
+  step: 5,
+  style: {width: '300px'}
+});
+
+var minPixelSlider = ui.Slider({
+  min: 0,
+  max: 100,
+  value: MIN_PIXEL_THRESHOLD,
+  step: 1,
+  style: {width: '300px'}
+});
+
+// Labels dynamiques
+var dateLabel = ui.Label('Sélection de date et paramètres de filtrage:');
+var selectedDateLabel = ui.Label('Date sélectionnée: 2020-07-15');
+var snowCoverLabel = ui.Label('Seuil couverture de neige: ' + SNOW_COVER_THRESHOLD + '%');
+var glacierFractionLabel = ui.Label('Seuil fraction glacier: ' + GLACIER_FRACTION_THRESHOLD + '%');
+var minPixelLabel = ui.Label('Pixels minimum: OFF (pas de filtre)');
+var statsLabel = ui.Label('Statistiques: En attente...');
+
+// Fonction pour charger les données de base pour une date
+var loadBaseData = function() {
   var dateRange = dateSlider.getValue();
   var timestamp = dateRange[0];
   var js_date = new Date(timestamp);
@@ -369,25 +407,49 @@ var updateVisualization = function() {
   selectedDateLabel.setValue('Date sélectionnée: ' + dateString);
   
   // Charger l'image MOD10A1 pour la date sélectionnée
-  var example_image = ee.ImageCollection('MODIS/061/MOD10A1')
+  currentImage = ee.ImageCollection('MODIS/061/MOD10A1')
     .filterDate(selected_date, selected_date.advance(5, 'day'))
     .filterBounds(glacier_geometry)
     .select(['NDSI_Snow_Cover', 'Snow_Albedo_Daily_Tile', 'NDSI_Snow_Cover_Basic_QA'])
     .first();
   
-  var example_snow_cover = example_image.select('NDSI_Snow_Cover');
-  var example_albedo = example_image.select('Snow_Albedo_Daily_Tile').divide(100);
-  var example_quality = example_image.select('NDSI_Snow_Cover_Basic_QA');
-  var example_fraction = calculatePixelFraction(example_image, glacier_mask);
+  // Préparer les données de base
+  baseSnowCover = currentImage.select('NDSI_Snow_Cover');
+  baseAlbedo = currentImage.select('Snow_Albedo_Daily_Tile').divide(100);
+  baseQuality = currentImage.select('NDSI_Snow_Cover_Basic_QA');
+  baseFraction = calculatePixelFraction(currentImage, glacier_mask);
   
-  // Masques
-  var good_quality = example_quality.lte(1);
-  var high_snow = example_snow_cover.gte(SNOW_COVER_THRESHOLD);
-  var high_glacier_fraction = example_fraction.gte(GLACIER_FRACTION_THRESHOLD / 100);
-  var valid_albedo = example_image.select('Snow_Albedo_Daily_Tile').lte(100);
+  // Mettre à jour l'affichage avec les paramètres actuels
+  updateFiltering();
+};
+
+// Fonction pour mettre à jour le filtrage selon les sliders
+var updateFiltering = function() {
+  if (!currentImage) return;
   
-  // Albédo filtré (double critère)
-  var filtered_albedo = example_albedo
+  // Récupérer les valeurs des sliders
+  var snowThreshold = snowCoverSlider.getValue();
+  var glacierThreshold = glacierFractionSlider.getValue();
+  var minPixelThreshold = minPixelSlider.getValue();
+  
+  // Mettre à jour les labels
+  snowCoverLabel.setValue('Seuil couverture de neige: ' + snowThreshold + '%');
+  glacierFractionLabel.setValue('Seuil fraction glacier: ' + glacierThreshold + '%');
+  
+  if (minPixelThreshold === 0) {
+    minPixelLabel.setValue('Pixels minimum: OFF (pas de filtre)');
+  } else {
+    minPixelLabel.setValue('Pixels minimum: ' + minPixelThreshold);
+  }
+  
+  // Créer les masques avec les nouveaux seuils
+  var good_quality = baseQuality.lte(1);
+  var high_snow = baseSnowCover.gte(snowThreshold);
+  var high_glacier_fraction = baseFraction.gte(glacierThreshold / 100);
+  var valid_albedo = currentImage.select('Snow_Albedo_Daily_Tile').lte(100);
+  
+  // Albédo filtré
+  var filtered_albedo = baseAlbedo
     .updateMask(good_quality)
     .updateMask(high_snow)
     .updateMask(high_glacier_fraction)
@@ -399,24 +461,17 @@ var updateVisualization = function() {
     Map.remove(layers.get(layers.length() - 1));
   }
   
-  // Ajouter les nouvelles couches
-  Map.addLayer(example_fraction.updateMask(example_fraction.gt(0)), 
-    {min: 0, max: 1, palette: ['red', 'orange', 'yellow', 'lightblue', 'blue']}, 
-    '1. Fraction glacier - ' + dateString);
-  Map.addLayer(example_snow_cover.updateMask(example_fraction.gt(0)), 
-    {min: 0, max: 100, palette: ['brown', 'yellow', 'green', 'cyan', 'blue', 'white']}, 
-    '2. Couverture de neige (%)');
-  Map.addLayer(high_snow.updateMask(example_fraction.gt(0)), 
-    {palette: ['black', 'white']}, 
-    '3. Masque neige >' + SNOW_COVER_THRESHOLD + '%');
-  Map.addLayer(high_glacier_fraction.updateMask(example_fraction.gt(0)), 
-    {palette: ['black', 'cyan']}, 
-    '4. Masque glacier >' + GLACIER_FRACTION_THRESHOLD + '%');
+  // Ajouter la couche de fraction glacier pour l'inspecteur
+  Map.addLayer(baseFraction.multiply(100), 
+    {min: 0, max: 100, palette: ['red', 'orange', 'yellow', 'lightblue', 'blue']}, 
+    'Fraction glacier (%)', false);
+  
+  // Ajouter uniquement la couche d'albédo filtré
   Map.addLayer(filtered_albedo, 
     {min: 0.4, max: 0.9, palette: ['darkblue', 'blue', 'cyan', 'yellow', 'orange', 'red']}, 
-    '5. Albédo filtré (double critère)');
+    'Albédo filtré (N>' + snowThreshold + '%, G>' + glacierThreshold + '%)');
   
-  // Calculer et afficher les statistiques du jour
+  // Calculer et afficher les statistiques
   var dayStats = filtered_albedo.reduceRegion({
     reducer: ee.Reducer.mean().combine(ee.Reducer.count(), '', true),
     geometry: glacier_geometry,
@@ -429,28 +484,55 @@ var updateVisualization = function() {
     var meanAlbedo = stats.Snow_Albedo_Daily_Tile_mean;
     var pixelCount = stats.Snow_Albedo_Daily_Tile_count;
     
-    var statsText = 'Statistiques du ' + dateString + ':\n';
-    if (meanAlbedo !== null) {
-      statsText += '• Albédo moyen (double critère): ' + 
-                   (meanAlbedo ? meanAlbedo.toFixed(3) : 'N/A') + '\n';
-      statsText += '• Nombre de pixels: ' + (pixelCount || 0) + '\n';
-      statsText += '• Critères: neige >' + SNOW_COVER_THRESHOLD + '% ET glacier >' + GLACIER_FRACTION_THRESHOLD + '%';
+    var statsText = 'Statistiques temps réel:\n';
+    
+    // Vérifier le seuil de pixels minimum si activé
+    var pixelThresholdMet = (minPixelThreshold === 0 || pixelCount >= minPixelThreshold);
+    
+    if (meanAlbedo !== null && pixelCount > 0 && pixelThresholdMet) {
+      statsText += '• Albédo moyen: ' + meanAlbedo.toFixed(3) + '\n';
+      statsText += '• Pixels qualifiés: ' + pixelCount + '\n';
+      statsText += '• Neige ≥' + snowThreshold + '% ET Glacier ≥' + glacierThreshold + '%';
+      if (minPixelThreshold > 0) {
+        statsText += '\n• Seuil pixels (≥' + minPixelThreshold + '): ✓';
+      }
+    } else if (meanAlbedo !== null && pixelCount > 0 && !pixelThresholdMet) {
+      statsText += '• Pixels trouvés: ' + pixelCount + '\n';
+      statsText += '• Seuil requis: ≥' + minPixelThreshold + ' pixels\n';
+      statsText += '• ❌ Pas assez de pixels qualifiés';
     } else {
-      statsText += '• Aucun pixel répondant aux deux critères\n';
-      statsText += '• Neige >' + SNOW_COVER_THRESHOLD + '% ET glacier >' + GLACIER_FRACTION_THRESHOLD + '%';
+      statsText += '• Aucun pixel qualifié\n';
+      statsText += '• Essayez de réduire les seuils';
     }
     
     statsLabel.setValue(statsText);
   });
 };
 
-// Label pour afficher les statistiques
-var statsLabel = ui.Label('Statistiques: En attente...');
+// Callbacks pour les sliders
+snowCoverSlider.onChange(updateFiltering);
+glacierFractionSlider.onChange(updateFiltering);
+minPixelSlider.onChange(updateFiltering);
 
-// Bouton pour mettre à jour la visualisation
-var updateButton = ui.Button({
-  label: 'Mettre à jour la carte',
-  onClick: updateVisualization,
+// Boutons
+var loadDataButton = ui.Button({
+  label: 'Charger date sélectionnée',
+  onClick: loadBaseData,
+  style: {width: '200px'}
+});
+
+var exportParamsButton = ui.Button({
+  label: 'Exporter paramètres',
+  onClick: function() {
+    var snowVal = snowCoverSlider.getValue();
+    var glacierVal = glacierFractionSlider.getValue();
+    var pixelVal = minPixelSlider.getValue();
+    print('Paramètres optimaux trouvés:');
+    print('• Seuil couverture neige: ' + snowVal + '%');
+    print('• Seuil fraction glacier: ' + glacierVal + '%');
+    print('• Pixels minimum: ' + (pixelVal === 0 ? 'OFF (désactivé)' : pixelVal));
+    print('• Code pour script: SNOW_COVER_THRESHOLD = ' + snowVal + '; GLACIER_FRACTION_THRESHOLD = ' + glacierVal + '; MIN_PIXEL_THRESHOLD = ' + pixelVal + ';');
+  },
   style: {width: '200px'}
 });
 
@@ -459,61 +541,56 @@ var panel = ui.Panel([
   dateLabel,
   dateSlider,
   selectedDateLabel,
-  updateButton,
+  loadDataButton,
   ui.Label(''),  // Espace
-  statsLabel
+  ui.Label('PARAMÈTRES DE FILTRAGE:', {fontWeight: 'bold'}),
+  snowCoverLabel,
+  snowCoverSlider,
+  glacierFractionLabel,
+  glacierFractionSlider,
+  minPixelLabel,
+  minPixelSlider,
+  ui.Label(''),  // Espace
+  statsLabel,
+  ui.Label(''),  // Espace
+  exportParamsButton
 ], ui.Panel.Layout.flow('vertical'), {
-  width: '350px',
+  width: '380px',
   position: 'top-left'
 });
 
 Map.add(panel);
 
-// Initialisation avec la date par défaut
-var example_date = ee.Date('2020-07-15');
-var example_image = ee.ImageCollection('MODIS/061/MOD10A1')
-  .filterDate(example_date, example_date.advance(5, 'day'))
-  .filterBounds(glacier_geometry)
-  .select(['NDSI_Snow_Cover', 'Snow_Albedo_Daily_Tile', 'NDSI_Snow_Cover_Basic_QA'])
-  .first();
-
-// Initialisation de la carte avec la date par défaut
-var example_snow_cover = example_image.select('NDSI_Snow_Cover');
-var example_albedo = example_image.select('Snow_Albedo_Daily_Tile').divide(100);
-var example_quality = example_image.select('NDSI_Snow_Cover_Basic_QA');
-var example_fraction = calculatePixelFraction(example_image, glacier_mask);
-
-// Masques
-var good_quality = example_quality.lte(1);
-var high_snow = example_snow_cover.gte(SNOW_COVER_THRESHOLD);
-var high_glacier_fraction = example_fraction.gte(GLACIER_FRACTION_THRESHOLD / 100);
-var valid_albedo = example_image.select('Snow_Albedo_Daily_Tile').lte(100);
-
-// Albédo filtré (double critère)
-var filtered_albedo = example_albedo
-  .updateMask(good_quality)
-  .updateMask(high_snow)
-  .updateMask(high_glacier_fraction)
-  .updateMask(valid_albedo);
-
-// Initialisation de la visualisation
+// Initialisation de la carte
 Map.centerObject(glacier_geometry, 12);
-Map.addLayer(glacier_mask.selfMask(), {palette: ['lightgray'], opacity: 0.3}, '0. Masque glacier');
-Map.addLayer(example_fraction.updateMask(example_fraction.gt(0)), 
-  {min: 0, max: 1, palette: ['red', 'orange', 'yellow', 'lightblue', 'blue']}, 
-  '1. Fraction glacier');
-Map.addLayer(example_snow_cover.updateMask(example_fraction.gt(0)), 
-  {min: 0, max: 100, palette: ['brown', 'yellow', 'green', 'cyan', 'blue', 'white']}, 
-  '2. Couverture de neige (%)');
-Map.addLayer(high_snow.updateMask(example_fraction.gt(0)), 
-  {palette: ['black', 'white']}, 
-  '3. Masque neige >' + SNOW_COVER_THRESHOLD + '%');
-Map.addLayer(high_glacier_fraction.updateMask(example_fraction.gt(0)), 
-  {palette: ['black', 'cyan']}, 
-  '4. Masque glacier >' + GLACIER_FRACTION_THRESHOLD + '%');
-Map.addLayer(filtered_albedo, 
-  {min: 0.4, max: 0.9, palette: ['darkblue', 'blue', 'cyan', 'yellow', 'orange', 'red']}, 
-  '5. Albédo filtré (double critère)');
+Map.addLayer(glacier_mask.selfMask(), {palette: ['lightgray'], opacity: 0.3}, 'Masque glacier Saskatchewan');
+
+// Message d'instructions
+var instructionsLabel = ui.Label({
+  value: 'Instructions:\n' +
+         '1. Sélectionnez une date avec le calendrier\n' +
+         '2. Cliquez "Charger date sélectionnée"\n' +
+         '3. Ajustez les sliders pour explorer les filtres\n' +
+         '4. Utilisez l\'inspecteur pour voir la fraction glacier\n' +
+         '5. Les statistiques se mettent à jour automatiquement\n' +
+         '6. Exportez les paramètres optimaux si besoin',
+  style: {
+    fontSize: '12px',
+    color: 'gray',
+    whiteSpace: 'pre'
+  }
+});
+
+// Ajouter les instructions à la fin du panneau
+panel.add(ui.Label(''));
+panel.add(instructionsLabel);
+
+// Chargement automatique de la date par défaut
+print('Chargement de la date par défaut...');
+// Lancer l'initialisation après un délai pour que l'interface soit prête
+ee.data.computeValue(ee.Number(1), function() {
+  loadBaseData();
+});
 
 // ┌────────────────────────────────────────────────────────────────────────────────────────┐
 // │ SECTION 8 : EXPORTS                                                                   │
@@ -563,21 +640,23 @@ function compareWithUnfilteredAlbedo(img) {
   var snow_albedo = img.select('Snow_Albedo_Daily_Tile').divide(100);
   var quality = img.select('NDSI_Snow_Cover_Basic_QA');
   
-  // Masque de base (qualité + valide)
-  var base_mask = quality.lte(1).and(img.select('Snow_Albedo_Daily_Tile').lte(100));
-  
-  // Masque haute neige
-  var high_snow_mask = base_mask.and(snow_cover.gte(SNOW_COVER_THRESHOLD));
-  
   // Fraction glacier pour limiter à la zone du glacier
   var fraction = calculatePixelFraction(img, glacier_mask);
   var glacier_pixels = fraction.gt(0);
   
+  // Masque de base (qualité + valide)
+  var base_mask = quality.lte(1).and(img.select('Snow_Albedo_Daily_Tile').lte(100));
+  
+  // Masque avec double filtrage
+  var double_filter_mask = base_mask
+    .and(snow_cover.gte(SNOW_COVER_THRESHOLD))
+    .and(fraction.gte(GLACIER_FRACTION_THRESHOLD / 100));
+  
   // Albédo non filtré (tous pixels valides dans le glacier)
   var unfiltered_albedo = snow_albedo.updateMask(base_mask).updateMask(glacier_pixels);
   
-  // Albédo filtré (seulement haute neige)
-  var filtered_albedo = snow_albedo.updateMask(high_snow_mask).updateMask(glacier_pixels);
+  // Albédo filtré (double critère)
+  var filtered_albedo = snow_albedo.updateMask(double_filter_mask).updateMask(glacier_pixels);
   
   // Statistiques
   var unfiltered_stats = unfiltered_albedo.reduceRegion({
@@ -659,31 +738,32 @@ print(comparisonChart);
 // └────────────────────────────────────────────────────────────────────────────────────────┘
 
 print('');
-print('=== RÉSUMÉ ANALYSE ALBÉDO AVEC FILTRE COUVERTURE DE NEIGE ===');
+print('=== RÉSUMÉ ANALYSE ALBÉDO AVEC DOUBLE FILTRAGE ===');
 print('');
 print('MÉTHODOLOGIE :');
-print('• Filtre NDSI_Snow_Cover ≥ ' + SNOW_COVER_THRESHOLD + '%');
+print('• Double filtre: NDSI_Snow_Cover ≥ ' + SNOW_COVER_THRESHOLD + '% ET Fraction_Glacier ≥ ' + GLACIER_FRACTION_THRESHOLD + '%');
 print('• Qualité : seulement Best (0) et Good (1)');
 print('• Période : Étés 2010-2024 (juin-septembre)');
 print('• Dataset : MOD10A1.061 (MODIS/Terra)');
 print('');
 print('JUSTIFICATION SCIENTIFIQUE :');
-print('• Sélectionne les pixels à dominance neigeuse');
-print('• Élimine les surfaces majoritairement non-neigeuses');
-print('• Réduit la variabilité due aux surfaces faiblement enneigées');
-print('• Permet une analyse focalisée sur les zones enneigées');
+print('• Sélectionne les pixels à dominance neigeuse ET majoritairement glacier');
+print('• Élimine les surfaces peu enneigées ET les pixels de bordure glacier');
+print('• Réduit la variabilité due aux surfaces mixtes non-représentatives');
+print('• Analyse très focalisée sur les zones glacier bien enneigées');
 print('');
 print('AVANTAGES :');
-print('• Signal d\'albédo de zones enneigées');
-print('• Meilleure disponibilité de données vs seuil 90%');
-print('• Réduction du bruit des surfaces non-neigeuses');
-print('• Équilibre entre qualité et quantité de données');
+print('• Signal d\'albédo très homogène (double sélection)');
+print('• Élimination efficace des pixels mixtes non-représentatifs');
+print('• Réduction maximale du bruit spatial');
+print('• Focus sur les zones glacier centrales bien enneigées');
+print('• Contrôle précis de la qualité spatiale des données');
 print('');
 print('LIMITATIONS :');
-print('• Inclut encore des surfaces partiellement neigeuses');
-print('• Moins strict que le seuil 90% pour neige pure');
-print('• Sensible au seuil choisi (50%)');
-print('• Peut inclure des conditions de neige variable');
+print('• Nombre plus réduit de pixels analysés (double critère)');
+print('• Biais vers les zones centrales du glacier');
+print('• Peut exclure des transitions importantes en bordure');
+print('• Sensible aux deux seuils choisis (' + SNOW_COVER_THRESHOLD + '% et ' + GLACIER_FRACTION_THRESHOLD + '%)');
 print('');
 print('EXPORTS CONFIGURÉS :');
 print('• CSV annuel : Moyennes par classe de fraction');
