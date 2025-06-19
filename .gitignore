@@ -22,3 +22,9 @@ GEE_exports/
 
 # Log files
 *.log
+
+# Virtual environments
+dashboard_venv/
+venv/
+env/
+.env/
