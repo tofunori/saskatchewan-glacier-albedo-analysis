@@ -1126,72 +1126,40 @@ function compareWithUnfilteredAlbedoSafe(img) {
   });
 }
 
-// SOLUTION FINALE: ImageCollection avec timestamps préservés
-var collection_2023 = dailyCollection
-  .filterDate('2023-07-01', '2023-08-31')
-  .map(function(img) {
-    var snow_cover = img.select('NDSI_Snow_Cover');
-    var snow_albedo = img.select('Snow_Albedo_Daily_Tile').divide(100);
-    var quality = img.select('NDSI_Snow_Cover_Basic_QA');
-    
-    // Appliquer les filtres
-    var mask = createQualityMask(quality)
-      .and(snow_cover.gte(NDSI_SNOW_THRESHOLD))
-      .and(STATIC_GLACIER_FRACTION.gte(GLACIER_FRACTION_THRESHOLD / 100));
-    
-    // IMPORTANT: Copier les métadonnées temporelles de l'image originale
-    return snow_albedo.updateMask(mask)
-      .rename('albedo_filtered')
-      .copyProperties(img, ['system:time_start']);
+// ┌────────────────────────────────────────────────────────────────────────────────────────┐
+// │ SECTION: VALIDATION PLOTS (STREAMLINED)                                               │
+// └────────────────────────────────────────────────────────────────────────────────────────┘
+
+// 1. Data Coverage Quality Plot - Shows data availability over time
+var coverageChart = ui.Chart.feature.byFeature(dailyAlbedoHighSnow, 'system:time_start', 'total_filtered_pixels')
+  .setChartType('LineChart')
+  .setOptions({
+    title: 'MOD10A1 Daily Data Coverage (High Snow + Glacier >75%)',
+    hAxis: {title: 'Date', format: 'yyyy'},
+    vAxis: {title: 'Valid Pixels Count'},
+    colors: ['blue'],
+    height: 300,
+    pointSize: 3,
+    lineWidth: 1
   });
 
-// Créer aussi une version sans filtre pour comparaison
-var collection_2023_unfiltered = dailyCollection
-  .filterDate('2023-07-01', '2023-08-31')
-  .map(function(img) {
-    var snow_albedo = img.select('Snow_Albedo_Daily_Tile').divide(100);
-    
-    // Seulement masque glacier, pas de filtre qualité/neige
-    var basic_mask = STATIC_GLACIER_FRACTION.gt(0);
-    
-    return snow_albedo.updateMask(basic_mask)
-      .rename('albedo_unfiltered')
-      .copyProperties(img, ['system:time_start']);
+// 2. Annual Trend Summary Plot - Core scientific validation
+var trendChart = ui.Chart.feature.byFeature(annual_albedo_high_snow, 'year', 'pure_ice_high_snow_mean')
+  .setChartType('LineChart')
+  .setOptions({
+    title: 'Pure Ice Albedo Trend (>90% glacier fraction)',
+    hAxis: {title: 'Year'},
+    vAxis: {title: 'Mean Albedo', viewWindow: {min: 0.2, max: 0.9}},
+    trendlines: {0: {type: 'linear', color: 'red', opacity: 0.8}},
+    colors: ['blue'],
+    pointSize: 5,
+    lineWidth: 2,
+    height: 350
   });
-
-// Graphique albédo filtré
-var filteredChart = ui.Chart.image.series({
-  imageCollection: collection_2023,
-  region: glacier_geometry,
-  reducer: ee.Reducer.mean(),
-  scale: 500
-}).setOptions({
-  title: 'Albédo filtré (couverture neige >50%, qualité bonne)',
-  hAxis: {title: 'Date (juillet-août 2023)', format: 'MMM dd'},
-  vAxis: {title: 'Albédo moyen', format: '0.00'},
-  colors: ['#2E8B57'],
-  lineWidth: 2,
-  pointSize: 4
-});
-
-// Graphique albédo non filtré
-var unfilteredChart = ui.Chart.image.series({
-  imageCollection: collection_2023_unfiltered,
-  region: glacier_geometry,
-  reducer: ee.Reducer.mean(),
-  scale: 500
-}).setOptions({
-  title: 'Albédo non filtré (tous pixels glacier)',
-  hAxis: {title: 'Date (juillet-août 2023)', format: 'MMM dd'},
-  vAxis: {title: 'Albédo moyen', format: '0.00'},
-  colors: ['#CD853F'],
-  lineWidth: 2,
-  pointSize: 4
-});
 
 print('');
-print('COMPARAISON AVEC/SANS FILTRE OPTIMISÉE (2023):');
-print(filteredChart);
-print(unfilteredChart);
+print('=== VALIDATION PLOTS (STREAMLINED) ===');
+print(coverageChart);
+print(trendChart);
 
 // FIN DU SCRIPT OPTIMISÉ
