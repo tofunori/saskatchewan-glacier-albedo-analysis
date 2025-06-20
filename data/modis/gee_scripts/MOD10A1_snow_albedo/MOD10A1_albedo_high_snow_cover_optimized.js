@@ -23,6 +23,11 @@ var SUMMER_START_MONTH = 7;  // Juillet (peak melt season)
 var SUMMER_END_MONTH = 9;    // Septembre
 var USE_PEAK_MELT_ONLY = true; // Si true, utilise juillet-septembre au lieu de juin-septembre
 
+// Class names for glacier fraction categories
+var FRACTION_CLASS_NAMES = ['border', 'mixed_low', 'mixed_high', 'mostly_ice', 'pure_ice'];
+var ANNUAL_CLASS_NAMES = ['border_high_snow', 'mixed_low_high_snow', 'mixed_high_high_snow', 
+                          'mostly_ice_high_snow', 'pure_ice_high_snow'];
+
 // 2. Charger l'asset du glacier Saskatchewan
 // ⚠️ LIMITATION SCIENTIFIQUE IMPORTANTE :
 // Ce script utilise un masque glaciaire statique de 2024 pour toute la période 2010-2024.
@@ -121,34 +126,43 @@ function getBasicQAMask(img, level) {
   return qualityMask.and(excludeMask);
 }
 
+// QA bit mapping for metadata-driven processing
+var QA_BIT_MAPPING = [
+  {flag: 'excludeInlandWater', bit: 0, mask: 1, desc: 'Inland water'},
+  {flag: 'excludeVisibleScreenFail', bit: 1, mask: 2, desc: 'Low visible screen failure'},
+  {flag: 'excludeNDSIScreenFail', bit: 2, mask: 4, desc: 'Low NDSI screen failure'},
+  {flag: 'excludeTempHeightFail', bit: 3, mask: 8, desc: 'Temperature/height screen failure'},
+  {flag: 'excludeSWIRAnomaly', bit: 4, mask: 16, desc: 'Shortwave IR reflectance anomaly'},
+  {flag: 'excludeHighSolarZenith', bit: 7, mask: 128, desc: 'Solar zenith >70°'}
+];
+
 function getAlgorithmFlagsMask(img, flags) {
   var algFlags = img.select('NDSI_Snow_Cover_Algorithm_Flags_QA').uint8();
+  var mask = ee.Image(1);
   
-  var mask = ee.Image(1); // Commencer avec tous les pixels acceptés
-  
-  // Définitions officielles GEE + Cloud flags MOD10A1 v6.1 (8 bits):
-  if (flags.excludeInlandWater) {        // Bit 0: Inland water
-    mask = mask.and(algFlags.bitwiseAnd(1).eq(0));
-  }
-  if (flags.excludeVisibleScreenFail) {  // Bit 1: Low visible screen failure  
-    mask = mask.and(algFlags.bitwiseAnd(2).eq(0));
-  }
-  if (flags.excludeNDSIScreenFail) {     // Bit 2: Low NDSI screen failure
-    mask = mask.and(algFlags.bitwiseAnd(4).eq(0));
-  }
-  if (flags.excludeTempHeightFail) {     // Bit 3: Temperature/height screen failure
-    mask = mask.and(algFlags.bitwiseAnd(8).eq(0));
-  }
-  if (flags.excludeSWIRAnomaly) {        // Bit 4: Shortwave IR reflectance anomaly
-    mask = mask.and(algFlags.bitwiseAnd(16).eq(0));
-  }
-  // Bit 5: Spare (N/A) - Not implemented per official GEE documentation
-  // Bit 6: Spare (N/A) - Not implemented per official GEE documentation
-  if (flags.excludeHighSolarZenith) {    // Bit 7: Solar zenith >70°
-    mask = mask.and(algFlags.bitwiseAnd(128).eq(0));
-  }
+  // Metadata-driven QA bit processing
+  QA_BIT_MAPPING.forEach(function(mapping) {
+    if (flags[mapping.flag]) {
+      mask = mask.and(algFlags.bitwiseAnd(mapping.mask).eq(0));
+    }
+  });
   
   return mask;
+}
+
+// Helper function to create current QA mask from UI state
+function createCurrentQAMask(img) {
+  var basicLevel = basicQASelect.getValue();
+  var flagConfig = {
+    excludeInlandWater: flagCheckboxes.inlandWater.getValue(),
+    excludeVisibleScreenFail: flagCheckboxes.visibleScreenFail.getValue(),
+    excludeNDSIScreenFail: flagCheckboxes.ndsiScreenFail.getValue(),
+    excludeTempHeightFail: flagCheckboxes.tempHeightFail.getValue(),
+    excludeSWIRAnomaly: flagCheckboxes.swirAnomaly.getValue(),
+    excludeHighSolarZenith: flagCheckboxes.highSolarZenith.getValue()
+  };
+  
+  return getBasicQAMask(img, basicLevel).and(getAlgorithmFlagsMask(img, flagConfig));
 }
 
 function createComprehensiveQualityMask(img, qaConfig) {
@@ -226,8 +240,6 @@ function calculateAnnualAlbedoHighSnowCoverOptimized(year) {
   var annual_means = processed_collection.mean();
   
   // Calculer les statistiques pour chaque classe (approche fiable)
-  var classNames = ['border_high_snow', 'mixed_low_high_snow', 'mixed_high_high_snow', 
-                    'mostly_ice_high_snow', 'pure_ice_high_snow'];
   
   var all_stats = annual_means.reduceRegion({
     reducer: ee.Reducer.mean().combine(
@@ -264,7 +276,7 @@ function calculateAnnualAlbedoHighSnowCoverOptimized(year) {
     'sufficient_pixels': sufficient_pixels
   };
   
-  classNames.forEach(function(className) {
+  ANNUAL_CLASS_NAMES.forEach(function(className) {
     // Appliquer MIN_PIXEL_THRESHOLD validation pour chaque classe
     var class_count = all_stats.get(className + '_count');
     var class_sufficient = ee.Number(class_count).gte(MIN_PIXEL_THRESHOLD);
@@ -307,9 +319,8 @@ function analyzeDailyAlbedoHighSnowCoverOptimized(img) {
   
   // Calculer les statistiques pour chaque classe
   var class_results = {};
-  var classNames = ['border', 'mixed_low', 'mixed_high', 'mostly_ice', 'pure_ice'];
   
-  classNames.forEach(function(className) {
+  FRACTION_CLASS_NAMES.forEach(function(className) {
     var classMask = masks[className];
     var validAlbedo = albedo_scaled.updateMask(classMask);
     
@@ -705,19 +716,7 @@ var updateQAFiltering = function() {
     });
     
     // Compter pixels retenus avec QA actuel
-    var basicMask = getBasicQAMask(currentImage, basicQALevel);
-    var flagMask = getAlgorithmFlagsMask(currentImage, {
-      excludeInlandWater: flagCheckboxes.inlandWater.getValue(),
-      excludeVisibleScreenFail: flagCheckboxes.visibleScreenFail.getValue(),
-      excludeNDSIScreenFail: flagCheckboxes.ndsiScreenFail.getValue(),
-      excludeTempHeightFail: flagCheckboxes.tempHeightFail.getValue(),
-      excludeSWIRAnomaly: flagCheckboxes.swirAnomaly.getValue(),
-      // Removed: excludeProbablyCloudy (Bit 5 is Spare)
-      // Removed: excludeProbablyNotClear (Bit 6 is Spare)
-      excludeHighSolarZenith: flagCheckboxes.highSolarZenith.getValue()
-    });
-    
-    var combinedQAMask = basicMask.and(flagMask);
+    var combinedQAMask = createCurrentQAMask(currentImage);
     var retainedPixels = combinedQAMask.selfMask().reduceRegion({
       reducer: ee.Reducer.count(),
       geometry: glacier_geometry,
