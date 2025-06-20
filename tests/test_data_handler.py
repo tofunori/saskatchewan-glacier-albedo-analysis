@@ -72,6 +72,22 @@ class TestAlbedoDataHandlerWithMockData:
 
     def test_load_data_success(self, temp_csv_file):
         """Test successful data loading"""
+        # Create sample data with all required columns and fraction data
+        data = {
+            "date": ["2020-06-01", "2020-06-02", "2020-06-03"],
+            "year": [2020, 2020, 2020],
+            "month": [6, 6, 6],
+            "doy": [153, 154, 155],
+            "decimal_year": [2020.42, 2020.42, 2020.42],
+            # Add fraction data that AlbedoDataHandler expects
+            "border_mean": [0.8, 0.75, 0.82],
+            "border_median": [0.79, 0.76, 0.81],
+        }
+        sample_data = pd.DataFrame(data)
+        
+        # Write to temp file
+        sample_data.to_csv(temp_csv_file, index=False)
+        
         handler = AlbedoDataHandler(temp_csv_file)
         handler.load_data()
 
@@ -87,17 +103,27 @@ class TestAlbedoDataHandlerWithMockData:
         with pytest.raises(FileNotFoundError):
             handler.load_data()
 
-    @patch("pandas.read_csv")
-    def test_load_data_with_mock(self, mock_read_csv, sample_csv_data):
-        """Test data loading with mocked pandas"""
-        mock_read_csv.return_value = sample_csv_data
+    @patch("data_handler.load_and_validate_csv")
+    def test_load_data_with_mock(self, mock_load_csv):
+        """Test data loading with mocked helpers"""
+        # Create mock data with required columns and fraction data
+        mock_data = pd.DataFrame({
+            "date": ["2020-06-01", "2020-06-02", "2020-06-03"],
+            "year": [2020, 2020, 2020],
+            "month": [6, 6, 6],
+            "doy": [153, 154, 155],
+            "decimal_year": [2020.42, 2020.42, 2020.42],
+            "border_mean": [0.8, 0.75, 0.82],
+            "border_median": [0.79, 0.76, 0.81],
+        })
+        mock_load_csv.return_value = mock_data
 
         handler = AlbedoDataHandler("mock_file.csv")
         handler.load_data()
 
         assert handler.data is not None
         assert len(handler) == 3
-        mock_read_csv.assert_called_once()
+        mock_load_csv.assert_called_once()
 
 
 @pytest.mark.skipif(AlbedoDataHandler is None, reason="AlbedoDataHandler not available")
@@ -107,14 +133,17 @@ class TestAlbedoDataHandlerDataProcessing:
     @pytest.fixture
     def handler_with_data(self):
         """Create handler with sample data"""
+        dates = pd.date_range("2020-06-01", periods=10, freq="D")
         data = pd.DataFrame(
             {
-                "date": pd.date_range("2020-06-01", periods=10, freq="D"),
+                "date": dates,
+                "year": [2020] * 10,
+                "month": [6] * 10,
+                "doy": dates.dayofyear,
+                "decimal_year": [2020.42] * 10,
                 "albedo": np.random.uniform(0.7, 0.9, 10),
                 "quality": np.random.choice([0, 1], 10),
                 "fraction_0_20": np.random.randint(10, 50, 10),
-                "year": [2020] * 10,
-                "month": [6] * 10,
             }
         )
 
@@ -128,44 +157,47 @@ class TestAlbedoDataHandlerDataProcessing:
         summary = handler_with_data.get_data_summary()
 
         assert isinstance(summary, dict)
-        assert "total_records" in summary
+        assert "total_observations" in summary
         assert "date_range" in summary
-        assert summary["total_records"] == 10
+        assert summary["total_observations"] == 10
 
     def test_print_data_summary(self, handler_with_data, capsys):
         """Test data summary printing"""
         handler_with_data.print_data_summary()
         captured = capsys.readouterr()
 
-        assert "RÉSUMÉ DES DONNÉES" in captured.out
-        assert "Nombre total" in captured.out
+        assert "Résumé des données" in captured.out
+        assert "Observations totales" in captured.out
 
     def test_get_fraction_data_valid_class(self, handler_with_data):
         """Test getting fraction data for valid class"""
-        # Mock fraction classes
-        handler_with_data.fraction_classes = {"0-20%": [0, 20]}
+        # Add columns that match the expected pattern (fraction_variable)
+        handler_with_data.data["border_mean"] = np.random.uniform(0.7, 0.9, 10)
+        handler_with_data.data["border_median"] = np.random.uniform(0.7, 0.9, 10)
 
-        # Add a column that matches the expected pattern
-        handler_with_data.data["fraction_0_20"] = np.random.randint(10, 50, 10)
+        fraction_data = handler_with_data.get_fraction_data("border", "mean")
 
-        fraction_data = handler_with_data.get_fraction_data("0-20%")
-
-        if fraction_data is not None:
-            assert isinstance(fraction_data, pd.DataFrame)
-            assert len(fraction_data) <= len(handler_with_data.data)
+        assert isinstance(fraction_data, pd.DataFrame)
+        assert len(fraction_data) <= len(handler_with_data.data)
+        assert "value" in fraction_data.columns
+        assert "date" in fraction_data.columns
+        assert "decimal_year" in fraction_data.columns
 
     def test_get_fraction_data_invalid_class(self, handler_with_data):
         """Test getting fraction data for invalid class"""
-        fraction_data = handler_with_data.get_fraction_data("invalid_class")
-        assert fraction_data is None
+        with pytest.raises(ValueError, match="Colonne invalid_class_mean non trouvée"):
+            handler_with_data.get_fraction_data("invalid_class", "mean")
 
     def test_get_monthly_data(self, handler_with_data):
         """Test monthly data aggregation"""
-        monthly_data = handler_with_data.get_monthly_data()
+        # Add required fraction data
+        handler_with_data.data["border_mean"] = np.random.uniform(0.7, 0.9, 10)
+        
+        monthly_data = handler_with_data.get_monthly_data("border", "mean", month=6)
 
         assert isinstance(monthly_data, pd.DataFrame)
-        assert "month" in monthly_data.columns
-        assert len(monthly_data) <= 12  # At most 12 months
+        assert "value" in monthly_data.columns
+        assert "date" in monthly_data.columns
 
 
 @pytest.mark.skipif(AlbedoDataHandler is None, reason="AlbedoDataHandler not available")
@@ -177,10 +209,11 @@ class TestAlbedoDataHandlerValidation:
         data = pd.DataFrame(
             {
                 "date": ["2020-01-01"],
-                "albedo": [0.8],
-                "quality": [0],
                 "year": [2020],
                 "month": [1],
+                "doy": [1],
+                "decimal_year": [2020.0],
+                "border_mean": [0.8],  # Required fraction data
             }
         )
 
@@ -198,15 +231,16 @@ class TestAlbedoDataHandlerValidation:
         data = pd.DataFrame(
             {
                 "date": ["2020-01-01"],
-                "albedo": [0.8],
-                # Missing required columns
+                "year": [2020],
+                # Missing required columns: month, doy, decimal_year
+                # Missing fraction data
             }
         )
 
         handler = AlbedoDataHandler("mock.csv")
         handler.data = data
 
-        with pytest.raises((KeyError, ValueError)):
+        with pytest.raises(ValueError, match="Colonnes requises manquantes"):
             handler._validate_required_columns()
 
 
@@ -220,10 +254,12 @@ class TestAlbedoDataHandlerExport:
         data = pd.DataFrame(
             {
                 "date": ["2020-06-01", "2020-06-02"],
-                "albedo": [0.8, 0.75],
-                "quality": [0, 1],
                 "year": [2020, 2020],
                 "month": [6, 6],
+                "doy": [153, 154],
+                "decimal_year": [2020.42, 2020.42],
+                "albedo": [0.8, 0.75],
+                "quality": [0, 1],
             }
         )
 
@@ -239,11 +275,11 @@ class TestAlbedoDataHandlerExport:
 
     def test_get_available_fractions(self, handler_with_data):
         """Test getting available fraction columns"""
-        # Add some fraction columns
-        handler_with_data.data["fraction_0_20"] = [10, 15]
-        handler_with_data.data["fraction_20_40"] = [20, 25]
+        # Add some fraction columns in the expected format
+        handler_with_data.data["border_mean"] = [0.8, 0.75]
+        handler_with_data.data["mixed_low_mean"] = [0.7, 0.72]
 
-        fractions = handler_with_data.get_available_fractions()
+        fractions = handler_with_data.get_available_fractions("mean")
         assert isinstance(fractions, list)
         assert len(fractions) >= 0
 
