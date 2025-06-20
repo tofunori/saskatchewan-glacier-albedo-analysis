@@ -427,30 +427,21 @@ var dateSlider = ui.DateSlider({
   style: {width: '300px'}
 });
 
-// Sliders pour les filtres
-var ndsiSlider = ui.Slider({
-  min: 0,
-  max: 100,
-  value: NDSI_SNOW_THRESHOLD,
-  step: 5,
-  style: {width: '300px'}
-});
+// Helper function to create uniform sliders
+var createSlider = function(min, max, value, step) {
+  return ui.Slider({
+    min: min,
+    max: max,
+    value: value,
+    step: step,
+    style: {width: '300px'}
+  });
+};
 
-var glacierFractionSlider = ui.Slider({
-  min: 0,
-  max: 100,
-  value: GLACIER_FRACTION_THRESHOLD,
-  step: 5,
-  style: {width: '300px'}
-});
-
-var minPixelSlider = ui.Slider({
-  min: 0,
-  max: 100,
-  value: MIN_PIXEL_THRESHOLD,
-  step: 1,
-  style: {width: '300px'}
-});
+// Sliders pour les filtres (using factory function)
+var ndsiSlider = createSlider(0, 100, NDSI_SNOW_THRESHOLD, 5);
+var glacierFractionSlider = createSlider(0, 100, GLACIER_FRACTION_THRESHOLD, 5);
+var minPixelSlider = createSlider(0, 100, MIN_PIXEL_THRESHOLD, 1);
 
 // ┌────────────────────────────────────────────────────────────────────────────────────────┐
 // │ SECTION: CONTROLS QA COMPLETS (basés sur documentation officielle GEE)                │
@@ -470,47 +461,26 @@ var basicQASelect = ui.Select({
   onChange: updateQAFiltering
 });
 
-// Algorithm Flags Checkboxes (exact official GEE definitions)
-var flagCheckboxes = {
-  inlandWater: ui.Checkbox({
-    label: 'Bit 0: Inland water', 
-    value: false,
+// Algorithm Flags Checkboxes (dynamic generation from metadata)
+var flagMeta = [
+  {key: 'inlandWater', bit: 0, label: 'Bit 0: Inland water', def: false},
+  {key: 'visibleScreenFail', bit: 1, label: 'Bit 1: Low visible screen', def: true},
+  {key: 'ndsiScreenFail', bit: 2, label: 'Bit 2: Low NDSI screen', def: true},
+  {key: 'tempHeightFail', bit: 3, label: 'Bit 3: Temperature/height screen', def: true},
+  {key: 'swirAnomaly', bit: 4, label: 'Bit 4: Shortwave IR reflectance', def: false},
+  // Bits 5 & 6 are Spare (N/A) per official GEE documentation
+  {key: 'highSolarZenith', bit: 7, label: 'Bit 7: Solar zenith screen', def: true}
+];
+
+var flagCheckboxes = {};
+flagMeta.forEach(function(m) {
+  flagCheckboxes[m.key] = ui.Checkbox({
+    label: m.label,
+    value: m.def,
     onChange: updateQAFiltering,
     style: {fontSize: '11px'}
-  }),
-  visibleScreenFail: ui.Checkbox({
-    label: 'Bit 1: Low visible screen', 
-    value: true,
-    onChange: updateQAFiltering,
-    style: {fontSize: '11px'}
-  }),
-  ndsiScreenFail: ui.Checkbox({
-    label: 'Bit 2: Low NDSI screen', 
-    value: true,
-    onChange: updateQAFiltering,
-    style: {fontSize: '11px'}
-  }),
-  tempHeightFail: ui.Checkbox({
-    label: 'Bit 3: Temperature/height screen', 
-    value: true,
-    onChange: updateQAFiltering,
-    style: {fontSize: '11px'}
-  }),
-  swirAnomaly: ui.Checkbox({
-    label: 'Bit 4: Shortwave IR reflectance', 
-    value: false,
-    onChange: updateQAFiltering,
-    style: {fontSize: '11px'}
-  }),
-  // Bit 5: Spare (N/A) - Not implemented per official documentation
-  // Bit 6: Spare (N/A) - Not implemented per official documentation  
-  highSolarZenith: ui.Checkbox({
-    label: 'Bit 7: Solar zenith screen', 
-    value: true,
-    onChange: updateQAFiltering,
-    style: {fontSize: '11px'}
-  })
-};
+  });
+});
 
 // Dynamic labels
 var dateLabel = ui.Label('Date selection and optimized filtering parameters:');

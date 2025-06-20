@@ -39,7 +39,8 @@
       "mcp__search-scholar__deep_research",
       "Bash(git rm:*)",
       "mcp__playwright__browser_navigate",
-      "mcp__playwright__browser_install"
+      "mcp__playwright__browser_install",
+      "mcp__zen__refactor"
     ],
     "deny": []
   }
