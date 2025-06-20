@@ -1130,20 +1130,186 @@ function compareWithUnfilteredAlbedoSafe(img) {
 // │ SECTION: VALIDATION PLOTS (STREAMLINED)                                               │
 // └────────────────────────────────────────────────────────────────────────────────────────┘
 
-// 1. Data Coverage Quality Plot - Shows data availability over time
-var coverageChart = ui.Chart.feature.byFeature(dailyAlbedoHighSnow, 'system:time_start', 'total_filtered_pixels')
-  .setChartType('LineChart')
-  .setOptions({
-    title: 'MOD10A1 Daily Data Coverage (High Snow + Glacier >75%)',
-    hAxis: {title: 'Date', format: 'yyyy'},
-    vAxis: {title: 'Valid Pixels Count'},
-    colors: ['blue'],
-    height: 300,
-    pointSize: 3,
-    lineWidth: 1
-  });
+// 1. DEEP STATISTICAL ANALYSIS - Research-grade albedo trend analysis
+print('');
+print('╔════════════════════════════════════════════════════════════════════════════════════════╗');
+print('║                    DEEP STATISTICAL ANALYSIS - GLACIER ALBEDO RESEARCH                 ║');
+print('╚════════════════════════════════════════════════════════════════════════════════════════╝');
 
-// 2. Annual Trend Summary Plot - Core scientific validation
+// Extract data arrays for analysis
+var pureIceData = annual_albedo_high_snow.filter(ee.Filter.neq('pure_ice_high_snow_mean', null));
+var dataArrays = pureIceData.aggregate_array('year').zip(pureIceData.aggregate_array('pure_ice_high_snow_mean'));
+
+dataArrays.evaluate(function(arrays) {
+  if (!arrays || arrays.length < 5) {
+    print('⚠️ Insufficient data for deep analysis (need ≥5 years)');
+    return;
+  }
+  
+  var years = arrays.map(function(pair) { return pair[0]; });
+  var albedoValues = arrays.map(function(pair) { return pair[1]; });
+  var n = years.length;
+  
+  print('📊 DATASET OVERVIEW:');
+  print('• Analysis period: ' + years[0] + '-' + years[n-1] + ' (' + n + ' years)');
+  print('• Mean albedo: ' + (albedoValues.reduce(function(a, b) { return a + b; }) / n).toFixed(4));
+  print('');
+  
+  // 1. SEN'S SLOPE ESTIMATOR - Robust non-parametric trend
+  print('📈 SEN\'S SLOPE ANALYSIS (Robust Trend Detection):');
+  var slopes = [];
+  for (var i = 0; i < n; i++) {
+    for (var j = i + 1; j < n; j++) {
+      slopes.push((albedoValues[j] - albedoValues[i]) / (years[j] - years[i]));
+    }
+  }
+  slopes.sort(function(a, b) { return a - b; });
+  var sensSlope = slopes.length % 2 === 0 ? 
+    (slopes[slopes.length/2 - 1] + slopes[slopes.length/2]) / 2 : 
+    slopes[Math.floor(slopes.length/2)];
+  
+  print('• Sen\'s slope: ' + sensSlope.toFixed(6) + ' albedo/year');
+  print('• Decadal change: ' + (sensSlope * 10).toFixed(4) + ' albedo/decade');
+  print('• Total change (' + (years[n-1] - years[0]) + ' years): ' + (sensSlope * (years[n-1] - years[0])).toFixed(4));
+  print('');
+  
+  // 2. CHANGE POINT DETECTION
+  print('🔍 CHANGE POINT DETECTION (Structural Breaks):');
+  var changePoints = [];
+  var threshold = 0.03; // 3% change threshold
+  var window = 3;
+  
+  for (var i = window; i < n - window; i++) {
+    var beforeSum = 0, afterSum = 0;
+    for (var k = i - window; k < i; k++) beforeSum += albedoValues[k];
+    for (var k = i; k < i + window; k++) afterSum += albedoValues[k];
+    
+    var before = beforeSum / window;
+    var after = afterSum / window;
+    var change = Math.abs(after - before);
+    
+    if (change > threshold) {
+      changePoints.push({
+        year: years[i],
+        magnitude: change,
+        direction: after > before ? 'increase' : 'decrease'
+      });
+    }
+  }
+  
+  if (changePoints.length > 0) {
+    changePoints.forEach(function(cp) {
+      print('• ' + cp.year + ': ' + cp.direction + ' (Δ=' + cp.magnitude.toFixed(3) + ')');
+    });
+  } else {
+    print('• No significant change points detected (threshold: ' + threshold + ')');
+  }
+  print('');
+  
+  // 3. VARIANCE & STABILITY ANALYSIS
+  print('📊 VARIABILITY ANALYSIS:');
+  var mean = albedoValues.reduce(function(a, b) { return a + b; }) / n;
+  var variance = albedoValues.map(function(v) { return Math.pow(v - mean, 2); })
+    .reduce(function(a, b) { return a + b; }) / (n - 1);
+  var stdDev = Math.sqrt(variance);
+  var cv = (stdDev / mean) * 100;
+  
+  print('• Standard deviation: ' + stdDev.toFixed(4));
+  print('• Coefficient of variation: ' + cv.toFixed(2) + '%');
+  
+  // Rolling 5-year statistics
+  if (n >= 5) {
+    var rollingCV = [];
+    for (var i = 4; i < n; i++) {
+      var windowData = albedoValues.slice(i-4, i+1);
+      var windowMean = windowData.reduce(function(a, b) { return a + b; }) / 5;
+      var windowVar = windowData.map(function(v) { return Math.pow(v - windowMean, 2); })
+        .reduce(function(a, b) { return a + b; }) / 4;
+      rollingCV.push({year: years[i], cv: (Math.sqrt(windowVar) / windowMean) * 100});
+    }
+    
+    var minCV = rollingCV.reduce(function(min, curr) { return curr.cv < min.cv ? curr : min; });
+    var maxCV = rollingCV.reduce(function(max, curr) { return curr.cv > max.cv ? curr : max; });
+    
+    print('• Most stable period: ' + minCV.year + ' (CV=' + minCV.cv.toFixed(1) + '%)');
+    print('• Most variable period: ' + maxCV.year + ' (CV=' + maxCV.cv.toFixed(1) + '%)');
+  }
+  print('');
+  
+  // 4. ANOMALY DETECTION (Z-score analysis)
+  print('⚠️ ANOMALY DETECTION (|z-score| > 2.0):');
+  var anomalies = albedoValues.map(function(value, i) {
+    var zScore = (value - mean) / stdDev;
+    return {
+      year: years[i],
+      albedo: value,
+      zScore: zScore,
+      isAnomaly: Math.abs(zScore) > 2.0
+    };
+  }).filter(function(item) { return item.isAnomaly; });
+  
+  if (anomalies.length > 0) {
+    anomalies.forEach(function(anom) {
+      print('• ' + anom.year + ': albedo=' + anom.albedo.toFixed(4) + 
+            ', z-score=' + anom.zScore.toFixed(2) + 
+            ' (' + (anom.zScore > 0 ? 'HIGH' : 'LOW') + ')');
+    });
+  } else {
+    print('• No statistical anomalies detected (threshold: |z| > 2.0)');
+  }
+  print('');
+  
+  // 5. AUTOCORRELATION ANALYSIS
+  print('🔄 TEMPORAL PERSISTENCE (Lag-1 Autocorrelation):');
+  if (n >= 3) {
+    var x1 = albedoValues.slice(0, n-1);
+    var x2 = albedoValues.slice(1);
+    var mean1 = x1.reduce(function(a, b) { return a + b; }) / x1.length;
+    var mean2 = x2.reduce(function(a, b) { return a + b; }) / x2.length;
+    
+    var numerator = 0, denom1 = 0, denom2 = 0;
+    for (var i = 0; i < x1.length; i++) {
+      numerator += (x1[i] - mean1) * (x2[i] - mean2);
+      denom1 += Math.pow(x1[i] - mean1, 2);
+      denom2 += Math.pow(x2[i] - mean2, 2);
+    }
+    
+    var autocorr = numerator / Math.sqrt(denom1 * denom2);
+    var persistence = autocorr > 0.5 ? 'HIGH' : autocorr > 0.2 ? 'MODERATE' : 'LOW';
+    
+    print('• Lag-1 autocorrelation: ' + autocorr.toFixed(3));
+    print('• Persistence level: ' + persistence);
+    print('• Interpretation: ' + (autocorr > 0.5 ? 'Strong year-to-year memory' : 
+                                 autocorr > 0.2 ? 'Moderate temporal dependence' : 
+                                 'Weak temporal correlation'));
+  }
+  print('');
+  
+  // 6. CLIMATE SIGNAL ANALYSIS
+  print('🌡️ CLIMATE CHANGE SIGNAL (Early vs Late Period):');
+  if (n >= 10) {
+    var splitPoint = Math.floor(n / 2);
+    var earlyPeriod = albedoValues.slice(0, splitPoint);
+    var latePeriod = albedoValues.slice(-splitPoint);
+    
+    var earlyMean = earlyPeriod.reduce(function(a, b) { return a + b; }) / earlyPeriod.length;
+    var lateMean = latePeriod.reduce(function(a, b) { return a + b; }) / latePeriod.length;
+    var periodDiff = lateMean - earlyMean;
+    var relativeChange = (periodDiff / earlyMean) * 100;
+    
+    print('• Early period (' + years[0] + '-' + years[splitPoint-1] + ') mean: ' + earlyMean.toFixed(4));
+    print('• Late period (' + years[n-splitPoint] + '-' + years[n-1] + ') mean: ' + lateMean.toFixed(4));
+    print('• Period difference: ' + periodDiff.toFixed(4) + ' albedo units');
+    print('• Relative change: ' + relativeChange.toFixed(2) + '%');
+    print('• Climate signal: ' + (Math.abs(relativeChange) > 5 ? 'STRONG' : 
+                                 Math.abs(relativeChange) > 2 ? 'MODERATE' : 'WEAK'));
+  }
+  
+  print('');
+  print('╚════════════════════════════════════════════════════════════════════════════════════════╝');
+});
+
+// 2. Annual Trend Visualization - Core scientific validation
 var trendChart = ui.Chart.feature.byFeature(annual_albedo_high_snow, 'year', 'pure_ice_high_snow_mean')
   .setChartType('LineChart')
   .setOptions({
@@ -1158,8 +1324,7 @@ var trendChart = ui.Chart.feature.byFeature(annual_albedo_high_snow, 'year', 'pu
   });
 
 print('');
-print('=== VALIDATION PLOTS (STREAMLINED) ===');
-print(coverageChart);
+print('=== VALIDATION VISUALIZATION ===');
 print(trendChart);
 
 // FIN DU SCRIPT OPTIMISÉ
