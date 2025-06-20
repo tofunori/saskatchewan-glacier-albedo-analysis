@@ -243,3 +243,130 @@ def print_config_summary():
     print(f"🔄 Bootstrap: {ANALYSIS_CONFIG['bootstrap_iterations']} itérations")
     print(f"📈 Seuils significativité: {ANALYSIS_CONFIG['significance_levels']}")
     print("="*50)
+
+# ==========================================
+# CONFIGURATION GOOGLE EARTH ENGINE
+# ==========================================
+
+# Configuration GEE pour récupération de données fraîches
+GEE_CONFIG = {
+    'collections': {
+        'albedo': 'MODIS/061/MCD43A3',  # MODIS/Terra+Aqua BRDF/Albedo
+        'snow_cover': 'MODIS/061/MOD10A1',  # Terra Snow Cover Daily
+        'aqua_snow': 'MODIS/061/MYD10A1'  # Aqua Snow Cover Daily
+    },
+    'regions': {
+        'saskatchewan': {
+            'west': -110.0,
+            'east': -101.0,
+            'south': 49.0,
+            'north': 60.0,
+            'description': 'Province entière de Saskatchewan'
+        },
+        'glacier': {
+            'west': -108.0,
+            'east': -105.0,
+            'south': 51.5,
+            'north': 53.0,
+            'description': 'Région glaciaire Saskatchewan (défaut)'
+        }
+    },
+    'bands': {
+        'albedo_primary': [
+            'Albedo_WSA_shortwave',  # Albédo shortwave (principal)
+            'Albedo_BSA_shortwave',  # Albédo black-sky shortwave
+            'Albedo_WSA_vis',        # Albédo visible
+            'Albedo_WSA_nir'         # Albédo proche infrarouge
+        ],
+        'snow_cover': [
+            'NDSI_Snow_Cover',       # Fraction de couverture neigeuse
+            'Snow_Albedo_Daily_Tile' # Albédo de la neige
+        ]
+    },
+    'quality_filters': {
+        'max_cloud_cover': 20,   # % couverture nuageuse max
+        'modis_scale': 500,      # Résolution spatiale (mètres)
+        'max_pixels': 1e9        # Pixels max pour les calculs
+    },
+    'export_settings': {
+        'add_synthetic_fractions': True,  # Ajouter fractions synthétiques pour compatibilité
+        'output_prefix': 'gee_',          # Préfixe pour fichiers GEE
+        'backup_existing': True           # Sauvegarder fichiers existants
+    },
+    'authentication': {
+        'service_account_path': None,     # Chemin vers clé service account (optionnel)
+        'fallback_to_user_auth': True,    # Utiliser auth utilisateur si service account échoue
+        'require_interactive': False      # Forcer auth interactive
+    }
+}
+
+# Collections GEE disponibles (pour référence)
+GEE_COLLECTIONS_INFO = {
+    'MCD43A3': {
+        'name': 'MODIS/Terra+Aqua BRDF/Albedo',
+        'temporal_resolution': '8 jours',
+        'spatial_resolution': '500m',
+        'bands_count': 20,
+        'description': 'Albédo et BRDF MODIS combiné Terra/Aqua'
+    },
+    'MOD10A1': {
+        'name': 'MODIS/Terra Snow Cover Daily',
+        'temporal_resolution': 'Quotidien',
+        'spatial_resolution': '500m', 
+        'bands_count': 10,
+        'description': 'Couverture neigeuse quotidienne Terra'
+    },
+    'MYD10A1': {
+        'name': 'MODIS/Aqua Snow Cover Daily', 
+        'temporal_resolution': 'Quotidien',
+        'spatial_resolution': '500m',
+        'bands_count': 10,
+        'description': 'Couverture neigeuse quotidienne Aqua'
+    }
+}
+
+def get_gee_output_path(data_type='gee_data', create_dir=True):
+    """
+    Retourne le chemin de sortie pour les données GEE
+    
+    Args:
+        data_type (str): Type de données GEE ('gee_data', 'gee_exports', etc.)
+        create_dir (bool): Créer le répertoire s'il n'existe pas
+        
+    Returns:
+        str: Chemin vers le répertoire GEE
+    """
+    import os
+    
+    gee_path = f"{OUTPUT_DIR}/gee_data"
+    
+    if data_type != 'gee_data':
+        gee_path = f"{gee_path}/{data_type}"
+    
+    if create_dir and not os.path.exists(gee_path):
+        os.makedirs(gee_path, exist_ok=True)
+    
+    return gee_path
+
+def print_gee_config_summary():
+    """
+    Affiche un résumé de la configuration GEE
+    """
+    print("🛰️  CONFIGURATION GOOGLE EARTH ENGINE")
+    print("="*50)
+    print(f"📊 Collections disponibles: {len(GEE_CONFIG['collections'])}")
+    for name, collection in GEE_CONFIG['collections'].items():
+        print(f"   • {name}: {collection}")
+    
+    print(f"\n🌍 Régions configurées: {len(GEE_CONFIG['regions'])}")
+    for name, region in GEE_CONFIG['regions'].items():
+        print(f"   • {name}: {region['description']}")
+    
+    print(f"\n📡 Paramètres qualité:")
+    print(f"   • Couverture nuageuse max: {GEE_CONFIG['quality_filters']['max_cloud_cover']}%")
+    print(f"   • Résolution: {GEE_CONFIG['quality_filters']['modis_scale']}m")
+    
+    print(f"\n💾 Export:")
+    print(f"   • Préfixe: {GEE_CONFIG['export_settings']['output_prefix']}")
+    print(f"   • Fractions synthétiques: {GEE_CONFIG['export_settings']['add_synthetic_fractions']}")
+    print("="*50)
