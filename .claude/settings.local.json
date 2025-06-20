@@ -40,7 +40,9 @@
       "Bash(git rm:*)",
       "mcp__playwright__browser_navigate",
       "mcp__playwright__browser_install",
-      "mcp__zen__refactor"
+      "mcp__zen__refactor",
+      "mcp__zen__analyze",
+      "mcp__zen__thinkdeep"
     ],
     "deny": []
   }

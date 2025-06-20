@@ -1,16 +1,63 @@
 // ╔════════════════════════════════════════════════════════════════════════════════════════╗
-// ║          ANALYSE D'ALBÉDO OPTIMISÉE POUR COUVERTURE DE NEIGE ÉLEVÉE                    ║
-// ║                           GLACIER SASKATCHEWAN 2010-2024                                ║
-// ║                 MODIS MOD10A1.061 - Filtrage par NDSI Snow Cover                       ║
-// ║                  Fichier: MOD10A1_albedo_high_snow_cover_optimized.js                  ║
+// ║              OPTIMIZED SNOW ALBEDO ANALYSIS - SASKATCHEWAN GLACIER                     ║
+// ║                    MODIS MOD10A1.061 (2010-2024) - Research Grade                     ║
+// ║                        MOD10A1_albedo_high_snow_cover_optimized.js                     ║
 // ╚════════════════════════════════════════════════════════════════════════════════════════╝
 
-// Description : Version optimisée du script d'analyse albédo avec double filtrage.
-// Corrections des bugs, optimisations de performance, et améliorations interface.
-// Analyse l'albédo de neige avec filtrage : couverture de neige >50% ET fraction glacier >75%.
+// ┌─────────────────────────────── QUICK START GUIDE ───────────────────────────────────┐
+// │                                                                                        │
+// │ 🎯 PURPOSE: Extract high-quality snow albedo data with comprehensive QA filtering     │
+// │                                                                                        │
+// │ 📊 WORKFLOW:                                                                           │
+// │   1. Script auto-loads → Statistics appear in console                                 │
+// │   2. Interact with LEFT panel → Adjust filtering parameters                           │
+// │   3. Interact with RIGHT panel → Fine-tune quality controls                           │
+// │   4. Click map pixels → Get detailed QA inspection                                    │
+// │   5. Run exports → Get publication-ready CSV data                                     │
+// │                                                                                        │
+// │ 🔧 KEY FEATURES:                                                                       │
+// │   • Deep statistical analysis (Sen's slope, change points, anomaly detection)         │
+// │   • Interactive parameter optimization with real-time feedback                        │
+// │   • Comprehensive QA with MOD10A1 v6.1 cloud detection                               │
+// │   • Research-grade filtering: NDSI snow + glacier fraction + quality masks           │
+// │   • Export both annual summaries and daily time series                               │
+// │                                                                                        │
+// │ 📈 SCIENTIFIC METHODS:                                                                │
+// │   • Sen's slope estimator (robust trend detection)                                   │
+// │   • Change point analysis (structural breaks)                                        │
+// │   • Autocorrelation assessment (temporal persistence)                                │
+// │   • Anomaly detection (extreme event identification)                                 │
+// │   • Climate signal analysis (early vs late period comparison)                        │
+// │                                                                                        │
+// │ ⚙️ DEFAULT SETTINGS (Conservative for publication):                                   │
+// │   • NDSI Snow Threshold: 0 (index 0-100)                                            │
+// │   • Glacier Fraction: ≥75% (pure glacier focus)                                     │
+// │   • Quality Level: Good+ (0-1, excludes poor quality)                               │
+// │   • Cloud Detection: v6.1 enabled (excludes cloudy pixels)                          │
+// │   • Season: July-September (peak melt period)                                       │
+// │                                                                                        │
+// │ 📋 EXPORTS GENERATED:                                                                 │
+// │   • Annual statistics by glacier fraction class (2010-2024)                         │
+// │   • Daily albedo time series with comprehensive metadata                             │
+// │   • Quality-controlled data ready for Python analysis pipeline                      │
+// │                                                                                        │
+// │ 🔍 QUALITY CONTROL:                                                                   │
+// │   • Basic QA: Excludes night, ocean, poor quality pixels                            │
+// │   • Algorithm Flags: Excludes failed screens, cloudy conditions                     │
+// │   • Spatial Filter: Minimum glacier fraction thresholds                             │
+// │   • Temporal Filter: Statistical reliability minimums                               │
+// │                                                                                        │
+// │ 💡 TIPS:                                                                              │
+// │   • Use LEFT panel sliders to optimize parameters for your research                 │
+// │   • Check RIGHT panel for QA retention rates                                        │
+// │   • Click map to inspect individual pixel quality                                   │
+// │   • Adjust thresholds if "insufficient pixels" warnings appear                      │
+// │   • Export parameters once satisfied with filtering results                         │
+// │                                                                                        │
+// └────────────────────────────────────────────────────────────────────────────────────┘
 
 // ┌────────────────────────────────────────────────────────────────────────────────────────┐
-// │ SECTION 1 : CONFIGURATION ET INITIALISATION                                            │
+// │ SECTION 1: CONFIGURATION & INITIALIZATION                                             │
 // └────────────────────────────────────────────────────────────────────────────────────────┘
 
 // 1. Paramètres configurables
