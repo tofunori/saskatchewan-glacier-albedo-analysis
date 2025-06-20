@@ -240,12 +240,12 @@ function calculateAnnualAlbedoHighSnowCoverOptimized(year) {
     return ee.Image.cat(masked_albedos.concat([high_snow_count]));
   });
   
-  // Calculer les moyennes annuelles
-  var annual_means = processed_collection.mean();
+  // Séparer les statistiques d'albédo et de comptage de pixels
+  var albedo_means = processed_collection.select(ANNUAL_CLASS_NAMES).mean();
+  var pixel_count_total = processed_collection.select('high_snow_pixel_count').sum();
   
-  // Calculer les statistiques pour chaque classe (approche fiable)
-  
-  var all_stats = annual_means.reduceRegion({
+  // Calculer les statistiques d'albédo pour chaque classe
+  var all_stats = albedo_means.reduceRegion({
     reducer: ee.Reducer.mean().combine(
       ee.Reducer.stdDev(), '', true
     ).combine(
@@ -257,8 +257,8 @@ function calculateAnnualAlbedoHighSnowCoverOptimized(year) {
     tileScale: 4 // Remplace bestEffort
   });
   
-  // Calculer aussi le nombre moyen de pixels filtrés
-  var filtered_pixel_stats = annual_means.select('high_snow_pixel_count').reduceRegion({
+  // Calculer le nombre total de pixels filtrés (correctement)
+  var filtered_pixel_stats = pixel_count_total.reduceRegion({
     reducer: ee.Reducer.sum(),
     geometry: glacier_geometry,
     scale: 500,
@@ -506,6 +506,7 @@ var glacierFractionLabel = ui.Label('Glacier fraction threshold: ' + GLACIER_FRA
 var minPixelLabel = ui.Label('Minimum pixels: OFF (no filter)');
 var statsLabel = ui.Label('Statistics: Waiting...');
 var qaBasicLabel = ui.Label('Basic quality level: Good+ (0-1)', {fontSize: '11px'});
+var qaStatsLabel = ui.Label('QA Retention: Calculating...', {fontSize: '11px'});
 
 // Reload button for filter testing
 var reloadButton = ui.Button({
@@ -533,6 +534,7 @@ var loadBaseData = function() {
   selectedDateLabel.setValue('Date sélectionnée: ' + dateString);
   
   // Charger l'image MOD10A1 avec clip (incluant Algorithm_Flags_QA)
+  // Note: 5-day window used for data availability in case selected date has no data
   currentImage = ee.ImageCollection('MODIS/061/MOD10A1')
     .filterDate(selected_date, selected_date.advance(5, 'day'))
     .filterBounds(glacier_geometry)
@@ -817,7 +819,9 @@ var qaPanel = ui.Panel([
   flagCheckboxes.swirAnomaly,           // Bit 4
   flagCheckboxes.probablyCloudy,        // Bit 5
   flagCheckboxes.probablyNotClear,      // Bit 6
-  flagCheckboxes.highSolarZenith        // Bit 7
+  flagCheckboxes.highSolarZenith,       // Bit 7
+  ui.Label(''),
+  qaStatsLabel
 ], ui.Panel.Layout.flow('vertical'), {
   width: '350px',
   position: 'top-right'
@@ -1057,7 +1061,7 @@ function compareWithUnfilteredAlbedoSafe(img) {
   
   // Masque avec double filtrage
   var double_filter_mask = base_mask
-    .and(snow_cover.gte(SNOW_COVER_THRESHOLD))
+    .and(snow_cover.gte(NDSI_SNOW_THRESHOLD))
     .and(STATIC_GLACIER_FRACTION.gte(GLACIER_FRACTION_THRESHOLD / 100));
   
   // Albédo non filtré et filtré avec noms cohérents
