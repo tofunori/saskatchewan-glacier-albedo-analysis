@@ -144,13 +144,13 @@ def show_home_page():
         
         # Quick action buttons
         if st.button("📁 Upload Data", key="quick_upload"):
-            st.switch_page("pages/1_📁_Data_Management.py") if hasattr(st, 'switch_page') else None
+            st.info("Navigate to 'Data Management' page using the sidebar menu.")
         
         if st.button("📈 Run Analysis", key="quick_analysis"):
-            st.switch_page("pages/2_📈_Trend_Analysis.py") if hasattr(st, 'switch_page') else None
+            st.info("Navigate to 'Trend Analysis' page using the sidebar menu.")
         
         if st.button("🛰️ Fetch Fresh Data", key="quick_gee"):
-            st.switch_page("pages/4_🛰️_Google_Earth_Engine.py") if hasattr(st, 'switch_page') else None
+            st.info("Navigate to 'Google Earth Engine' page using the sidebar menu.")
         
         # Recent activity
         st.subheader("📋 Recent Activity")
