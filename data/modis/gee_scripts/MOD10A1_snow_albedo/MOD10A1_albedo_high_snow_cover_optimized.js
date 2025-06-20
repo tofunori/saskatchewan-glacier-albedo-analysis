@@ -183,6 +183,25 @@ function createQualityMask(qualityBand) {
   return qualityBand.bitwiseAnd(0x3).lte(1);
 }
 
+// Configuration QA par défaut pour exports (consistent avec l'approche conservatrice recommandée)
+// IMPORTANT: Cette configuration est utilisée pour tous les exports de données (annual + daily)
+// tandis que l'interface interactive permet de tester différents paramètres pour la visualisation
+function createStandardQualityMask(img) {
+  var qaConfig = {
+    basicLevel: 'good',                    // Good quality+ (0-1) - recommandation standard
+    excludeInlandWater: false,             // Généralement pas nécessaire pour glaciers
+    excludeVisibleScreenFail: true,        // CRITIQUE - données visible corrompues
+    excludeNDSIScreenFail: true,           // CRITIQUE - NDSI non-fiable
+    excludeTempHeightFail: true,           // IMPORTANT - conditions atypiques
+    excludeSWIRAnomaly: false,             // OPTIONNEL - peut affecter précision
+    excludeProbablyCloudy: true,           // CRITIQUE - cloud masking v6.1 (Bit 5)
+    excludeProbablyClear: false,           // OPTIONNEL - ne pas exclure les pixels clairs (Bit 6)
+    excludeHighSolarZenith: true           // IMPORTANT - éclairage faible
+  };
+  
+  return createComprehensiveQualityMask(img, qaConfig);
+}
+
 // ┌────────────────────────────────────────────────────────────────────────────────────────┐
 // │ SECTION 4 : ANALYSE ANNUELLE OPTIMISÉE                                                │
 // └────────────────────────────────────────────────────────────────────────────────────────┘
@@ -205,8 +224,8 @@ function calculateAnnualAlbedoHighSnowCoverOptimized(year) {
     var snow_albedo = img.select('Snow_Albedo_Daily_Tile');
     var quality = img.select('NDSI_Snow_Cover_Basic_QA');
     
-    // Masques de qualité améliorés
-    var good_quality_mask = createQualityMask(quality);
+    // Masques de qualité améliorés - utilise configuration QA standard pour exports
+    var good_quality_mask = createStandardQualityMask(img);
     var high_ndsi_mask = snow_cover.gte(NDSI_SNOW_THRESHOLD); // NDSI index ≥ threshold
     var high_glacier_fraction_mask = STATIC_GLACIER_FRACTION.gte(GLACIER_FRACTION_THRESHOLD / 100);
     var valid_albedo_mask = snow_albedo.lte(100);
@@ -305,8 +324,8 @@ function analyzeDailyAlbedoHighSnowCoverOptimized(img) {
   var snow_albedo = img.select('Snow_Albedo_Daily_Tile');
   var quality = img.select('NDSI_Snow_Cover_Basic_QA');
   
-  // Masques avec fonction qualité améliorée
-  var good_quality_mask = createQualityMask(quality);
+  // Masques avec fonction qualité améliorée - utilise configuration QA standard pour exports
+  var good_quality_mask = createStandardQualityMask(img);
   var high_ndsi_mask = snow_cover.gte(NDSI_SNOW_THRESHOLD); // NDSI index ≥ threshold
   var high_glacier_fraction_mask = STATIC_GLACIER_FRACTION.gte(GLACIER_FRACTION_THRESHOLD / 100);
   var valid_albedo_mask = snow_albedo.lte(100);
@@ -579,8 +598,8 @@ var updateFiltering = function() {
     excludeNDSIScreenFail: flagCheckboxes.ndsiScreenFail.getValue(),
     excludeTempHeightFail: flagCheckboxes.tempHeightFail.getValue(),
     excludeSWIRAnomaly: flagCheckboxes.swirAnomaly.getValue(),
-    // Removed: excludeProbablyCloudy (Bit 5 is Spare)
-    // Removed: excludeProbablyNotClear (Bit 6 is Spare)
+    excludeProbablyCloudy: flagCheckboxes.probablyCloudy.getValue(),        // Bit 5: Cloud flags v6.1
+    excludeProbablyClear: flagCheckboxes.probablyClear.getValue(),          // Bit 6: Cloud flags v6.1
     excludeHighSolarZenith: flagCheckboxes.highSolarZenith.getValue()
   });
   var good_quality = basicMask.and(flagMask);
@@ -1056,8 +1075,8 @@ function compareWithUnfilteredAlbedoSafe(img) {
   // Limiter aux pixels glacier
   var glacier_pixels = STATIC_GLACIER_FRACTION.gt(0);
   
-  // Masque de base avec qualité améliorée
-  var base_mask = createQualityMask(quality).and(img.select('Snow_Albedo_Daily_Tile').lte(100));
+  // Masque de base avec qualité améliorée - utilise configuration QA standard
+  var base_mask = createStandardQualityMask(img).and(img.select('Snow_Albedo_Daily_Tile').lte(100));
   
   // Masque avec double filtrage
   var double_filter_mask = base_mask
