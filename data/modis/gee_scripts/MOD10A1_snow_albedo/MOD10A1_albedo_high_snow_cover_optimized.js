@@ -14,7 +14,7 @@
 // └────────────────────────────────────────────────────────────────────────────────────────┘
 
 // 1. Paramètres configurables
-var SNOW_COVER_THRESHOLD = 50; // Seuil minimal de couverture de neige (%)
+var NDSI_SNOW_THRESHOLD = 0; // Minimum NDSI Snow Cover threshold (index 0-100, not percentage)
 var GLACIER_FRACTION_THRESHOLD = 75; // Seuil minimal de fraction glacier dans le pixel (%)
 var MIN_PIXEL_THRESHOLD = 0; // Nombre minimum de pixels requis (0 = désactivé)
 var FRACTION_THRESHOLDS = [0.25, 0.50, 0.75, 0.90]; // Seuils de fraction glacier pour classes
@@ -129,7 +129,7 @@ function calculateAnnualAlbedoHighSnowCoverOptimized(year) {
     
     // Masques de qualité améliorés
     var good_quality_mask = createQualityMask(quality);
-    var high_snow_cover_mask = snow_cover.gte(SNOW_COVER_THRESHOLD);
+    var high_snow_cover_mask = snow_cover.gte(NDSI_SNOW_THRESHOLD);
     var high_glacier_fraction_mask = STATIC_GLACIER_FRACTION.gte(GLACIER_FRACTION_THRESHOLD / 100);
     var valid_albedo_mask = snow_albedo.lte(100);
     
@@ -193,7 +193,7 @@ function calculateAnnualAlbedoHighSnowCoverOptimized(year) {
   // Construire les propriétés avec gestion sécurisée des null
   var properties = {
     'year': year,
-    'snow_cover_threshold': SNOW_COVER_THRESHOLD,
+    'snow_cover_threshold': NDSI_SNOW_THRESHOLD,
     'glacier_fraction_threshold': GLACIER_FRACTION_THRESHOLD,
     'peak_melt_only': USE_PEAK_MELT_ONLY,
     'total_filtered_pixels': filtered_pixel_stats.get('high_snow_pixel_count')
@@ -221,7 +221,7 @@ function analyzeDailyAlbedoHighSnowCoverOptimized(img) {
   
   // Masques avec fonction qualité améliorée
   var good_quality_mask = createQualityMask(quality);
-  var high_snow_cover_mask = snow_cover.gte(SNOW_COVER_THRESHOLD);
+  var high_snow_cover_mask = snow_cover.gte(NDSI_SNOW_THRESHOLD);
   var high_glacier_fraction_mask = STATIC_GLACIER_FRACTION.gte(GLACIER_FRACTION_THRESHOLD / 100);
   var valid_albedo_mask = snow_albedo.lte(100);
   var combined_mask = good_quality_mask
@@ -287,7 +287,7 @@ function analyzeDailyAlbedoHighSnowCoverOptimized(img) {
     'doy': doy,
     'decimal_year': year.add(doy.divide(365.25)),
     'total_filtered_pixels': total_filtered,
-    'snow_cover_threshold': SNOW_COVER_THRESHOLD,
+    'snow_cover_threshold': NDSI_SNOW_THRESHOLD,
     'glacier_fraction_threshold': GLACIER_FRACTION_THRESHOLD,
     'system:time_start': date.millis()
   };
@@ -349,7 +349,7 @@ var dateSlider = ui.DateSlider({
 var snowCoverSlider = ui.Slider({
   min: 0,
   max: 100,
-  value: SNOW_COVER_THRESHOLD,
+  value: NDSI_SNOW_THRESHOLD,
   step: 5,
   style: {width: '300px'}
 });
@@ -373,7 +373,7 @@ var minPixelSlider = ui.Slider({
 // Labels dynamiques
 var dateLabel = ui.Label('Sélection de date et paramètres de filtrage optimisés:');
 var selectedDateLabel = ui.Label('Date sélectionnée: 2020-07-15');
-var snowCoverLabel = ui.Label('Seuil couverture de neige: ' + SNOW_COVER_THRESHOLD + '%');
+var snowCoverLabel = ui.Label('Seuil couverture de neige: ' + NDSI_SNOW_THRESHOLD + '%');
 var glacierFractionLabel = ui.Label('Seuil fraction glacier: ' + GLACIER_FRACTION_THRESHOLD + '%');
 var minPixelLabel = ui.Label('Pixels minimum: OFF (pas de filtre)');
 var statsLabel = ui.Label('Statistiques: En attente...');
@@ -566,7 +566,7 @@ var exportParamsButton = ui.Button({
     print('• Seuil fraction glacier: ' + glacierVal + '%');
     print('• Pixels minimum: ' + (pixelVal === 0 ? 'OFF (désactivé)' : pixelVal));
     print('• Période: ' + (USE_PEAK_MELT_ONLY ? 'Juillet-Septembre (peak melt)' : 'Juin-Septembre'));
-    print('• Code: SNOW_COVER_THRESHOLD = ' + snowVal + '; GLACIER_FRACTION_THRESHOLD = ' + glacierVal + '; MIN_PIXEL_THRESHOLD = ' + pixelVal + ';');
+    print('• Code: NDSI_SNOW_THRESHOLD = ' + snowVal + '; GLACIER_FRACTION_THRESHOLD = ' + glacierVal + '; MIN_PIXEL_THRESHOLD = ' + pixelVal + ';');
   },
   style: {width: '200px'}
 });
@@ -667,7 +667,7 @@ function compareWithUnfilteredAlbedoSafe(img) {
   
   // Masque avec double filtrage
   var double_filter_mask = base_mask
-    .and(snow_cover.gte(SNOW_COVER_THRESHOLD))
+    .and(snow_cover.gte(NDSI_SNOW_THRESHOLD))
     .and(STATIC_GLACIER_FRACTION.gte(GLACIER_FRACTION_THRESHOLD / 100));
   
   // Albédo non filtré et filtré avec noms cohérents
@@ -743,7 +743,7 @@ var comparisonChart = ui.Chart.feature.byFeature(
     },
     legend: {
       position: 'top',
-      labels: ['Sans filtre (tous pixels)', 'Avec filtre (neige >' + SNOW_COVER_THRESHOLD + '%)']
+      labels: ['Sans filtre (tous pixels)', 'Avec filtre (neige >' + NDSI_SNOW_THRESHOLD + '%)']
     },
     height: 400
   });
@@ -784,7 +784,7 @@ print('• Export paramètres avec période');
 print('• Statistiques avec validation détaillée');
 print('');
 print('CONFIGURATION ACTUELLE :');
-print('• Seuil neige: ' + SNOW_COVER_THRESHOLD + '%');
+print('• Seuil neige: ' + NDSI_SNOW_THRESHOLD + '%');
 print('• Seuil glacier: ' + GLACIER_FRACTION_THRESHOLD + '%');
 print('• Période: ' + (USE_PEAK_MELT_ONLY ? 'Juillet-Septembre (peak melt)' : 'Juin-Septembre'));
 print('• Pixels minimum: ' + (MIN_PIXEL_THRESHOLD === 0 ? 'OFF' : MIN_PIXEL_THRESHOLD));
