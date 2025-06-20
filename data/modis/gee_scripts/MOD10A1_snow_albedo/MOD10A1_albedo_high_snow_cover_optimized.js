@@ -133,6 +133,8 @@ var QA_BIT_MAPPING = [
   {flag: 'excludeNDSIScreenFail', bit: 2, mask: 4, desc: 'Low NDSI screen failure'},
   {flag: 'excludeTempHeightFail', bit: 3, mask: 8, desc: 'Temperature/height screen failure'},
   {flag: 'excludeSWIRAnomaly', bit: 4, mask: 16, desc: 'Shortwave IR reflectance anomaly'},
+  {flag: 'excludeProbablyCloudy', bit: 5, mask: 32, desc: 'Probably cloudy (v6.1 cloud detection)'},
+  {flag: 'excludeProbablyNotClear', bit: 6, mask: 64, desc: 'Probably not clear (v6.1 cloud detection)'},
   {flag: 'excludeHighSolarZenith', bit: 7, mask: 128, desc: 'Solar zenith >70°'}
 ];
 
@@ -159,6 +161,8 @@ function createCurrentQAMask(img) {
     excludeNDSIScreenFail: flagCheckboxes.ndsiScreenFail.getValue(),
     excludeTempHeightFail: flagCheckboxes.tempHeightFail.getValue(),
     excludeSWIRAnomaly: flagCheckboxes.swirAnomaly.getValue(),
+    excludeProbablyCloudy: flagCheckboxes.probablyCloudy.getValue(),
+    excludeProbablyNotClear: flagCheckboxes.probablyNotClear.getValue(),
     excludeHighSolarZenith: flagCheckboxes.highSolarZenith.getValue()
   };
   
@@ -479,7 +483,8 @@ var flagMeta = [
   {key: 'ndsiScreenFail', bit: 2, label: 'Bit 2: Low NDSI screen', def: true},
   {key: 'tempHeightFail', bit: 3, label: 'Bit 3: Temperature/height screen', def: true},
   {key: 'swirAnomaly', bit: 4, label: 'Bit 4: Shortwave IR reflectance', def: false},
-  // Bits 5 & 6 are Spare (N/A) per official GEE documentation
+  {key: 'probablyCloudy', bit: 5, label: 'Bit 5: Probably cloudy (v6.1)', def: true},
+  {key: 'probablyNotClear', bit: 6, label: 'Bit 6: Probably not clear (v6.1)', def: false},
   {key: 'highSolarZenith', bit: 7, label: 'Bit 7: Solar zenith screen', def: true}
 ];
 
@@ -810,8 +815,8 @@ var qaPanel = ui.Panel([
   flagCheckboxes.ndsiScreenFail,        // Bit 2
   flagCheckboxes.tempHeightFail,        // Bit 3
   flagCheckboxes.swirAnomaly,           // Bit 4
-  // Bit 5: Spare (N/A) - Not displayed
-  // Bit 6: Spare (N/A) - Not displayed
+  flagCheckboxes.probablyCloudy,        // Bit 5
+  flagCheckboxes.probablyNotClear,      // Bit 6
   flagCheckboxes.highSolarZenith        // Bit 7
 ], ui.Panel.Layout.flow('vertical'), {
   width: '350px',
@@ -964,7 +969,8 @@ Map.onClick(function(coords) {
             if (flagCheckboxes.ndsiScreenFail.getValue() && (algFlags & 4)) passesFlags = false;
             if (flagCheckboxes.tempHeightFail.getValue() && (algFlags & 8)) passesFlags = false;
             if (flagCheckboxes.swirAnomaly.getValue() && (algFlags & 16)) passesFlags = false;
-            // Bit 5 & 6: Spare (N/A) - Removed per official documentation
+            if (flagCheckboxes.probablyCloudy.getValue() && (algFlags & 32)) passesFlags = false;
+            if (flagCheckboxes.probablyNotClear.getValue() && (algFlags & 64)) passesFlags = false;
             if (flagCheckboxes.highSolarZenith.getValue() && (algFlags & 128)) passesFlags = false;
           }
           
