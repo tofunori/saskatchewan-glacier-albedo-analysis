@@ -385,10 +385,18 @@ def show_gee_status():
 
 def custom_analysis_menu():
     """Menu pour analyse personnalisée"""
-    print("\n📈 ANALYSE DE TENDANCES PERSONNALISÉE")
-    print("=" * 50)
-    print("Fonctionnalité à venir...")
-    input("\n📱 Appuyez sur Entrée pour continuer...")
+    try:
+        from custom_analysis import custom_analysis_menu as run_custom_analysis
+        run_custom_analysis()
+    except ImportError:
+        print("\n📈 ANALYSE DE TENDANCES PERSONNALISÉE")
+        print("=" * 50)
+        print("❌ Module d'analyse personnalisée non disponible")
+        print("💡 Le module custom_analysis.py est requis")
+        input("\n📱 Appuyez sur Entrée pour continuer...")
+    except Exception as e:
+        print(f"\n❌ Erreur lors du lancement: {e}")
+        input("\n📱 Appuyez sur Entrée pour continuer...")
 
 def visualization_menu():
     """Menu pour génération de graphiques"""
