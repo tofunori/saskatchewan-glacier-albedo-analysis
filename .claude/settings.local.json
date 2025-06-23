@@ -47,7 +47,20 @@
       "Bash(createdb:*)",
       "mcp__desktop-commander__execute_command",
       "mcp__desktop-commander__list_directory",
-      "mcp__desktop-commander__read_file"
+      "mcp__desktop-commander__read_file",
+      "mcp__postgres__query",
+      "Bash(/mcp)",
+      "mcp__saskatchewan_db__query",
+      "mcp__zotero__search_library",
+      "mcp__tavily-search__tavily-extract",
+      "mcp__brave-search__brave_web_search",
+      "WebFetch(domain:ams.confex.com)",
+      "WebFetch(domain:www.researchgate.net)",
+      "Bash(chmod:*)",
+      "Bash(echo $CONDA_DEFAULT_ENV)",
+      "Bash(systemctl:*)",
+      "Bash(psql:*)",
+      "Bash(sudo find:*)"
     ],
     "deny": []
   }

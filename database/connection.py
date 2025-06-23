@@ -52,8 +52,8 @@ class DatabaseConnection:
         if self.password:
             return f"postgresql://{self.user}:{self.password}@{self.host}:{self.port}/{self.database}"
         else:
-            # Use socket connection for peer authentication
-            return f"postgresql:///{self.database}"
+            # Use socket connection for peer authentication with correct socket directory
+            return f"postgresql:///{self.database}?user={self.user}&host=/var/run/postgresql"
     
     @property
     def engine(self) -> Engine:
