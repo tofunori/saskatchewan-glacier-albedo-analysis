@@ -18,7 +18,7 @@ import os
 import warnings
 
 # Configurer matplotlib pour éviter les avertissements de police
-plt.rcParams['font.family'] = ['DejaVu Sans', 'Arial', 'sans-serif']
+# Note: Font configuration is now handled in config.py
 warnings.filterwarnings('ignore', category=UserWarning, message='.*Glyph.*missing from font.*')
 
 class ChartGenerator:
