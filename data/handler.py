@@ -1,34 +1,50 @@
 """
-Gestionnaire de données pour l'analyse des tendances d'albédo
-===========================================================
+Data Handler for Saskatchewan Glacier Albedo Analysis
+====================================================
 
-Ce module gère le chargement, le nettoyage et la préparation des données
-CSV exportées depuis Google Earth Engine.
+Manages loading, cleaning and preparation of CSV data exported from Google Earth Engine.
+Refactored to use modern patterns with proper error handling.
 """
 
 import pandas as pd
 import numpy as np
-import os
-from config import FRACTION_CLASSES, CLASS_LABELS, ANALYSIS_CONFIG
+import logging
+from typing import Optional, Dict, Any
+
+from config.settings import config
+from data.base_handler import BaseDataHandler
+from utils.exceptions import DataLoadError, AnalysisError
 from utils.helpers import print_section_header, validate_data, load_and_validate_csv
 
-class AlbedoDataHandler:
+logger = logging.getLogger(__name__)
+
+class AlbedoDataHandler(BaseDataHandler):
     """
-    Classe pour charger et préparer les données d'albédo du glacier Saskatchewan
+    Handler for Saskatchewan Glacier albedo data with modern error handling.
     """
     
-    def __init__(self, csv_path):
+    def __init__(self, csv_path: str, dataset_name: Optional[str] = None):
         """
-        Initialise le gestionnaire de données
+        Initialize albedo data handler.
         
         Args:
-            csv_path (str): Chemin vers le fichier CSV
+            csv_path: Path to CSV file
+            dataset_name: Name of dataset (for configuration lookup)
         """
+        # Initialize base class if dataset_name provided
+        if dataset_name:
+            super().__init__(dataset_name)
+        else:
+            # Legacy mode - create minimal config
+            self.dataset_name = "unknown"
+            self.dataset_config = None
+            self._data = None
+            self._raw_data = None
+            self._metadata = {}
+        
         self.csv_path = csv_path
-        self.data = None
-        self.raw_data = None
-        self.fraction_classes = FRACTION_CLASSES
-        self.class_labels = CLASS_LABELS
+        self.fraction_classes = config.fraction_classes
+        self.class_labels = config.class_labels
         
     def __len__(self):
         """
