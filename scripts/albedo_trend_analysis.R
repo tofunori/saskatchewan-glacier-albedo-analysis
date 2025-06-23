@@ -38,7 +38,19 @@ required_packages <- c(
 install_if_missing <- function(packages) {
   new_packages <- packages[!(packages %in% installed.packages()[,"Package"])]
   if(length(new_packages)) {
-    install.packages(new_packages, dependencies = TRUE)
+    cat("📦 Installing missing packages:", paste(new_packages, collapse = ", "), "\n")
+    cat("💡 If prompted, type 'yes' to use personal library\n")
+    
+    # Try to create personal library if it doesn't exist
+    personal_lib <- Sys.getenv("R_LIBS_USER")
+    if (personal_lib != "" && !dir.exists(personal_lib)) {
+      cat("📁 Creating personal library directory:", personal_lib, "\n")
+      dir.create(personal_lib, recursive = TRUE, showWarnings = FALSE)
+    }
+    
+    install.packages(new_packages, dependencies = TRUE, repos = "https://cran.rstudio.com/")
+  } else {
+    cat("✅ All required packages are already installed\n")
   }
 }
 
@@ -76,8 +88,7 @@ connect_to_database <- function() {
     drv <- dbDriver("PostgreSQL")
     con <- dbConnect(drv, 
                      dbname = "saskatchewan_albedo",
-                     host = "localhost",
-                     port = 5432,
+                     host = "/var/run/postgresql",
                      user = Sys.getenv("USER"))
     
     cat("✅ Connected to PostgreSQL database\n")
