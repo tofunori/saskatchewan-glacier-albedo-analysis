@@ -19,6 +19,9 @@ sns.set_palette("husl")
 plt.rcParams['font.family'] = ['DejaVu Sans', 'sans-serif']
 plt.rcParams['font.sans-serif'] = ['DejaVu Sans', 'Arial', 'Liberation Sans', 'Helvetica']
 
+# Fix Qt platform plugin warnings in WSL/headless environments
+os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
+
 # ==========================================
 # CONFIGURATION PRINCIPALE
 # ==========================================
