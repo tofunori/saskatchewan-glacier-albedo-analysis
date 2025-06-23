@@ -23,25 +23,64 @@ def check_config():
         return False
 
 def check_datasets_availability():
-    """Vérifie la disponibilité des datasets"""
+    """Vérifie la disponibilité des datasets en respectant le mode DATA_MODE"""
     try:
-        from config import MCD43A3_CONFIG, MOD10A1_CONFIG
+        from config import MCD43A3_CONFIG, MOD10A1_CONFIG, DATA_MODE
         
         datasets_available = []
         
-        # Vérifier MCD43A3
-        if os.path.exists(MCD43A3_CONFIG['csv_path']):
-            datasets_available.append('MCD43A3')
-            print(f"✅ Dataset MCD43A3 trouvé: {MCD43A3_CONFIG['csv_path']}")
-        else:
-            print(f"❌ Dataset MCD43A3 manquant: {MCD43A3_CONFIG['csv_path']}")
+        if DATA_MODE.lower() == "database":
+            # Mode base de données - vérifier la connectivité et les données
+            print("🔍 Mode base de données activé - Vérification de la connectivité...")
             
-        # Vérifier MOD10A1
-        if os.path.exists(MOD10A1_CONFIG['csv_path']):
-            datasets_available.append('MOD10A1')
-            print(f"✅ Dataset MOD10A1 trouvé: {MOD10A1_CONFIG['csv_path']}")
+            try:
+                from data.unified_loader import get_albedo_handler
+                
+                # Tester MCD43A3
+                try:
+                    handler = get_albedo_handler('MCD43A3')
+                    test_data = handler.load_data()
+                    if len(test_data) > 0:
+                        datasets_available.append('MCD43A3')
+                        print(f"✅ Dataset MCD43A3 disponible en base de données ({len(test_data)} lignes)")
+                    else:
+                        print(f"❌ Dataset MCD43A3 vide en base de données")
+                except Exception as e:
+                    print(f"❌ Dataset MCD43A3 inaccessible en base de données: {e}")
+                
+                # Tester MOD10A1
+                try:
+                    handler = get_albedo_handler('MOD10A1')
+                    test_data = handler.load_data()
+                    if len(test_data) > 0:
+                        datasets_available.append('MOD10A1')
+                        print(f"✅ Dataset MOD10A1 disponible en base de données ({len(test_data)} lignes)")
+                    else:
+                        print(f"❌ Dataset MOD10A1 vide en base de données")
+                except Exception as e:
+                    print(f"❌ Dataset MOD10A1 inaccessible en base de données: {e}")
+                    
+            except Exception as e:
+                print(f"❌ Erreur de connexion à la base de données: {e}")
+                return False
+                
         else:
-            print(f"❌ Dataset MOD10A1 manquant: {MOD10A1_CONFIG['csv_path']}")
+            # Mode CSV - vérifier l'existence des fichiers (comportement historique)
+            print("🔍 Mode CSV activé - Vérification des fichiers...")
+            
+            # Vérifier MCD43A3
+            if os.path.exists(MCD43A3_CONFIG['csv_path']):
+                datasets_available.append('MCD43A3')
+                print(f"✅ Dataset MCD43A3 trouvé: {MCD43A3_CONFIG['csv_path']}")
+            else:
+                print(f"❌ Dataset MCD43A3 manquant: {MCD43A3_CONFIG['csv_path']}")
+                
+            # Vérifier MOD10A1
+            if os.path.exists(MOD10A1_CONFIG['csv_path']):
+                datasets_available.append('MOD10A1')
+                print(f"✅ Dataset MOD10A1 trouvé: {MOD10A1_CONFIG['csv_path']}")
+            else:
+                print(f"❌ Dataset MOD10A1 manquant: {MOD10A1_CONFIG['csv_path']}")
             
         return len(datasets_available) > 0
         
