@@ -42,7 +42,12 @@
       "mcp__playwright__browser_install",
       "mcp__zen__refactor",
       "mcp__zen__analyze",
-      "mcp__zen__thinkdeep"
+      "mcp__zen__thinkdeep",
+      "Bash(sudo -u postgres:*)",
+      "Bash(createdb:*)",
+      "mcp__desktop-commander__execute_command",
+      "mcp__desktop-commander__list_directory",
+      "mcp__desktop-commander__read_file"
     ],
     "deny": []
   }

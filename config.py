@@ -22,6 +22,9 @@ sns.set_palette("husl")
 # Choix du dataset par défaut ('MCD43A3', 'MOD10A1', ou 'COMPARISON')
 DEFAULT_DATASET = "MCD43A3"
 
+# Mode de données ('csv' ou 'database')
+DATA_MODE = "database"  # Change to 'csv' to use legacy CSV mode
+
 # Configuration pour MCD43A3 (Albédo général)
 MCD43A3_CONFIG = {
     'csv_path': "data/csv/MCD43A3_albedo_daily_stats_2010_2024.csv",

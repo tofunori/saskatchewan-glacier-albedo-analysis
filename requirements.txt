@@ -15,6 +15,10 @@ pymannkendall>=1.4.3
 # File I/O
 openpyxl>=3.0.10
 
+# Database
+psycopg2-binary>=2.9.0
+SQLAlchemy>=1.4.0
+
 # Plotting and visualization
 plotly>=5.0.0
 
