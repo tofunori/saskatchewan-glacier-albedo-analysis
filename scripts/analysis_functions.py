@@ -316,8 +316,8 @@ def run_elevation_analysis_menu():
 def _load_dataset(dataset_name):
     """Charge un dataset spécifique"""
     try:
-        from data.handler import AlbedoDataHandler
-        from config import MCD43A3_CONFIG, MOD10A1_CONFIG
+        from data.unified_loader import get_albedo_handler
+        from config import DATA_MODE, MCD43A3_CONFIG, MOD10A1_CONFIG
         
         if dataset_name == 'MCD43A3':
             config = MCD43A3_CONFIG
@@ -326,7 +326,14 @@ def _load_dataset(dataset_name):
         else:
             raise ValueError(f"Dataset inconnu: {dataset_name}")
         
-        handler = AlbedoDataHandler(config['csv_path'])
+        # Use unified loader that respects DATA_MODE setting
+        if DATA_MODE.lower() == "database":
+            # Database mode: pass dataset name to db_handler
+            handler = get_albedo_handler(dataset_name)
+        else:
+            # CSV mode: pass CSV path to csv_handler  
+            handler = get_albedo_handler(config['csv_path'])
+            
         data = handler.load_data()
         
         print(f"✅ Dataset {dataset_name} chargé: {len(data)} lignes")
