@@ -15,6 +15,10 @@ from pathlib import Path
 plt.style.use('seaborn-v0_8')
 sns.set_palette("husl")
 
+# Configuration des polices (fix Arial not found warnings)
+plt.rcParams['font.family'] = ['DejaVu Sans', 'sans-serif']
+plt.rcParams['font.sans-serif'] = ['DejaVu Sans', 'Arial', 'Liberation Sans', 'Helvetica']
+
 # ==========================================
 # CONFIGURATION PRINCIPALE
 # ==========================================

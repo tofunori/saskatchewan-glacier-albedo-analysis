@@ -67,7 +67,8 @@
       "mcp__zen__chat",
       "Bash(bash:*)",
       "Bash(pkill:*)",
-      "Bash(R:*)"
+      "Bash(R:*)",
+      "WebFetch(domain:code.visualstudio.com)"
     ],
     "deny": []
   }

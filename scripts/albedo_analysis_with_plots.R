@@ -169,6 +169,10 @@ create_time_series_plot <- function(data) {
     theme_minimal() +
     theme(legend.position = "bottom")
   
+  # Display plot interactively
+  print(p)
+  
+  # Also save to file
   ggsave("results/albedo_time_series.png", p, width = 12, height = 6, dpi = 300)
   cat("💾 Saved: results/albedo_time_series.png\n")
 }
@@ -186,6 +190,10 @@ create_correlation_plot <- function(matched_data) {
     ) +
     theme_minimal()
   
+  # Display plot interactively
+  print(p)
+  
+  # Also save to file
   ggsave("results/albedo_correlation.png", p, width = 8, height = 6, dpi = 300)
   cat("💾 Saved: results/albedo_correlation.png\n")
 }
@@ -220,7 +228,14 @@ run_analysis <- function() {
   corr_results <- analyze_correlation(matched_data)
   
   # Create visualizations
+  cat("\n📊 Creating time series plot...\n")
   create_time_series_plot(all_data)
+  
+  # Pause to view first plot
+  cat("📋 Press Enter to continue to correlation plot...")
+  if (interactive()) readline()
+  
+  cat("\n📊 Creating correlation plot...\n")
   create_correlation_plot(matched_data)
   
   # Close database connection
