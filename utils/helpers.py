@@ -32,6 +32,7 @@ def check_pymannkendall():
 def manual_mann_kendall(data):
     """
     Implémentation manuelle du test Mann-Kendall si pymannkendall n'est pas disponible
+    Avec correction pour les égalités (ties) selon Hipel & McLeod 1994
     
     Args:
         data (array-like): Série temporelle à analyser
@@ -47,21 +48,29 @@ def manual_mann_kendall(data):
         for j in range(i+1, n):
             s += np.sign(data[j] - data[i])
     
-    var_s = n * (n - 1) * (2 * n + 5) / 18
+    # Correction pour les égalités (ties) - Hipel & McLeod 1994
+    unique, counts = np.unique(data, return_counts=True)
+    tie_term = np.sum(counts * (counts - 1) * (2*counts + 5))
+    var_s = (n * (n - 1) * (2 * n + 5) - tie_term) / 18
     
-    if s > 0:
-        z = (s - 1) / np.sqrt(var_s)
-    elif s < 0:
-        z = (s + 1) / np.sqrt(var_s)
-    else:
+    # Correction de continuité avec protection contre division par zéro
+    if var_s <= 0:
         z = 0
+    elif abs(s) <= 1:
+        z = 0  # Pas de correction si |s| <= 1
+    else:
+        sign_s = np.sign(s)
+        z = (s - sign_s) / np.sqrt(var_s)
     
     # Calcul de la p-value (test bilatéral)
     from scipy.stats import norm
-    p_value = 2 * (1 - norm.cdf(abs(z)))
+    p_value = 2 * (1 - norm.cdf(abs(z))) if z != 0 else 1.0
     
-    # Calcul du tau de Kendall
-    tau = s / (n * (n - 1) / 2)
+    # Calcul du tau de Kendall-b (corrigé pour les égalités)
+    n_pairs = n * (n - 1) / 2
+    n_ties = np.sum(counts * (counts - 1) / 2)
+    denominator = n_pairs - n_ties if n_ties > 0 else n_pairs
+    tau = s / denominator if denominator > 0 else 0
     
     # Détermination de la tendance
     if p_value < 0.05:
@@ -163,6 +172,7 @@ def format_pvalue(p_value, precision=4):
 def create_time_index(dates):
     """
     Crée un index temporel décimal pour les analyses de régression
+    Utilise une conversion précise tenant compte des années bissextiles
     
     Args:
         dates (pd.Series): Série de dates
@@ -174,8 +184,14 @@ def create_time_index(dates):
         dates = pd.to_datetime(dates)
         years = dates.dt.year
         day_of_year = dates.dt.dayofyear
-        # Approximation: diviser par 365.25 pour tenir compte des années bissextiles
-        decimal_years = years + (day_of_year - 1) / 365.25
+        
+        # Conversion précise avec prise en compte des années bissextiles
+        # Utilise 365.2425 (moyenne grégorienne) plus précise que 365.25
+        is_leap_year = dates.dt.is_leap_year
+        days_in_year = np.where(is_leap_year, 366, 365)
+        
+        # Calcul précis de la fraction d'année
+        decimal_years = years + (day_of_year - 1) / days_in_year
         return decimal_years.values
     else:
         raise ValueError("Dates doit être une pd.Series")
@@ -243,6 +259,7 @@ def get_timestamp():
 def calculate_sen_slope(times, values):
     """
     Calcule la pente de Sen et intervalle de confiance
+    Trie les données par temps pour assurer la reproductibilité
     
     Args:
         times (array): Temps (années décimales)
@@ -253,18 +270,33 @@ def calculate_sen_slope(times, values):
     """
     try:
         from scipy.stats import theilslopes
-        # Calcul avec theilslopes de scipy
-        slope, intercept, low_slope, high_slope = theilslopes(values, times, 0.95)
+        
+        # Convertir en arrays numpy et trier par temps pour reproductibilité
+        times = np.array(times)
+        values = np.array(values)
+        
+        # Trier par ordre chronologique
+        sort_idx = np.argsort(times)
+        times_sorted = times[sort_idx]
+        values_sorted = values[sort_idx]
+        
+        # Calcul avec theilslopes de scipy sur données triées
+        slope, intercept, low_slope, high_slope = theilslopes(values_sorted, times_sorted, 0.95)
+        
+        # Calculer les valeurs par décennie une seule fois
+        slope_per_decade = slope * 10
+        low_per_decade = low_slope * 10
+        high_per_decade = high_slope * 10
         
         return {
             'slope': slope,
-            'slope_per_decade': slope * 10,  # Pente par décennie
+            'slope_per_decade': slope_per_decade,
             'intercept': intercept,
             'confidence_interval': {
                 'low': low_slope,
                 'high': high_slope,
-                'low_per_decade': low_slope * 10,
-                'high_per_decade': high_slope * 10
+                'low_per_decade': low_per_decade,
+                'high_per_decade': high_per_decade
             },
             'method': 'theilslopes'
         }

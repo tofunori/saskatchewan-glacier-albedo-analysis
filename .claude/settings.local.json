@@ -68,7 +68,10 @@
       "Bash(bash:*)",
       "Bash(pkill:*)",
       "Bash(R:*)",
-      "WebFetch(domain:code.visualstudio.com)"
+      "WebFetch(domain:code.visualstudio.com)",
+      "mcp__office-word__get_document_info",
+      "mcp__office-word__get_document_text",
+      "mcp__zen__codereview"
     ],
     "deny": []
   }
