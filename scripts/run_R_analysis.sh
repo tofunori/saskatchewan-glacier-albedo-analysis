@@ -29,7 +29,7 @@ echo "✅ PostgreSQL is running"
 echo "🔬 Executing R analysis script..."
 echo ""
 
-Rscript scripts/albedo_trend_analysis.R
+Rscript scripts/albedo_analysis_with_plots.R
 
 echo ""
 echo "📊 R Analysis completed!"

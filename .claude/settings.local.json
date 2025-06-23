@@ -60,7 +60,14 @@
       "Bash(echo $CONDA_DEFAULT_ENV)",
       "Bash(systemctl:*)",
       "Bash(psql:*)",
-      "Bash(sudo find:*)"
+      "Bash(sudo find:*)",
+      "Bash(claude mcp:*)",
+      "mcp__office-word__add_heading",
+      "mcp__office-word__add_paragraph",
+      "mcp__zen__chat",
+      "Bash(bash:*)",
+      "Bash(pkill:*)",
+      "Bash(R:*)"
     ],
     "deny": []
   }
