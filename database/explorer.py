@@ -145,11 +145,14 @@ class DatabaseExplorer:
         
         year = int(year)
         query = f"""
-        SELECT date, season, pure_ice_mean, mostly_ice_mean 
+        SELECT date, season, 
+               pure_ice_mean, pure_ice_pixel_count,
+               mostly_ice_mean, mostly_ice_pixel_count,
+               mixed_high_mean, mixed_high_pixel_count,
+               total_valid_pixels
         FROM albedo.{table_name} 
         WHERE year = {year}
         ORDER BY date
-        LIMIT 20
         """
         
         print(f"\n📅 Data for year {year}:")
